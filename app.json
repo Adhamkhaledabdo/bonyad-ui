@@ -3,8 +3,8 @@
     "name": "bonyad-app",
     "slug": "bonyad-app",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "orientation": "default",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,18 +13,64 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bonyad.ahmed",
+      "icon": "./assets/app-icon.png"
     },
     "android": {
+      "orientation": "default",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/app-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "icon": "./assets/app-icon.png",
+      "notification": {
+        "icon": "./assets/app-icon.png",
+        "color": "#0080E0"
+      },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.bonyaddandroid.ahmed",
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA0bEyvVa8NecLryi5DOiEjXQvOQ3p0CfA"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "config": {
+        "googleMapsApiKey": "AIzaSyA0bEyvVa8NecLryi5DOiEjXQvOQ3p0CfA"
+      },
+      "bundler": "metro",
+      "build": {
+        "babel": {
+          "include": []
+        }
+      }
+    },
+    "publicUrl": "/app/",
+    "plugins": [
+      "@react-native-firebase/app",
+      [
+        "@react-native-firebase/messaging",
+        {
+          "androidNotificationChannelId": "bonyad-notifications"
+        }
+      ],
+      "expo-font",
+      "expo-asset",
+      "expo-screen-orientation"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4fe559ca-7c53-4978-9f5b-6f998e5a9949"
+      }
     }
   }
 }

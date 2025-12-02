@@ -1,4 +1,5 @@
 import { registerRootComponent } from 'expo';
+import './global.css'; // Import NativeWind CSS
 
 import App from './App';
 

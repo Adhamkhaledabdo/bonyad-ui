@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "331487649517",
+    "project_id": "problem-x",
+    "storage_bucket": "problem-x.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:331487649517:android:23f62cd5803b14447b36e4",
+        "android_client_info": {
+          "package_name": "com.bonyaddandroid.ahmed"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "331487649517-bdsafl4tgdc44s0lo19aepa84vh5dajn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bonyaddandroid.ahmed",
+            "certificate_hash": "bbeb91738bbd38ef3ffe1cb13fdc11623884a4bf"
+          }
+        },
+        {
+          "client_id": "331487649517-v5rc97dmfaav8v4npgaiu8377f6s5e9e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bonyaddandroid.ahmed",
+            "certificate_hash": "c950eb47c404b6b6a2e35088ab6a71f3eb954185"
+          }
+        },
+        {
+          "client_id": "331487649517-shm23b2ttpth3usedkn05rc8c1mqpp3u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRJShbYlR-iuabiNWu6foVGxydjCMgOns"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "331487649517-shm23b2ttpth3usedkn05rc8c1mqpp3u.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "331487649517-7ucqqchvjp1r5pb0gc20uf0luj964pv8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bonyad.ahmed"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
