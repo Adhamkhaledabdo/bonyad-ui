@@ -164,6 +164,8 @@ export default function ConversationalAIForm({
   // Animation for AI icon
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const loadingRotateAnim = useRef(new Animated.Value(0)).current;
+  const loadingAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     // Pulse animation
@@ -200,7 +202,39 @@ export default function ConversationalAIForm({
     };
   }, []);
 
+  // Loading spinner animation - starts/stops based on isLoading
+  useEffect(() => {
+    if (isLoading) {
+      loadingRotateAnim.setValue(0);
+      loadingAnimRef.current = Animated.loop(
+        Animated.timing(loadingRotateAnim, {
+          toValue: 1,
+          duration: 800, // Fast spin
+          useNativeDriver: true,
+        })
+      );
+      loadingAnimRef.current.start();
+    } else {
+      if (loadingAnimRef.current) {
+        loadingAnimRef.current.stop();
+        loadingAnimRef.current = null;
+      }
+      loadingRotateAnim.setValue(0);
+    }
+
+    return () => {
+      if (loadingAnimRef.current) {
+        loadingAnimRef.current.stop();
+      }
+    };
+  }, [isLoading]);
+
   const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const loadingSpin = loadingRotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
@@ -820,17 +854,15 @@ export default function ConversationalAIForm({
   if (shouldRenderMobile) {
     return (
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={[styles.container, { backgroundColor: '#FFFFFF' }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16), backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="close" size={24} color={colors.text} />
+        {/* Figma Header - Simple Back Button */}
+        <View style={[styles.figmaHeader, { paddingTop: Math.max(insets.top, 16) }]}>
+          <TouchableOpacity onPress={onBack} style={styles.figmaBackButton}>
+            <Ionicons name="arrow-back" size={24} color="#383838" />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('AI Project Generator')}</Text>
-          <View style={{ width: 40 }} />
         </View>
 
       <ScrollView
@@ -838,54 +870,74 @@ export default function ConversationalAIForm({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Step 1: Description Input */}
+        {/* Step 1: Description Input - Figma Design */}
         {currentStep === 'description' && (
-          <View style={styles.formContainer}>
-            <View style={styles.iconSection}>
-              <Ionicons name="sparkles" size={70} color={colors.primary} />
-              <Text style={[styles.title, { color: colors.text }]}>{t('AI Project Generator')}</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {t('Describe your project needs')}
+          <View style={styles.figmaFormContainer}>
+            {/* Figma AI Icon with amber background */}
+            <View style={styles.figmaLogoSection}>
+              <View style={styles.figmaAiIconBox}>
+                <Ionicons name="chatbubbles" size={32} color="#FFB703" />
+              </View>
+              <Text style={styles.figmaAiTitle}>{t('AI project generator')}</Text>
+            </View>
+
+            {/* Figma Description Text */}
+            <Text style={styles.figmaDescriptionText}>
+              {t('Describe your need and we will help you define the scope of work, cost estimate and the expected duration.')}
+            </Text>
+
+            {/* Figma Example Prompt Chip */}
+            <TouchableOpacity
+              style={styles.figmaExampleChip}
+              onPress={() => setDescription(currentExamples[0] || '')}
+            >
+              <View style={styles.figmaExampleIcon}>
+                <Ionicons name="sparkles-outline" size={18} color="#00549B" />
+              </View>
+              <Text style={styles.figmaExampleText}>
+                {currentExamples[0] || t('Renovate bedroom with new flooring and paint including red walls.')}
               </Text>
-            </View>
+            </TouchableOpacity>
 
-            <View style={[styles.inputSection, { flexDirection: 'column', alignItems: 'stretch' }]}>
-              <View style={[styles.labelWithIcon, { flexDirection: 'row', alignItems: 'center', marginBottom: 12 }]}>
-                <Ionicons name="document-text" size={20} color={colors.primary} />
-                <Text style={[styles.label, { color: colors.text, marginLeft: 8, marginBottom: 0 }]}>
-                  {t('Project Description')} *
-                </Text>
-              </View>
-              <View style={[styles.textAreaWrapper, { borderColor: colors.primary, backgroundColor: colors.cardBackground, marginTop: 0 }]}>
-                <Animated.View style={[styles.aiIcon, { transform: [{ scale: pulseAnim }, { rotate: spin }] }]}>
-                  <Ionicons name="sparkles" size={24} color={colors.primary} />
+            {/* Figma Input Area */}
+            <View style={styles.figmaInputContainer}>
+              <TextInput
+                style={styles.figmaTextInput}
+                multiline
+                value={description}
+                onChangeText={setDescription}
+                placeholder={t('Write your prompt here...')}
+                placeholderTextColor="#003867"
+                textAlignVertical="top"
+                blurOnSubmit={false}
+                onKeyPress={(e: any) => {
+                  // Handle Enter key press (for web and some mobile keyboards)
+                  if (e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+                    if (description.trim() && !isLoading) {
+                      e.preventDefault?.();
+                      handleDescriptionSubmit();
+                    }
+                  }
+                }}
+                returnKeyType="send"
+                onSubmitEditing={() => {
+                  if (description.trim() && !isLoading) {
+                    handleDescriptionSubmit();
+                  }
+                }}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.figmaSendButton,
+                  (!description.trim() || isLoading) && styles.figmaSendButtonDisabled,
+                ]}
+                onPress={handleDescriptionSubmit}
+                disabled={isLoading || !description.trim()}
+              >
+                <Animated.View style={isLoading ? { transform: [{ rotate: loadingSpin }] } : undefined}>
+                  <Ionicons name="sparkles" size={12} color="#E6EFF7" />
                 </Animated.View>
-                <TextInput
-                  style={[styles.textArea, { color: colors.text, flex: 1 }]}
-                  multiline
-                  numberOfLines={8}
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder={t('E.g., I need to renovate my kitchen with modern cabinets...')}
-                  placeholderTextColor={colors.textTertiary}
-                  textAlignVertical="top"
-                />
-              </View>
-            </View>
-
-            {/* Example prompts */}
-            <View style={styles.examplesContainer}>
-              <Text style={[styles.examplesTitle, { color: colors.textSecondary }]}>{t('Examples')}:</Text>
-              {currentExamples.slice(0, 3).map((example, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.exampleItem, { backgroundColor: colors.cardBackground }]}
-                  onPress={() => setDescription(example)}
-                >
-                  <Ionicons name="bulb" size={20} color={colors.warning} />
-                  <Text style={[styles.exampleText, { color: colors.text }]}>{example}</Text>
-                </TouchableOpacity>
-              ))}
+              </TouchableOpacity>
             </View>
 
             {error && (
@@ -894,17 +946,6 @@ export default function ConversationalAIForm({
                 <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             )}
-
-            <Button
-              mode="contained"
-              onPress={handleDescriptionSubmit}
-              loading={isLoading}
-              disabled={isLoading || !description.trim()}
-              style={[styles.submitButton, { backgroundColor: colors.primary }]}
-              contentStyle={styles.submitButtonContent}
-            >
-              {t('Continue to Recommendations')}
-            </Button>
           </View>
         )}
 
@@ -3906,5 +3947,108 @@ const styles = StyleSheet.create({
   slideshowDotActive: {
     backgroundColor: '#fff',
     width: 24,
+  },
+  // ==================== FIGMA DESIGN STYLES ====================
+  figmaHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  figmaBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 20,
+  },
+  figmaFormContainer: {
+    flex: 1,
+    paddingHorizontal: 0,
+  },
+  figmaLogoSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 24,
+  },
+  figmaAiIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 6,
+    backgroundColor: '#FFF2CF', // amber10
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaAiTitle: {
+    fontSize: 20,
+    fontWeight: '400',
+    color: '#003867', // primary100
+    textAlign: 'center',
+  },
+  figmaDescriptionText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#383838', // textBody
+    textAlign: 'center',
+    lineHeight: 24,
+    marginTop: 24,
+    marginBottom: 100, // Space to push content up
+  },
+  figmaExampleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#00549B', // primary70
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+    gap: 8,
+  },
+  figmaExampleIcon: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaExampleText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#00549B', // primary70
+    textAlign: 'center',
+  },
+  figmaInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#E6EFF7', // primary10
+    borderWidth: 0.5,
+    borderColor: '#003867', // primary100
+    borderRadius: 8,
+    padding: 8,
+    minHeight: 84,
+    gap: 12,
+  },
+  figmaTextInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '200',
+    color: '#003867', // primary100
+    minHeight: 68,
+    textAlignVertical: 'top',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as any,
+      },
+    }),
+  },
+  figmaSendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 35,
+    backgroundColor: '#005DAC', // primary60
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaSendButtonDisabled: {
+    opacity: 0.5,
   },
 });

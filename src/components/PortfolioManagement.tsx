@@ -10,7 +10,6 @@ import {
   Modal,
   TextInput,
   Platform,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +38,8 @@ import {
   GeneratePDFOptions,
 } from '../services/PortfolioService';
 import ColorPicker from './ColorPicker';
+import AlertPopup, { useAlertPopup } from './AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from './ConfirmationPopup';
 
 interface PortfolioManagementProps {
   technicianId: number;
@@ -89,12 +90,9 @@ export default function PortfolioManagement({
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   
-  // Custom confirmation modal state
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmTitle, setConfirmTitle] = useState('');
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [confirmOnConfirm, setConfirmOnConfirm] = useState<(() => void) | null>(null);
-  const [projectToDelete, setProjectToDelete] = useState<PortfolioProject | null>(null);
+  // Custom popup hooks
+  const { alertState, showSuccess, showError, showInfo, hideAlert } = useAlertPopup();
+  const { confirmState, showConfirmation, showDeleteConfirmation, hideConfirmation } = useConfirmationPopup();
   
   // PDF and QR Code state
   const [pdfInfo, setPdfInfo] = useState<PortfolioPDFInfo | null>(null);
@@ -169,7 +167,7 @@ export default function PortfolioManagement({
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== 'granted') {
-        Alert.alert(t('Permission Required'), t('Please grant permission to access your photos'));
+        showError(t('Please grant permission to access your photos'), t('Permission Required'));
         return;
       }
 
@@ -185,7 +183,7 @@ export default function PortfolioManagement({
         const currentCount = selectedPhotos.length;
         const newCount = currentCount + result.assets.length;
         if (newCount > 5) {
-          Alert.alert(t('Error'), t('Maximum 5 photos allowed'));
+          showError(t('Maximum 5 photos allowed'), t('Error'));
           const remainingSlots = 5 - currentCount;
           if (remainingSlots > 0) {
             setSelectedPhotos([...selectedPhotos, ...result.assets.slice(0, remainingSlots)]);
@@ -247,17 +245,17 @@ export default function PortfolioManagement({
   
   const handleSaveProject = async () => {
     if (!title.trim()) {
-      Alert.alert(t('Error'), t('Please enter a title'));
+      showError(t('Please enter a title'), t('Error'));
       return;
     }
     
     if (!description.trim()) {
-      Alert.alert(t('Error'), t('Please enter a description'));
+      showError(t('Please enter a description'), t('Error'));
       return;
     }
     
     if (endDate && startDate && endDate < startDate) {
-      Alert.alert(t('Error'), t('End date must be after start date'));
+      showError(t('End date must be after start date'), t('Error'));
       return;
     }
     
@@ -330,33 +328,19 @@ export default function PortfolioManagement({
         await addPortfolioProject(projectData);
       }
       
-      const finalizeSuccess = () => {
-        setShowAddModal(false);
-        setShowEditModal(false);
-        resetForm();
-        loadPortfolio();
-      };
+      setShowAddModal(false);
+      setShowEditModal(false);
+      resetForm();
+      loadPortfolio();
 
       const successMessage = editingProject
         ? t('Project updated successfully')
         : t('Project added successfully');
 
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined') {
-          window.alert(successMessage);
-        }
-        finalizeSuccess();
-      } else {
-        Alert.alert(t('Success'), successMessage, [
-          {
-            text: t('OK'),
-            onPress: finalizeSuccess,
-          },
-        ]);
-      }
+      showSuccess(successMessage, t('Success'));
     } catch (err: any) {
       console.error('❌ [PortfolioManagement] Error saving project:', err);
-      Alert.alert(t('Error'), err.message || t('Failed to save project'));
+      showError(err.message || t('Failed to save project'), t('Error'));
     } finally {
       setIsSaving(false);
     }
@@ -375,14 +359,14 @@ export default function PortfolioManagement({
       const textColor = pdfOptions.textColor || null;
       const backgroundColor = pdfOptions.backgroundColor || null;
       
-      // Prepare options - convert empty strings to null for AI detection
+      // Prepare options - convert empty strings to undefined for AI detection
       const options: GeneratePDFOptions = {
         regenerate: shouldRegenerate, // Set to true if PDF exists or forceRegenerate is true
-        companyName: companyName || null,
-        preferredStyle: preferredStyle || null, // Empty = AI decides
-        headerColor: headerColor || null,
-        textColor: textColor || null,
-        backgroundColor: backgroundColor || null,
+        companyName: companyName || undefined,
+        preferredStyle: preferredStyle || undefined, // Empty = AI decides
+        headerColor: headerColor || undefined,
+        textColor: textColor || undefined,
+        backgroundColor: backgroundColor || undefined,
       };
       
       console.log('📄 [PortfolioManagement] Generating PDF with options:', {
@@ -398,13 +382,13 @@ export default function PortfolioManagement({
       setPdfInfo(info);
       setShowPDFOptionsModal(false);
       setShowPDFModal(true);
-      Alert.alert(
-        t('Success'),
-        shouldRegenerate ? t('PDF regenerated successfully!') : t('PDF generated successfully!')
+      showSuccess(
+        shouldRegenerate ? t('PDF regenerated successfully!') : t('PDF generated successfully!'),
+        t('Success')
       );
     } catch (error: any) {
       console.error('❌ [PortfolioManagement] Error generating PDF:', error);
-      Alert.alert(t('Error'), error.message || t('Failed to generate PDF'));
+      showError(error.message || t('Failed to generate PDF'), t('Error'));
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -416,7 +400,7 @@ export default function PortfolioManagement({
         window.open(pdfInfo.publicUrl, '_blank');
       } else {
         // For mobile, you might want to use Linking or FileSystem
-        Alert.alert(t('Info'), t('PDF download will open in browser'));
+        showInfo(t('PDF download will open in browser'), t('Info'));
       }
     }
   };
@@ -433,10 +417,10 @@ export default function PortfolioManagement({
         } else {
           // Fallback: copy to clipboard
           navigator.clipboard.writeText(pdfInfo.publicUrl);
-          Alert.alert(t('Success'), t('PDF link copied to clipboard'));
+          showSuccess(t('PDF link copied to clipboard'), t('Success'));
         }
       } else {
-        Alert.alert(t('Info'), t('Share functionality coming soon'));
+        showInfo(t('Share functionality coming soon'), t('Info'));
       }
     }
   };
@@ -497,40 +481,21 @@ export default function PortfolioManagement({
   };
   
   const handleDeleteProject = (project: PortfolioProject) => {
-    setProjectToDelete(project);
-    setConfirmTitle(t('Delete Project'));
-    setConfirmMessage(t('Are you sure you want to delete this project? This action cannot be undone.'));
-    setConfirmOnConfirm(() => async () => {
-      setShowConfirmModal(false);
-      try {
-        await deletePortfolioProject(project.id);
-        loadPortfolio();
-        // Show success message
-        setConfirmTitle(t('Success'));
-        setConfirmMessage(t('Project deleted successfully'));
-        setConfirmOnConfirm(() => () => {
-          setShowConfirmModal(false);
-          setProjectToDelete(null);
-        });
-        setShowConfirmModal(true);
-        // Auto-close success message after 2 seconds
-        setTimeout(() => {
-          setShowConfirmModal(false);
-          setProjectToDelete(null);
-        }, 2000);
-      } catch (err: any) {
-        console.error('❌ [PortfolioManagement] Error deleting project:', err);
-        // Show error message
-        setConfirmTitle(t('Error'));
-        setConfirmMessage(err.message || t('Failed to delete project'));
-        setConfirmOnConfirm(() => () => {
-          setShowConfirmModal(false);
-          setProjectToDelete(null);
-        });
-        setShowConfirmModal(true);
-      }
-    });
-    setShowConfirmModal(true);
+    showDeleteConfirmation(
+      t('Delete Project'),
+      t('Are you sure you want to delete this project? This action cannot be undone.'),
+      async () => {
+        try {
+          await deletePortfolioProject(project.id);
+          loadPortfolio();
+          showSuccess(t('Project deleted successfully'), t('Success'));
+        } catch (err: any) {
+          console.error('❌ [PortfolioManagement] Error deleting project:', err);
+          showError(err.message || t('Failed to delete project'), t('Error'));
+        }
+      },
+      t('Delete')
+    );
   };
   
   if (isLoading) {
@@ -574,16 +539,15 @@ export default function PortfolioManagement({
                       <TouchableOpacity
                         style={[styles.unifiedButton, styles.unifiedButtonFull, { backgroundColor: colors.primary }]}
                         onPress={() => {
-                          Alert.alert(
+                          showConfirmation(
                             t('Regenerate PDF'),
                             t('This will regenerate your PDF with current settings. Continue?'),
-                            [
-                              { text: t('Cancel'), style: 'cancel' },
-                              {
-                                text: t('Regenerate'),
-                                onPress: () => handleGeneratePDF(true),
-                              },
-                            ]
+                            () => handleGeneratePDF(true),
+                            {
+                              type: 'info',
+                              confirmText: t('Regenerate'),
+                              icon: 'refresh-outline',
+                            }
                           );
                         }}
                       >
@@ -810,16 +774,15 @@ export default function PortfolioManagement({
                 <TouchableOpacity
                   style={[styles.unifiedButton, { backgroundColor: colors.primary }]}
                   onPress={() => {
-                    Alert.alert(
+                    showConfirmation(
                       t('Regenerate PDF'),
                       t('This will regenerate your PDF with current settings. Continue?'),
-                      [
-                        { text: t('Cancel'), style: 'cancel' },
-                        {
-                          text: t('Regenerate'),
-                          onPress: () => handleGeneratePDF(true),
-                        },
-                      ]
+                      () => handleGeneratePDF(true),
+                      {
+                        type: 'info',
+                        confirmText: t('Regenerate'),
+                        icon: 'refresh-outline',
+                      }
                     );
                   }}
                 >
@@ -1280,19 +1243,13 @@ export default function PortfolioManagement({
                         <TouchableOpacity
                           style={styles.removeImageButton}
                           onPress={() => {
-                            Alert.alert(
+                            showDeleteConfirmation(
                               t('Remove Photo'),
                               isExistingPhoto 
                                 ? t('Remove this photo from the project?')
                                 : t('Remove this photo?'),
-                              [
-                                { text: t('Cancel'), style: 'cancel' },
-                                {
-                                  text: t('Remove'),
-                                  style: 'destructive',
-                                  onPress: () => handleRemoveImage(index),
-                                },
-                              ]
+                              () => handleRemoveImage(index),
+                              t('Remove')
                             );
                           }}
                         >
@@ -1353,62 +1310,29 @@ export default function PortfolioManagement({
         </View>
       </Modal>
       
-      {/* Custom Confirmation Modal - Works on both web and mobile */}
-      <Modal
-        visible={showConfirmModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => {
-          setShowConfirmModal(false);
-          setProjectToDelete(null);
-        }}
-      >
-        <View style={styles.confirmModalOverlay}>
-          <View style={[styles.confirmModalContent, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.confirmModalTitle, { color: colors.text }]}>
-              {confirmTitle}
-            </Text>
-            <Text style={[styles.confirmModalMessage, { color: colors.textSecondary }]}>
-              {confirmMessage}
-            </Text>
-            <View style={styles.confirmModalButtons}>
-              {confirmTitle !== t('Success') && (
-                <TouchableOpacity
-                  style={[styles.confirmModalButton, styles.confirmModalCancelButton, { borderColor: colors.border }]}
-                  onPress={() => {
-                    setShowConfirmModal(false);
-                    setProjectToDelete(null);
-                  }}
-                >
-                  <Text style={[styles.confirmModalButtonText, { color: colors.text }]}>
-                    {t('Cancel')}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={[
-                  styles.confirmModalButton,
-                  confirmTitle === t('Success') 
-                    ? [styles.confirmModalConfirmButton, { backgroundColor: colors.primary }]
-                    : [styles.confirmModalDeleteButton, { backgroundColor: '#EF4444' }],
-                ]}
-                onPress={() => {
-                  if (confirmOnConfirm) {
-                    confirmOnConfirm();
-                  } else {
-                    setShowConfirmModal(false);
-                    setProjectToDelete(null);
-                  }
-                }}
-              >
-                <Text style={[styles.confirmModalButtonText, { color: '#fff' }]}>
-                  {confirmTitle === t('Success') ? t('OK') : t('Delete')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
       
       {/* PDF Options Modal */}
       <Modal
@@ -1573,7 +1497,7 @@ export default function PortfolioManagement({
                         onPress={() => {
                           if (Platform.OS === 'web') {
                             navigator.clipboard.writeText(pdfInfo.publicUrl);
-                            Alert.alert(t('Success'), t('Link copied to clipboard'));
+                            showSuccess(t('Link copied to clipboard'), t('Success'));
                           }
                         }}
                       >

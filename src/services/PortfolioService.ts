@@ -123,57 +123,67 @@ export const uploadPortfolioPhoto = async (imageAsset: ImagePicker.ImagePickerAs
     
     const url = `${API_BASE_URL}/portfolios/projects/upload-photo`;
     
+    // Determine MIME type - use from asset if available, otherwise detect from URI
+    let mimeType = 'image/jpeg';
+    if (imageAsset.mimeType) {
+      mimeType = imageAsset.mimeType;
+    } else if (imageAsset.uri) {
+      const uriLower = imageAsset.uri.toLowerCase();
+      if (uriLower.includes('.png')) mimeType = 'image/png';
+      else if (uriLower.includes('.gif')) mimeType = 'image/gif';
+      else if (uriLower.includes('.webp')) mimeType = 'image/webp';
+    }
+    
+    // Generate a proper filename with extension
+    const extension = mimeType.split('/')[1] || 'jpg';
+    const timestamp = Date.now();
+    const filename = `portfolio_${timestamp}.${extension}`;
+    
     console.log('═══════════════════════════════════════════════════════════');
     console.log('📤 [PortfolioService] Uploading photo...');
     console.log('📤 [PortfolioService] URL:', url);
     console.log('📤 [PortfolioService] Platform:', Platform.OS);
-    console.log('📤 [PortfolioService] Image URI:', imageAsset.uri);
+    console.log('📤 [PortfolioService] Image URI:', imageAsset.uri?.substring(0, 100) + '...');
+    console.log('📤 [PortfolioService] MIME Type:', mimeType);
+    console.log('📤 [PortfolioService] Filename:', filename);
     console.log('═══════════════════════════════════════════════════════════');
     
     // Create form data
     const formData = new FormData();
-    const filename = imageAsset.uri.split('/').pop() || 'project.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
     
     // Handle file differently for web vs mobile
     if (Platform.OS === 'web') {
-      // For web, we need to fetch the blob and append it
+      // For web, we need to fetch the blob and append it properly
       try {
-        const response = await fetch(imageAsset.uri);
-        const blob = await response.blob();
-        formData.append('file', blob, filename);
-      } catch (error) {
-        console.error('❌ [PortfolioService] Error creating blob:', error);
-        // Fallback: try to use the URI directly
-        formData.append('file', {
-          uri: imageAsset.uri,
-          type: type,
-          name: filename,
-        } as any);
+        const imageResponse = await fetch(imageAsset.uri);
+        const blob = await imageResponse.blob();
+        
+        // Create a File object from blob for better compatibility
+        const file = new File([blob], filename, { type: mimeType });
+        formData.append('file', file);
+        
+        console.log('📤 [PortfolioService] Web: Created File object, size:', file.size);
+      } catch (blobError) {
+        console.error('❌ [PortfolioService] Error creating blob/file:', blobError);
+        throw new Error('Failed to process image for upload');
       }
     } else {
-      // For mobile (Android/iOS), use the URI directly
+      // For mobile (Android/iOS), use the URI directly with proper structure
       formData.append('file', {
         uri: imageAsset.uri,
-        type: type,
+        type: mimeType,
         name: filename,
       } as any);
-    }
-    
-    // Build headers - don't set Content-Type for FormData, let the browser/fetch set it with boundary
-    const headers: HeadersInit = {
-      'Authorization': `Bearer ${token}`,
-    };
-    
-    // Only set Content-Type for web if we're using blob
-    if (Platform.OS !== 'web') {
-      // For mobile, don't set Content-Type - React Native will handle it
+      
+      console.log('📤 [PortfolioService] Mobile: Using URI directly');
     }
     
     const response = await fetch(url, {
       method: 'POST',
-      headers: headers,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type - let fetch/FormData handle the boundary
+      },
       body: formData,
     });
     
@@ -183,7 +193,7 @@ export const uploadPortfolioPhoto = async (imageAsset: ImagePicker.ImagePickerAs
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ [PortfolioService] Error response:', errorText);
-      throw new Error(`Upload failed: ${status}`);
+      throw new Error(`Upload failed: ${status} - ${errorText}`);
     }
     
     const data = await response.json();

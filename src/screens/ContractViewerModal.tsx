@@ -34,7 +34,6 @@ interface ContractViewerModalProps {
     userName?: string;
   };
   onClose: () => void;
-  onSign?: () => void;
   isTechnician?: boolean;
 }
 
@@ -54,27 +53,17 @@ export default function ContractViewerModal({
   phases: providedPhases,
   projectDetails: providedProjectDetails,
   onClose,
-  onSign,
   isTechnician: providedIsTechnician,
 }: ContractViewerModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSigning, setIsSigning] = useState(false);
-  const [signatureStatus, setSignatureStatus] = useState<any>(null);
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [technicianEmail, setTechnicianEmail] = useState('');
   const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [phases, setPhases] = useState<Phase[]>(providedPhases || []);
   const [projectDetails, setProjectDetails] = useState(providedProjectDetails);
   const [isTechnician, setIsTechnician] = useState(providedIsTechnician || false);
-  
-  // Custom confirmation modal state
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmTitle, setConfirmTitle] = useState('');
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [confirmOnConfirm, setConfirmOnConfirm] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     if (visible && projectId) {
@@ -90,19 +79,6 @@ export default function ContractViewerModal({
     }
   }, [visible, projectId]);
 
-  useEffect(() => {
-    if (signatureStatus?.signatories) {
-      const clientSignatory = signatureStatus.signatories.find((sig: any) => sig.role === 'CLIENT');
-      const technicianSignatory = signatureStatus.signatories.find((sig: any) => sig.role === 'TECHNICIAN');
-
-      if (clientSignatory?.email) {
-        setUserEmail(clientSignatory.email);
-      }
-      if (technicianSignatory?.email) {
-        setTechnicianEmail(technicianSignatory.email);
-      }
-    }
-  }, [signatureStatus]);
 
   const checkUserRole = async () => {
     try {
@@ -195,256 +171,85 @@ export default function ContractViewerModal({
     }
   };
 
-  const signContract = async () => {
-    const hasEmails = userEmail.trim().length > 0 && technicianEmail.trim().length > 0;
-
-    // Require emails the first time or if missing
-    if (!signatureStatus || !hasEmails) {
-      setShowEmailForm(true);
-      return;
-    }
-
-    const sanitizedUserEmail = userEmail.trim();
-    const sanitizedTechnicianEmail = technicianEmail.trim();
-
-    setConfirmTitle(t('Sign Contract'));
-    setConfirmMessage(t('By signing this contract, you agree to the terms and conditions. Are you sure?'));
-    setConfirmOnConfirm(() => async () => {
-      await submitSignature(sanitizedUserEmail, sanitizedTechnicianEmail);
-    });
-    setShowConfirmModal(true);
-  };
-
-  const submitSignature = async (userEmailInput?: string, technicianEmailInput?: string) => {
-    setShowConfirmModal(false);
-    setIsSigning(true);
+  // Generate and get PDF URL using the new API
+  const getPdfUrl = async () => {
     try {
       const token = await storage.getAuthToken();
-      const userId = await storage.getUserId();
-
-      if (!token || !userId) {
-        Alert.alert(t('Error'), t('Please login again'));
-        return;
+      if (!token || !projectDetails?.technicianId) {
+        return null;
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const resolvedUserEmail = (userEmailInput ?? userEmail).trim();
-      const resolvedTechnicianEmail = (technicianEmailInput ?? technicianEmail).trim();
-
-      if (!emailRegex.test(resolvedUserEmail)) {
-        Alert.alert(t('Error'), t('Invalid user email'));
-        setIsSigning(false);
-        return;
-      }
-      if (!emailRegex.test(resolvedTechnicianEmail)) {
-        Alert.alert(t('Error'), t('Invalid technician email'));
-        setIsSigning(false);
-        return;
-      }
-
-      setUserEmail(resolvedUserEmail);
-      setTechnicianEmail(resolvedTechnicianEmail);
-      setShowEmailForm(false);
-
-      const url = buildApiUrl(API_ENDPOINTS.CONTRACTS.CREATE);
-
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('🟢 [ContractViewerModal] Initiate Signature Request');
-      console.log('🟢 [ContractViewerModal] Endpoint: POST /signatures');
-      console.log('🟢 [ContractViewerModal] Project ID:', projectId);
-      console.log('🟢 [ContractViewerModal] Technician ID:', projectDetails?.technicianId);
-      console.log('🟢 [ContractViewerModal] User Email:', userEmailInput);
-      console.log('🟢 [ContractViewerModal] Technician Email:', technicianEmailInput);
-      console.log('🟢 [ContractViewerModal] URL:', url);
-      console.log('═══════════════════════════════════════════════════════════');
-
-      // Load PDF file from assets
-      let pdfData: any = null;
-      try {
-        if (Platform.OS === 'web') {
-          // For web, fetch the PDF as blob
-          const pdfPath = require('../../assets/contract.pdf');
-          const response = await fetch(pdfPath);
-          const blob = await response.blob();
-          pdfData = blob;
-        } else {
-          // For mobile, load asset properly with expo-asset
-          const asset = Asset.fromModule(require('../../assets/contract.pdf'));
-          await asset.downloadAsync();
-          
-          if (asset.localUri) {
-            pdfData = {
-              uri: asset.localUri,
-              type: 'application/pdf',
-              name: 'contract.pdf',
-            };
-          } else {
-            throw new Error('Could not get local URI for PDF');
-          }
-        }
-        console.log('✅ PDF loaded successfully');
-      } catch (error) {
-        console.error('❌ Failed to load PDF:', error);
-        Alert.alert(t('Error'), t('Failed to load contract PDF'));
-        setIsSigning(false);
-        return;
-      }
-
-      // Create FormData
-      const formData = new FormData();
-
-      formData.append('projectId', projectId.toString());
-
-      if (!projectDetails?.technicianId) {
-        throw new Error('Missing technician ID for contract signing');
-      }
-
-      formData.append('technicianId', projectDetails.technicianId.toString());
-
-      // Phase IDs (optional, can be empty string)
-      const phaseIds = phases.length > 0 ? phases.map((p) => p.id.toString()).join(',') : '';
-      formData.append('phaseIds', phaseIds);
-
-      // Contract terms
-      const contractTerms = 'Payment as agreed. 1 year warranty.';
-      formData.append('contractTerms', contractTerms);
-
-      // Project title (truncated to 200 characters)
-      if (projectDetails) {
-        const truncatedTitle = projectDetails.description.substring(0, 200);
-        formData.append('projectTitle', truncatedTitle);
-      }
-
-      // Email addresses (required for signature request)
-      formData.append('userEmail', resolvedUserEmail);
-      formData.append('technicianEmail', resolvedTechnicianEmail);
-
-      // Add PDF file
-      if (pdfData) {
-        formData.append('contractPdf', pdfData as any);
-      }
-
-      console.log('📤 [ContractViewerModal] Sending multipart form data with PDF');
+      const url = buildApiUrl(API_ENDPOINTS.CONTRACTS.GENERATE_PDF);
+      
+      const formBody = new URLSearchParams({
+        projectId: projectId.toString(),
+        technicianId: projectDetails.technicianId.toString(),
+        language: i18n.language === 'ar' ? 'AR' : 'EN',
+        returnPdf: 'false',
+      }).toString();
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          // Don't set Content-Type - let browser set it with boundary
-        } as any,
-        body: formData as any,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formBody,
       });
 
-      console.log('📥 [ContractViewerModal] Signature Response Status:', response.status);
-
-      if (response.ok || response.status === 201) {
+      if (response.ok) {
         const data = await response.json();
-        console.log('✅ [ContractViewerModal] Signature request created successfully!');
-        console.log('✅ [ContractViewerModal] Signature ID:', data.id);
-        console.log('✅ [ContractViewerModal] SignIt Reference:', data.thirdPartyReferenceId);
-        
-        // Show success message using custom modal
-        setConfirmTitle(t('Success'));
-        setConfirmMessage(t('Signature requests sent! Both parties will receive emails to sign the contract.'));
-        setSignatureStatus(data);
-        setConfirmOnConfirm(() => () => {
-          setShowConfirmModal(false);
-          onSign?.();
-        });
-        setShowConfirmModal(true);
-      } else {
-        const errorText = await response.text();
-        console.error('❌ [ContractViewerModal] Failed to sign contract:', errorText);
-        console.error('❌ [ContractViewerModal] Status:', response.status);
-        Alert.alert(t('Error'), t('Failed to sign contract'));
+        // Return full URL
+        const pdfUrl = data.downloadUrl || data.pdfUrl;
+        if (pdfUrl && !pdfUrl.startsWith('http')) {
+          return `https://www.bonyad-hub.com${pdfUrl}`;
+        }
+        return pdfUrl;
       }
-    } catch (error: any) {
-      console.error('❌ [ContractViewerModal] Error signing contract:', error);
-      Alert.alert(t('Error'), error.message || t('Failed to sign contract'));
-    } finally {
-      setIsSigning(false);
+    } catch (error) {
+      console.error('❌ Error generating PDF:', error);
     }
-  };
-
-  const getPdfUrl = () => {
-    if (signatureStatus?.documentUrl) {
-      return String(signatureStatus.documentUrl);
-    }
-    
-    // For local PDF, use require which works on web and mobile
-    if (Platform.OS === 'web') {
-      // On web, require() returns a path that works
-      try {
-        const pdfAsset = require('../../assets/contract.pdf');
-        return pdfAsset;
-      } catch (e) {
-        return null;
-      }
-    } else {
-      // On mobile, try to get the asset URI
-      try {
-        const pdfAsset = require('../../assets/contract.pdf');
-        return pdfAsset;
-      } catch (e) {
-        return null;
-      }
-    }
+    return null;
   };
 
   const viewPdfContract = async () => {
-    if (Platform.OS === 'web') {
-      // On web, show inline viewer
-      setShowPdfViewer(true);
-    } else {
-      // On mobile, open PDF with external viewer
-      try {
-        let pdfToOpen: string;
-        
-        // Check if we have a signed PDF URL or need to use template
-        if (signatureStatus?.documentUrl) {
-          // For signed PDFs, use the server URL with Linking
-          await Linking.openURL(String(signatureStatus.documentUrl));
-          return;
-        } else {
-          // For template PDF, load asset and share it
-          const asset = Asset.fromModule(require('../../assets/contract.pdf'));
-          await asset.downloadAsync();
-          
-          if (asset.localUri) {
-            console.log('✅ PDF asset loaded:', asset.localUri);
-            
-            // Check if sharing is available
-            if (await Sharing.isAvailableAsync()) {
-              // Share the PDF (opens in PDF viewer)
-              await Sharing.shareAsync(asset.localUri);
-            } else {
-              // Fallback: show modal with explanation
-              Alert.alert(t('Info'), t('The contract will be generated on the server with your project details. Please initiate the signature to generate the filled contract.'));
-            }
-          } else {
-            throw new Error('Could not get local URI for PDF');
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error opening PDF:', error);
-        Alert.alert(t('Error'), t('Could not open PDF contract'));
+    setIsLoadingPdf(true);
+    try {
+      const generatedPdfUrl = await getPdfUrl();
+      
+      if (!generatedPdfUrl) {
+        Alert.alert(t('Error'), t('Could not load PDF'));
+        return;
       }
+
+      setPdfUrl(generatedPdfUrl);
+
+      if (Platform.OS === 'web') {
+        // On web, show inline viewer
+        setShowPdfViewer(true);
+      } else {
+        // On mobile, download and share the PDF
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(generatedPdfUrl, {
+            mimeType: 'application/pdf',
+            dialogTitle: t('Contract'),
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert(t('Error'), t('Sharing is not available on this device'));
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error opening PDF:', error);
+      Alert.alert(t('Error'), t('Could not open PDF contract'));
+    } finally {
+      setIsLoadingPdf(false);
     }
   };
 
   const formatBudget = (budget: number) => {
     return new Intl.NumberFormat('en-US').format(budget);
   };
-
-  const getSignatoryStatus = () => {
-    if (!signatureStatus) return null;
-
-    const myRole = isTechnician ? 'TECHNICIAN' : 'CLIENT';
-    return signatureStatus.signatories?.find((s: any) => s.role === myRole);
-  };
-
-  const mySignature = getSignatoryStatus();
-  const allSigned = signatureStatus?.allSigned === true;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -463,110 +268,156 @@ export default function ContractViewerModal({
           {/* Content */}
           <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Contract Status */}
-            {signatureStatus && (
-              <View
-                style={[
-                  styles.statusCard,
-                  {
-                    backgroundColor: allSigned ? '#10B98120' : '#F59E0B20',
-                    borderColor: allSigned ? '#10B981' : '#F59E0B',
-                  },
-                ]}
+            <View
+              style={[
+                styles.statusCard,
+                {
+                  backgroundColor: '#F59E0B20',
+                  borderColor: '#F59E0B',
+                },
+              ]}
+            >
+              <View style={styles.statusRow}>
+                <Ionicons name="time-outline" size={24} color="#F59E0B" />
+                <Text style={[styles.statusText, { color: '#F59E0B' }]}>
+                  {t('Waiting for Signatures')}
+                </Text>
+              </View>
+            </View>
+
+            {/* Service Agreement Card - Figma-style Header */}
+            <View style={[styles.serviceAgreementCard, { backgroundColor: colors.cardBackground }]}>
+              {/* Header with file icon */}
+              <View style={styles.serviceAgreementHeader}>
+                <View style={[styles.serviceAgreementIconContainer, { backgroundColor: '#E8F4FE' }]}>
+                  <Ionicons name="document-text-outline" size={24} color="#1A73E8" />
+                </View>
+                <View style={styles.serviceAgreementInfo}>
+                  <Text style={[styles.serviceAgreementTitle, { color: colors.text }]}>
+                    {t('Service Agreement')}
+                  </Text>
+                  <Text style={[styles.serviceAgreementSubtitle, { color: colors.textSecondary }]}>
+                    {t('Contract')} #{projectId}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={viewPdfContract} style={styles.serviceAgreementChevron}>
+                  <Ionicons name={i18n.language === 'ar' ? 'chevron-back' : 'chevron-forward'} size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Contract Details */}
+              {projectDetails && (
+                <View style={styles.contractDetailsSection}>
+                  {/* Provider */}
+                  <View style={[styles.contractDetailRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.contractDetailLabel, { color: colors.textSecondary }]}>
+                      {t('Provider')}
+                    </Text>
+                    <Text style={[styles.contractDetailValue, { color: colors.text }]}>
+                      {isTechnician ? projectDetails.userName : projectDetails.technicianName || t('Not assigned')}
+                    </Text>
+                  </View>
+
+                  {/* Project Name */}
+                  <View style={[styles.contractDetailRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.contractDetailLabel, { color: colors.textSecondary }]}>
+                      {t('Project')}
+                    </Text>
+                    <Text style={[styles.contractDetailValue, { color: colors.text }]} numberOfLines={2}>
+                      {projectDetails.description}
+                    </Text>
+                  </View>
+
+                  {/* Total Amount */}
+                  <View style={[styles.contractDetailRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.contractDetailLabel, { color: colors.textSecondary }]}>
+                      {t('Total Amount')}
+                    </Text>
+                    <Text style={[styles.contractDetailValueGreen, { color: '#22C55E' }]}>
+                      {formatBudget(projectDetails.budget)} {t('SAR')}
+                    </Text>
+                  </View>
+
+                  {/* Start Date */}
+                  <View style={[styles.contractDetailRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.contractDetailLabel, { color: colors.textSecondary }]}>
+                      {t('Start Date')}
+                    </Text>
+                    <Text style={[styles.contractDetailValue, { color: colors.text }]}>
+                      {t('To be determined')}
+                    </Text>
+                  </View>
+
+                  {/* Completion Date */}
+                  <View style={styles.contractDetailRowLast}>
+                    <Text style={[styles.contractDetailLabel, { color: colors.textSecondary }]}>
+                      {t('Completion Date')}
+                    </Text>
+                    <Text style={[styles.contractDetailValue, { color: colors.text }]}>
+                      {phases.length > 0 
+                        ? t('~{{weeks}} weeks', { weeks: Math.ceil(phases.reduce((sum, p) => sum + p.timeSpentDays, 0) / 7) }) 
+                        : t('To be determined')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Download Contract Button */}
+              <TouchableOpacity
+                style={[styles.downloadContractButton, { borderColor: '#1A73E8' }]}
+                onPress={viewPdfContract}
               >
-                {allSigned ? (
-                  <View style={styles.statusRow}>
-                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                    <Text style={[styles.statusText, { color: '#10B981' }]}>
-                      {t('Contract Signed by Both Parties')}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.statusRow}>
-                    <Ionicons name="time-outline" size={24} color="#F59E0B" />
-                    <Text style={[styles.statusText, { color: '#F59E0B' }]}>
-                      {t('Waiting for Signatures')}
-                    </Text>
-                  </View>
-                )}
+                <Ionicons name="download-outline" size={20} color="#1A73E8" />
+                <Text style={[styles.downloadContractButtonText, { color: '#1A73E8' }]}>
+                  {t('Download Contract')} (PDF)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Email Signature Sent Info - Figma style */}
+            {!isTechnician && (
+              <View style={styles.emailSignatureInfoCard}>
+                <View style={[styles.emailSignatureIconContainer, { backgroundColor: '#D1FAE5' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={28} color="#059669" />
+                </View>
+                <View style={styles.emailSignatureInfoContent}>
+                  <Text style={[styles.emailSignatureInfoTitle, { color: colors.text }]}>
+                    {t('Contract Sent for Signature')}
+                  </Text>
+                  <Text style={[styles.emailSignatureInfoDescription, { color: colors.textSecondary }]}>
+                    {t('Contract signing links have been sent to your email address. Please check your inbox to digitally sign the contract.')}
+                  </Text>
+                </View>
               </View>
             )}
 
-            {/* Project Details */}
-            {projectDetails && (
+            {/* Phases - Collapsed Section */}
+            {phases.length > 0 && (
               <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Project Details')}
-                </Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Phases')}</Text>
 
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    {t('Description')}:
-                  </Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>
-                    {projectDetails.description}
-                  </Text>
-                </View>
-
-                {projectDetails.address && (
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                      {t('Location')}:
-                    </Text>
-                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                      {projectDetails.address}
-                    </Text>
-                  </View>
-                )}
-
-                {projectDetails.technicianName && (
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                      {isTechnician ? t('Client') : t('Technician')}:
-                    </Text>
-                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                      {isTechnician ? projectDetails.userName : projectDetails.technicianName}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    {t('Project Total')}:
-                  </Text>
-                  <Text style={[styles.detailValue, { color: colors.primary }]}>
-                    {formatBudget(projectDetails.budget)} {t('SAR')}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Phases */}
-            <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Phases')}</Text>
-
-              {phases.length === 0 ? (
-                <Text style={[styles.detailValue, { color: colors.textSecondary }]}> 
-                  {t('Loading phases...')}
-                </Text>
-              ) : (
-                phases.map((phase, index) => {
+                {phases.map((phase, index) => {
                   return (
                     <View key={phase.id} style={styles.phaseRow}>
                       <View style={styles.phaseHeader}>
-                        <Text style={[styles.phaseNumber, { color: colors.text }]}>
-                          {t('Phase {{number}}', { number: phase.phaseNumber })}
-                        </Text>
+                        <View style={styles.phaseNumberContainer}>
+                          <View style={[styles.phaseNumberBadge, { backgroundColor: colors.primary + '20' }]}>
+                            <Text style={[styles.phaseNumberText, { color: colors.primary }]}>
+                              {phase.phaseNumber}
+                            </Text>
+                          </View>
+                          <Text style={[styles.phaseName, { color: colors.text }]}>
+                            {phase.description}
+                          </Text>
+                        </View>
                         <Text style={[styles.phaseAmount, { color: colors.primary }]}> 
                           {formatBudget(phase.moneySpent)} {t('SAR')}
                         </Text>
                       </View>
-                      <Text style={[styles.phaseDescription, { color: colors.textSecondary }]}> 
-                        {phase.description}
-                      </Text>
                       <View style={styles.phaseMeta}> 
                         <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
                         <Text style={[styles.phaseMetaText, { color: colors.textSecondary }]}> 
-                          {phase.timeSpentDays} {t('days')}
+                          {phase.timeSpentDays} {t('day_unit')}
                         </Text>
                       </View>
                       {index < phases.length - 1 && (
@@ -574,16 +425,16 @@ export default function ContractViewerModal({
                       )}
                     </View>
                   );
-                })
-              )}
+                })}
 
-              <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
-                <Text style={[styles.totalLabel, { color: colors.text }]}>{t('Total')}:</Text>
-                <Text style={[styles.totalAmount, { color: colors.primary }]}>
-                  {formatBudget(phases.reduce((sum, p) => sum + p.moneySpent, 0))} {t('SAR')}
-                </Text>
+                <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>{t('Total')}:</Text>
+                  <Text style={[styles.totalAmount, { color: colors.primary }]}>
+                    {formatBudget(phases.reduce((sum, p) => sum + p.moneySpent, 0))} {t('SAR')}
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Terms & Conditions */}
             <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
@@ -597,186 +448,8 @@ export default function ContractViewerModal({
               </Text>
             </View>
 
-            {/* Email Form */}
-            {showEmailForm && (
-              <View style={[styles.emailFormCard, { backgroundColor: colors.cardBackground }]}>
-                <Text style={[styles.emailFormTitle, { color: colors.text }]}>
-                  {t('Enter Email Addresses')}
-                </Text>
-                <Text style={[styles.emailFormSubtitle, { color: colors.textSecondary }]}>
-                  {t('Please provide email addresses for both parties to send the contract')}
-                </Text>
-
-                <View style={styles.emailInputContainer}>
-                  <Text style={[styles.emailLabel, { color: colors.text }]}>
-                    {t('User Email')}
-                  </Text>
-                  <TextInput
-                    style={[styles.emailInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder={t('Enter user email')}
-                    placeholderTextColor={colors.textSecondary}
-                    value={userEmail}
-                    onChangeText={setUserEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <View style={styles.emailInputContainer}>
-                  <Text style={[styles.emailLabel, { color: colors.text }]}>
-                    {t('Technician Email')}
-                  </Text>
-                  <TextInput
-                    style={[styles.emailInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder={t('Enter technician email')}
-                    placeholderTextColor={colors.textSecondary}
-                    value={technicianEmail}
-                    onChangeText={setTechnicianEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <View style={styles.emailFormButtons}>
-                  <TouchableOpacity
-                    style={[styles.emailFormButton, styles.cancelEmailButton, { borderColor: colors.border }]}
-                    onPress={() => {
-                      setShowEmailForm(false);
-                      setUserEmail('');
-                      setTechnicianEmail('');
-                    }}
-                  >
-                    <Text style={[styles.emailFormButtonText, { color: colors.text }]}>
-                      {t('Cancel')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.emailFormButton, styles.submitEmailButton]}
-                    onPress={async () => {
-                      if (!userEmail.trim() || !technicianEmail.trim()) {
-                        Alert.alert(t('Error'), t('Please enter both email addresses'));
-                        return;
-                      }
-                      // Validate email format
-                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                      if (!emailRegex.test(userEmail.trim()) || !emailRegex.test(technicianEmail.trim())) {
-                        Alert.alert(t('Error'), t('Please enter valid email addresses'));
-                        return;
-                      }
-                      
-                      // Show confirmation modal before sending
-                      setConfirmTitle(t('Initiate Signature'));
-                      setConfirmMessage(t('Send signature requests to both parties via email?'));
-                      setConfirmOnConfirm(() => async () => {
-                        setShowEmailForm(false);
-                        await submitSignature(userEmail.trim(), technicianEmail.trim());
-                      });
-                      setShowConfirmModal(true);
-                    }}
-                    disabled={isSigning}
-                  >
-                    {isSigning ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.emailFormButtonText}>{t('Submit')}</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Signature Status */}
-            {signatureStatus && mySignature && (
-              <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Signature Status')}
-                </Text>
-
-                {signatureStatus.signatories?.map((sig: any, index: number) => (
-                  <View key={index} style={styles.signatoryRow}>
-                    <View style={styles.signatoryInfo}>
-                      <Text style={[styles.signatoryRole, { color: colors.text }]}>
-                        {sig.role === 'CLIENT' ? t('Client') : t('Technician')}
-                      </Text>
-                      <Text style={[styles.signatoryEmail, { color: colors.textSecondary }]}>
-                        {sig.email}
-                      </Text>
-                    </View>
-                    <View style={styles.signatureStatus}>
-                      {sig.status === 'SIGNED' ? (
-                        <View style={styles.signedBadge}>
-                          <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                          <Text style={[styles.signedText, { color: '#10B981' }]}>
-                            {t('Signed')}
-                          </Text>
-                          {sig.signedAt && (
-                            <Text style={[styles.signedDate, { color: colors.textSecondary }]}>
-                              {formatMessageTime(sig.signedAt)}
-                            </Text>
-                          )}
-                        </View>
-                      ) : (
-                        <View style={styles.pendingBadge}>
-                          <Ionicons name="time-outline" size={20} color="#F59E0B" />
-                          <Text style={[styles.pendingText, { color: '#F59E0B' }]}>
-                            {t('Pending')}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Contract PDF Link */}
-            <TouchableOpacity
-              style={[styles.pdfButton, { backgroundColor: colors.primary }]}
-              onPress={viewPdfContract}
-            >
-              <Ionicons name="document-text-outline" size={24} color="#fff" />
-              <Text style={styles.pdfButtonText}>
-                {allSigned && signatureStatus?.documentUrl 
-                  ? t('View Signed Contract PDF') 
-                  : t('View Contract Template PDF')}
-              </Text>
-            </TouchableOpacity>
           </ScrollView>
 
-          {/* Action Buttons */}
-          {!allSigned && (
-            <View style={[styles.actionButtons, { borderTopColor: colors.border }]}>
-              {/* Show sign button if not signed yet */}
-              {(!mySignature || mySignature.status !== 'SIGNED') && (
-                <TouchableOpacity
-                  style={[styles.signButton, { backgroundColor: colors.primary }]}
-                  onPress={signContract}
-                  disabled={isSigning}
-                >
-                  {isSigning ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="create-outline" size={20} color="#fff" />
-                      <Text style={styles.signButtonText}>{t('Sign Contract')}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              {/* Show waiting message if already signed */}
-              {mySignature && mySignature.status === 'SIGNED' && (
-                <View style={styles.waitingContainer}>
-                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                  <Text style={[styles.waitingText, { color: '#10B981' }]}>
-                    {t('Waiting for {{other}} to sign', {
-                      other: isTechnician ? t('Client') : t('Technician'),
-                    })}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
       </View>
 
@@ -791,7 +464,7 @@ export default function ContractViewerModal({
           <View style={[styles.pdfModalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.pdfHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.pdfHeaderTitle, { color: colors.text }]}>
-                {signatureStatus?.documentUrl ? t('Signed Contract') : t('Contract Template')}
+                {t('Contract')}
               </Text>
               <TouchableOpacity onPress={() => setShowPdfViewer(false)}>
                 <Ionicons name="close" size={28} color={colors.text} />
@@ -800,7 +473,6 @@ export default function ContractViewerModal({
             <View style={styles.pdfViewer}>
               {Platform.OS === 'web' ? (
                 (() => {
-                  const pdfUrl = getPdfUrl();
                   if (!pdfUrl) {
                     return (
                       <View style={styles.pdfUnavailableContainer}>
@@ -818,7 +490,7 @@ export default function ContractViewerModal({
                     <div
                       style={{ width: '100%', height: '100%' }}
                       dangerouslySetInnerHTML={{
-                        __html: `<iframe src="${String(pdfUrl)}" style="width:100%;height:100%;border:none;" />`
+                        __html: `<iframe src="${pdfUrl}" style="width:100%;height:100%;border:none;" />`
                       }}
                     />
                   );
@@ -830,10 +502,7 @@ export default function ContractViewerModal({
                     {t('PDF Preview Unavailable')}
                   </Text>
                   <Text style={[styles.pdfUnavailableSubtext, { color: colors.textSecondary }]}>
-                    {signatureStatus?.documentUrl 
-                      ? t('Please use the browser to view PDF files')
-                      : t('The contract will be generated on the server with your project details. Please initiate the signature to generate the filled contract.')
-                    }
+                    {t('Please use the browser to view PDF files')}
                   </Text>
                 </View>
               )}
@@ -842,49 +511,6 @@ export default function ContractViewerModal({
         </View>
       </Modal>
 
-      {/* Custom Confirmation Modal - Works on both web and mobile */}
-      <Modal
-        visible={showConfirmModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowConfirmModal(false)}
-      >
-        <View style={styles.confirmModalOverlay}>
-          <View style={[styles.confirmModalContent, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.confirmModalTitle, { color: colors.text }]}>
-              {confirmTitle}
-            </Text>
-            <Text style={[styles.confirmModalMessage, { color: colors.textSecondary }]}>
-              {confirmMessage}
-            </Text>
-            <View style={styles.confirmModalButtons}>
-              <TouchableOpacity
-                style={[styles.confirmModalButton, styles.confirmModalCancelButton, { borderColor: colors.border }]}
-                onPress={() => {
-                  console.log('❌ [ContractViewerModal] User cancelled via custom modal');
-                  setShowConfirmModal(false);
-                }}
-              >
-                <Text style={[styles.confirmModalButtonText, { color: colors.text }]}>
-                  {t('Cancel')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmModalButton, styles.confirmModalConfirmButton, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  if (confirmOnConfirm) {
-                    confirmOnConfirm();
-                  }
-                }}
-              >
-                <Text style={[styles.confirmModalButtonText, { color: '#fff' }]}>
-                  {confirmTitle.includes('Success') ? t('OK') : (confirmTitle.includes('Sign') ? t('Sign') : t('Send'))}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </Modal>
   );
 }
@@ -940,6 +566,118 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
+  // Service Agreement Card - Figma-style
+  serviceAgreementCard: {
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  serviceAgreementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingBottom: 12,
+  },
+  serviceAgreementIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  serviceAgreementInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  serviceAgreementTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  serviceAgreementSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  serviceAgreementChevron: {
+    padding: 4,
+  },
+  contractDetailsSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  contractDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  contractDetailRowLast: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  contractDetailLabel: {
+    fontSize: 14,
+    flex: 1,
+  },
+  contractDetailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'right',
+    flex: 1,
+  },
+  contractDetailValueGreen: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'right',
+    flex: 1,
+  },
+  downloadContractButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  downloadContractButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Email Signature Info Card - Figma style
+  emailSignatureInfoCard: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    marginBottom: 16,
+    alignItems: 'flex-start',
+  },
+  emailSignatureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emailSignatureInfoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  emailSignatureInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  emailSignatureInfoDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  // Original styles kept for compatibility
   detailRow: {
     flexDirection: 'row',
     marginBottom: 12,
@@ -955,13 +693,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   phaseRow: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   phaseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 6,
+  },
+  phaseNumberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  phaseNumberBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  phaseNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  phaseName: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
   },
   phaseNumber: {
     fontSize: 16,

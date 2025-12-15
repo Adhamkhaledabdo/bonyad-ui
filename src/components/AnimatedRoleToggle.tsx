@@ -2,14 +2,15 @@
  * Animated Role Toggle Component
  * 
  * A professional animated toggle for switching between User and Technician roles
- * with smooth animations and NativeWind styling
+ * with smooth animations - Figma Design (node 29:123) with Amber/Yellow color scheme
+ * Compact design with smaller text (12px) and reduced height
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, Easing, LayoutChangeEvent, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
+import { FontFamily, UIFontSizes } from '../constants/Fonts';
 
 interface AnimatedRoleToggleProps {
   selectedRole: 'user' | 'technician';
@@ -17,23 +18,29 @@ interface AnimatedRoleToggleProps {
   className?: string;
 }
 
+// Figma Design Colors (from node 29:123)
+const figmaToggleColors = {
+  amberActive: '#FFB703',      // Active button amber (Amber/60)
+  amberBg: '#FFF2CF',          // Light amber background (Amber/10)
+  textDark: '#2D2D2D',         // Dark text color
+};
+
 export default function AnimatedRoleToggle({ 
   selectedRole, 
   onRoleChange,
   className = '' 
 }: AnimatedRoleToggleProps) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+  const isDarkMode = theme === 'dark';
   const slideAnim = useRef(new Animated.Value(selectedRole === 'user' ? 0 : 1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const containerWidth = useRef(0);
   
   // Calculate translateX - use a fixed approach that works with flexbox
-  // Since each button is flex-1 (50% width), we need to move by approximately 50% of container
-  // We'll use a ref to track container width and calculate pixel values
   const [containerWidthState, setContainerWidthState] = useState(300); // Default width
-  // Smaller height for Android, larger for web
-  const defaultHeight = Platform.OS === 'android' ? 64 : 80;
+  // Height for the toggle - increased for larger SakkalMajalla font
+  const defaultHeight = 52; // Increased from 44 to accommodate larger font
   const [containerHeightState, setContainerHeightState] = useState(defaultHeight);
   
   const handleLayout = (event: LayoutChangeEvent) => {
@@ -55,14 +62,14 @@ export default function AnimatedRoleToggle({
     // Add scale animation on change
     Animated.sequence([
       Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
+        toValue: 0.97,
+        duration: 80,
         easing: Easing.ease,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 150,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -70,25 +77,27 @@ export default function AnimatedRoleToggle({
   }, [selectedRole]);
 
   // Calculate translateX in pixels (50% of container width minus padding)
-  // We need to account for the padding (8px on each side) and the button width
   const translateX = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, (containerWidthState - 16) * 0.5], // 50% of available width (container - 16px padding)
+    outputRange: [0, (containerWidthState - 12) * 0.5], // 50% of available width (container - 12px padding)
   });
+
+  // Use Figma amber/yellow colors for both light and dark mode
+  const bgColor = isDarkMode ? '#3D3520' : figmaToggleColors.amberBg; // Darker amber background for dark mode
+  const activeColor = figmaToggleColors.amberActive; // Always use amber active color #FFB703
+  const textColor = isDarkMode ? '#FFFFFF' : figmaToggleColors.textDark;
+  const inactiveTextColor = isDarkMode ? '#CCCCCC' : figmaToggleColors.textDark;
 
   return (
     <View 
       style={{
         position: 'relative',
-        backgroundColor: colors.cardBackground || colors.surface || '#FFFFFF', // Theme-aware background
-        borderRadius: 16,
-        paddingVertical: Platform.OS === 'android' ? 8 : 10, // Smaller padding for Android
-        paddingHorizontal: 8, // Equal padding left and right
+        backgroundColor: bgColor,
+        borderRadius: 8, // Figma: rounded-[8px]
+        padding: 6, // Figma: p-[6px]
         flexDirection: 'row',
         overflow: 'hidden',
-        borderWidth: 1, // Small border width
-        borderColor: colors.primary || '#0080E0', // Theme-aware border color
-        minHeight: Platform.OS === 'android' ? 64 : 80, // Smaller height for Android
+        height: 52, // Increased for larger SakkalMajalla font
       }}
       onLayout={handleLayout}
     >
@@ -96,21 +105,12 @@ export default function AnimatedRoleToggle({
       <Animated.View
         style={{
           position: 'absolute',
-          backgroundColor: colors.primary || '#0080E0', // Theme-aware primary color
-          borderRadius: 12, // Rounded corners for the blue slider
-          width: containerWidthState > 0 ? (containerWidthState - 16) * 0.5 : '50%', // Account for padding (8px on each side)
-          height: containerHeightState > 0 
-            ? containerHeightState - (Platform.OS === 'android' ? 16 : 20) 
-            : (Platform.OS === 'android' ? 48 : 60), // Account for padding
-          top: Platform.OS === 'android' ? 8 : 10, // Smaller padding for Android
-          bottom: Platform.OS === 'android' ? 8 : 10, // Smaller padding for Android
-          left: 8, // Padding from left
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 3,
-          flexDirection: 'column',
+          backgroundColor: activeColor,
+          borderRadius: 8, // Figma: rounded-[8px]
+          width: containerWidthState > 0 ? (containerWidthState - 12) * 0.5 : '50%', // Account for padding (6px on each side)
+          height: 40, // Increased from 32 for larger font
+          top: 6, // Match container padding
+          left: 6, // Padding from left
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 2,
@@ -120,116 +120,79 @@ export default function AnimatedRoleToggle({
           ],
         }}
       >
-        {selectedRole === 'user' ? (
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons
-              name="person-outline"
-              size={24}
-              color={colors.white || '#FFFFFF'}
-              style={{ marginBottom: 4 }}
-            />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '400',
-                color: colors.white || '#FFFFFF',
-              }}
-            >
-              {t('Customer')}
-            </Text>
-          </View>
-        ) : (
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons
-              name="briefcase-outline"
-              size={24}
-              color={colors.white || '#FFFFFF'}
-              style={{ marginBottom: 4 }}
-            />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '400',
-                color: colors.white || '#FFFFFF',
-              }}
-            >
-              {t('Specialized')}
-            </Text>
-          </View>
-        )}
+        <Text
+          style={{
+            fontSize: UIFontSizes.bodyLarge, // Centralized font size
+            fontWeight: '400',
+            color: textColor,
+            textAlign: 'center',
+            fontFamily: FontFamily.primary,
+          }}
+          numberOfLines={1}
+        >
+          {selectedRole === 'user' ? t('User') : t('Service Provider')}
+        </Text>
       </Animated.View>
 
-      {/* User Button - Shows gray text when not selected */}
+      {/* User Button - Shows text when not selected */}
       <TouchableOpacity
         onPress={() => onRoleChange('user')}
         style={{
           flex: 1,
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: Platform.OS === 'android' ? 8 : 10, // Match container padding
-          paddingHorizontal: 8,
-          borderRadius: 12,
+          borderRadius: 8,
           zIndex: 1,
-          minHeight: Platform.OS === 'android' ? 48 : 60, // Smaller height for Android
+          height: 40, // Increased to match slider
+          minHeight: 40,
+          maxHeight: 40,
         }}
         activeOpacity={0.8}
       >
         {selectedRole !== 'user' && (
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons
-              name="person-outline"
-              size={24}
-              color={colors.textSecondary || '#6B7280'}
-              style={{ marginBottom: 4 }}
-            />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '400',
-                color: colors.textSecondary || '#6B7280',
-              }}
-            >
-              {t('Customer')}
-            </Text>
-          </View>
+          <Text
+            style={{
+              fontSize: UIFontSizes.bodyLarge, // Centralized font size
+              fontWeight: '400',
+              color: inactiveTextColor,
+              textAlign: 'center',
+              fontFamily: FontFamily.primary,
+            }}
+            numberOfLines={1}
+          >
+            {t('User')}
+          </Text>
         )}
       </TouchableOpacity>
 
-      {/* Technician Button - Shows gray text when not selected */}
+      {/* Service Provider Button - Shows text when not selected */}
       <TouchableOpacity
         onPress={() => onRoleChange('technician')}
         style={{
           flex: 1,
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: Platform.OS === 'android' ? 8 : 10, // Match container padding
-          paddingHorizontal: 8,
-          borderRadius: 12,
+          borderRadius: 8,
           zIndex: 1,
-          minHeight: Platform.OS === 'android' ? 48 : 60, // Smaller height for Android
+          height: 40, // Increased to match slider
+          minHeight: 40,
+          maxHeight: 40,
         }}
         activeOpacity={0.8}
       >
         {selectedRole !== 'technician' && (
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons
-              name="briefcase-outline"
-              size={24}
-              color={colors.textSecondary || '#6B7280'}
-              style={{ marginBottom: 4 }}
-            />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '400',
-                color: colors.textSecondary || '#6B7280',
-              }}
-            >
-              {t('Specialized')}
-            </Text>
-          </View>
+          <Text
+            style={{
+              fontSize: UIFontSizes.bodyLarge, // Centralized font size
+              fontWeight: '400',
+              color: inactiveTextColor,
+              textAlign: 'center',
+              fontFamily: FontFamily.primary,
+            }}
+            numberOfLines={1}
+          >
+            {t('Service Provider')}
+          </Text>
         )}
       </TouchableOpacity>
     </View>

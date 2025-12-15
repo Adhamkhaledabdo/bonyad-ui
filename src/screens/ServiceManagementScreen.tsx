@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   Modal,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,8 @@ import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 
 interface ServiceManagementScreenProps {
   onBack: () => void;
@@ -41,6 +43,10 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
   const [isSaving, setIsSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedServices, setSelectedServices] = useState<number[]>([]);
+  
+  // Custom popup hooks
+  const { alertState, showSuccess, showError, hideAlert } = useAlertPopup();
+  const { confirmState, showDeleteConfirmation, hideConfirmation } = useConfirmationPopup();
 
   useEffect(() => {
     fetchServices();
@@ -82,7 +88,7 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
       }
     } catch (error) {
       console.error('Error fetching services:', error);
-      Alert.alert('Error', 'Failed to load services');
+      showError(t('Failed to load services'), t('Error'));
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +112,7 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
       );
 
       if (response.ok) {
-        Alert.alert('Success', 'Services added successfully');
+        showSuccess(t('Services added successfully'), t('Success'));
         setShowAddModal(false);
         setSelectedServices([]);
         fetchServices();
@@ -115,48 +121,49 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
       }
     } catch (error) {
       console.error('Error adding services:', error);
-      Alert.alert('Error', 'Failed to add services');
+      showError(t('Failed to add services'), t('Error'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleRemoveService = async (serviceId: number) => {
-    Alert.alert(
-      'Remove Service',
-      'Are you sure you want to remove this service?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await storage.getAuthToken();
+    console.log('[ServiceManagement] Delete icon tapped for service', serviceId);
 
-              const response = await fetch(
-                buildApiUrlWithParams(API_ENDPOINTS.TECHNICIANS.REMOVE_SERVICE, { serviceId }),
-                {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                  },
-                }
-              );
+    const confirmRemove = async () => {
+      try {
+        console.log('[ServiceManagement] Remove confirm for service', serviceId);
+        const token = await storage.getAuthToken();
 
-              if (response.ok) {
-                Alert.alert('Success', 'Service removed successfully');
-                fetchServices();
-              } else {
-                throw new Error('Failed to remove service');
-              }
-            } catch (error) {
-              console.error('Error removing service:', error);
-              Alert.alert('Error', 'Failed to remove service');
-            }
-          },
-        },
-      ]
+        const response = await fetch(
+          buildApiUrlWithParams(API_ENDPOINTS.TECHNICIANS.REMOVE_SERVICE, { serviceId }),
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          showSuccess(t('Service removed successfully'), t('Success'));
+          fetchServices();
+        } else {
+          const errorText = await response.text();
+          console.error('Error response removing service:', response.status, errorText);
+          throw new Error(errorText || 'Failed to remove service');
+        }
+      } catch (error) {
+        console.error('Error removing service:', error);
+        showError((error as Error)?.message || t('Failed to remove service'), t('Error'));
+      }
+    };
+
+    showDeleteConfirmation(
+      t('Remove Service'),
+      t('Are you sure you want to remove this service?'),
+      confirmRemove,
+      t('Remove')
     );
   };
 
@@ -170,7 +177,7 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
 
   const handleSaveSelection = () => {
     if (selectedServices.length === 0) {
-      Alert.alert('Error', 'Please select at least one service');
+      showError(t('Please select at least one service'), t('Error'));
       return;
     }
     handleAddServices(selectedServices);
@@ -313,6 +320,30 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
           </Card>
         </View>
       </Modal>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
   );
 }
@@ -466,4 +497,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
 

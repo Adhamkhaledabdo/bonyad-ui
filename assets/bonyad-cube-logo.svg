@@ -1,0 +1,15 @@
+<svg width="221" height="265" viewBox="0 0 64 73" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 3D Cube Logo - Matches Figma design -->
+  <!-- Top face - left -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M31.9385 3.44934L16.1686 12.4162V30.545L31.9385 21.3324V3.44934Z" fill="#009EFF"/>
+  <!-- Top face - right -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M31.9384 3.44934L47.7082 12.4162V30.545L31.9384 21.3324V3.44934Z" fill="#0080E0"/>
+  <!-- Left side -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M5.10437 6.05261L16.1686 12.4162V30.545L31.9384 39.5119V52.2028L5.10437 36.7133V6.05261Z" fill="#46A8F9"/>
+  <!-- Right side -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M58.7725 6.05261L47.7082 12.4162V30.545L31.9384 39.5119V52.2028L58.7725 36.7133V6.05261Z" fill="#8FC3FF"/>
+  <!-- Bottom face -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M31.9385 21.3323L16.1686 30.545L31.9385 39.5118L47.7083 30.545L31.9385 21.3323Z" fill="#005DAC"/>
+  <!-- Circle at bottom -->
+  <circle cx="31.9385" cy="63.8" r="5.75" fill="#8FC3FF"/>
+</svg>

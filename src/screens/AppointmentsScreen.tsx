@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, RefreshControl, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
-import { showAlert, showError, showSuccess, showConfirm } from '../utils/alert';
+import { showError, showSuccess, showConfirm } from '../utils/alert';
 
 export interface Appointment {
   id: number;
@@ -25,13 +25,34 @@ export interface Appointment {
   status: 'PENDING' | 'ACCEPTED' | 'CONFIRMED' | 'REJECTED' | 'COMPLETED';
   createdAt?: string;
   updatedAt?: string;
+  phaseTotal?: number;
+  phaseName?: string;
 }
 
-type AppointmentFilter = 'pending' | 'confirmed' | 'completed';
+type AppointmentFilter = 'today' | 'pending' | 'upcoming' | 'completed';
 
 interface AppointmentsScreenProps {
   onBack?: () => void;
 }
+
+const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Color constants from Figma
+const COLORS = {
+  primaryBlue: '#005DAC',
+  darkBlue: '#00549B',
+  headerBlue: '#003867',
+  lightBlue: '#E6EFF7',
+  white: '#FFFFFF',
+  gray: '#F0F0F0',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  green: '#00AC4F',
+  border: '#E6EFF7',
+  amber: '#FFB703',
+  purple: '#6A0DAD',
+};
 
 export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) {
   const { colors } = useTheme();
@@ -40,9 +61,13 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState<AppointmentFilter>('pending');
+  const [selectedFilter, setSelectedFilter] = useState<AppointmentFilter>('today');
   const [isTechnician, setIsTechnician] = useState<boolean | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
     const loadData = async () => {
@@ -61,7 +86,6 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
     try {
       const role = await storage.getUserRole();
       const isTech = role?.toUpperCase() === 'TECHNICIAN';
-      console.log('🔍 Checking user role:', role, '→ isTechnician:', isTech);
       setIsTechnician(isTech);
     } catch (error) {
       console.error('Error checking role:', error);
@@ -78,26 +102,20 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
         throw new Error('Not authenticated');
       }
 
-      // Determine API endpoint based on role and filter
       let apiURL: string;
       if (isTechnician) {
-        // Technician side
         if (selectedFilter === 'pending') {
           apiURL = buildApiUrl(API_ENDPOINTS.APPOINTMENTS.FOR_ME);
         } else {
           apiURL = buildApiUrl(API_ENDPOINTS.APPOINTMENTS.MY_BOOKINGS);
         }
       } else {
-        // User side
         if (selectedFilter === 'pending') {
           apiURL = buildApiUrl(API_ENDPOINTS.APPOINTMENTS.MY_REQUESTS);
         } else {
           apiURL = buildApiUrl(API_ENDPOINTS.APPOINTMENTS.MY_BOOKINGS);
         }
       }
-      
-      console.log(`📤 Fetching ${selectedFilter} appointments for ${isTechnician ? 'technician' : 'user'}`);
-      console.log(`   URL: ${apiURL}`);
       
       const response = await fetch(apiURL, {
         method: 'GET',
@@ -109,27 +127,36 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
       
       if (response.ok) {
         const data = await response.json();
-        
-        // Apply status filter
         let filtered = data;
-        if (selectedFilter === 'pending') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedFilter === 'today') {
+          filtered = data.filter((a: Appointment) => {
+            const appointmentDate = new Date(a.requestedDate);
+            appointmentDate.setHours(0, 0, 0, 0);
+            return appointmentDate.getTime() === today.getTime() && 
+              (a.status.toUpperCase() === 'ACCEPTED' || a.status.toUpperCase() === 'CONFIRMED');
+          });
+        } else if (selectedFilter === 'pending') {
           filtered = data.filter((a: Appointment) => a.status.toUpperCase() === 'PENDING');
-        } else if (selectedFilter === 'confirmed') {
-          filtered = data.filter((a: Appointment) => 
-            a.status.toUpperCase() === 'ACCEPTED' || 
-            a.status.toUpperCase() === 'CONFIRMED'
-          );
+        } else if (selectedFilter === 'upcoming') {
+          filtered = data.filter((a: Appointment) => {
+            const appointmentDate = new Date(a.requestedDate);
+            appointmentDate.setHours(0, 0, 0, 0);
+            return appointmentDate.getTime() > today.getTime() && 
+              (a.status.toUpperCase() === 'ACCEPTED' || a.status.toUpperCase() === 'CONFIRMED');
+          });
         } else if (selectedFilter === 'completed') {
           filtered = data.filter((a: Appointment) => a.status.toUpperCase() === 'COMPLETED');
         }
         
         setAppointments(filtered);
-        console.log(`✅ Loaded ${filtered.length} appointments`);
       } else {
         throw new Error(`Server error: ${response.status}`);
       }
     } catch (error: any) {
-      console.error('❌ Error:', error);
+      console.error('Error:', error);
       showError(error.message || t('network_error'));
     } finally {
       setIsLoading(false);
@@ -155,10 +182,6 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
           }
           
           const apiURL = buildApiUrlWithParams(API_ENDPOINTS.APPOINTMENTS.ACCEPT, { id: requestId });
-          
-          console.log('📤 Accepting appointment:', requestId);
-          console.log('   URL:', apiURL);
-          
           const response = await fetch(apiURL, {
             method: 'POST',
             headers: {
@@ -167,20 +190,13 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
             }
           });
           
-          console.log('📥 Accept response status:', response.status);
-          
           if (response.ok) {
             showSuccess(t('Appointment accepted'));
-            setTimeout(() => {
-              fetchAppointments();
-            }, 1000);
+            setTimeout(() => fetchAppointments(), 1000);
           } else {
-            const errorText = await response.text();
-            console.error('❌ Failed to accept appointment:', errorText);
             throw new Error(t('Failed to accept appointment'));
           }
         } catch (error: any) {
-          console.error('❌ Error accepting appointment:', error);
           showError(error.message || t('Failed to accept appointment'));
         }
       }
@@ -200,10 +216,6 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
           }
           
           const apiURL = buildApiUrlWithParams(API_ENDPOINTS.APPOINTMENTS.REJECT, { id: requestId });
-          
-          console.log('📤 Rejecting appointment:', requestId);
-          console.log('   URL:', apiURL);
-          
           const response = await fetch(apiURL, {
             method: 'POST',
             headers: {
@@ -212,20 +224,13 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
             }
           });
           
-          console.log('📥 Reject response status:', response.status);
-          
           if (response.ok) {
             showSuccess(t('Request rejected'));
-            setTimeout(() => {
-              fetchAppointments();
-            }, 1000);
+            setTimeout(() => fetchAppointments(), 1000);
           } else {
-            const errorText = await response.text();
-            console.error('❌ Failed to reject appointment:', errorText);
             throw new Error(t('Failed to reject appointment'));
           }
         } catch (error: any) {
-          console.error('❌ Error rejecting appointment:', error);
           showError(error.message || t('Failed to reject appointment'));
         }
       }
@@ -245,10 +250,6 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
           }
           
           const apiURL = buildApiUrlWithParams(API_ENDPOINTS.APPOINTMENTS.COMPLETE, { id: requestId });
-          
-          console.log('📤 Completing appointment:', requestId);
-          console.log('   URL:', apiURL);
-          
           const response = await fetch(apiURL, {
             method: 'POST',
             headers: {
@@ -257,20 +258,13 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
             }
           });
           
-          console.log('📥 Complete response status:', response.status);
-          
           if (response.ok) {
             showSuccess(t('Appointment completed'));
-            setTimeout(() => {
-              fetchAppointments();
-            }, 1000);
+            setTimeout(() => fetchAppointments(), 1000);
           } else {
-            const errorText = await response.text();
-            console.error('❌ Failed to complete appointment:', errorText);
             throw new Error(t('Failed to complete appointment'));
           }
         } catch (error: any) {
-          console.error('❌ Error completing appointment:', error);
           showError(error.message || t('Failed to complete appointment'));
         }
       }
@@ -279,8 +273,8 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
 
   const cancelRequest = async (requestId: number) => {
     showConfirm(
-      t('Cancel Request'),
-      t('Are you sure you want to cancel this request?'),
+      t('Cancel Appointment'),
+      t('Are you sure you want to cancel this appointment?'),
       async () => {
         try {
           const token = await storage.getAuthToken();
@@ -290,10 +284,6 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
           }
           
           const apiURL = buildApiUrlWithParams(API_ENDPOINTS.APPOINTMENTS.DELETE, { id: requestId });
-          
-          console.log('📤 Cancelling appointment:', requestId);
-          console.log('   URL:', apiURL);
-          
           const response = await fetch(apiURL, {
             method: 'DELETE',
             headers: {
@@ -302,33 +292,58 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
             }
           });
           
-          console.log('📥 Cancel response status:', response.status);
-          
           if (response.ok) {
-            showSuccess(t('Request cancelled'));
-            setTimeout(() => {
-              fetchAppointments();
-            }, 1000);
+            showSuccess(t('Appointment cancelled'));
+            setTimeout(() => fetchAppointments(), 1000);
           } else {
-            const errorText = await response.text();
-            console.error('❌ Failed to cancel appointment:', errorText);
             throw new Error(t('Failed to cancel appointment'));
           }
         } catch (error: any) {
-          console.error('❌ Error cancelling appointment:', error);
           showError(error.message || t('Failed to cancel appointment'));
         }
       }
     );
   };
 
+  // Calendar helper functions
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prevMonth => {
+      const newMonth = new Date(prevMonth);
+      if (direction === 'prev') {
+        newMonth.setMonth(newMonth.getMonth() - 1);
+      } else {
+        newMonth.setMonth(newMonth.getMonth() + 1);
+      }
+      return newMonth;
+    });
+  };
+
+  const isSelected = (day: number) => {
+    return (
+      day === selectedDate.getDate() &&
+      currentMonth.getMonth() === selectedDate.getMonth() &&
+      currentMonth.getFullYear() === selectedDate.getFullYear()
+    );
+  };
+
+  const hasAppointment = (day: number) => {
+    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return appointments.some(apt => apt.requestedDate === dateStr);
+  };
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}`;
   };
 
   const formatTime = (timeString: string): string => {
@@ -336,230 +351,302 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
     return `${parts[0]}:${parts[1]}`;
   };
 
-  const getStatusColor = (status: string): string => {
-    switch (status.toUpperCase()) {
-      case 'PENDING': return '#FFA500';
-      case 'ACCEPTED':
-      case 'CONFIRMED': return '#00AA00';
-      case 'REJECTED': return '#FF0000';
-      case 'COMPLETED': return '#0080FF';
-      default: return '#999999';
+  const getSectionTitle = (): string => {
+    switch (selectedFilter) {
+      case 'today': return t("Today's Appointments");
+      case 'pending': return t('Pending Appointments');
+      case 'upcoming': return t('Upcoming Appointments');
+      case 'completed': return t('Completed Appointments');
+      default: return t('Appointments');
     }
   };
 
-  const renderFilterTab = (filter: AppointmentFilter, icon: string, label: string) => (
-    <TouchableOpacity
-      key={filter}
-      onPress={() => setSelectedFilter(filter)}
-      style={[
-        styles.filterTab,
-        {
-          backgroundColor: selectedFilter === filter ? colors.primary + '15' : 'transparent',
-        }
-      ]}
-    >
-      <Ionicons 
-        name={icon as any} 
-        size={20} 
-        color={selectedFilter === filter ? colors.primary : colors.textSecondary} 
-      />
-      <Text style={[
-        styles.filterTabText,
-        {
-          color: selectedFilter === filter ? colors.primary : colors.textSecondary,
-          fontWeight: selectedFilter === filter ? '600' : '400'
-        }
-      ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  // Render Calendar
+  const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth(currentMonth);
+    const firstDay = getFirstDayOfMonth(currentMonth);
+    const days = [];
 
-  const renderAppointmentCard = ({ item }: { item: Appointment }) => (
-    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-      {/* Header */}
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <Ionicons name="briefcase" size={20} color="#0080FF" />
-          <Text style={[styles.projectTitle, { color: colors.text }]} numberOfLines={2}>
-            {item.projectDescription || t('General Appointment')}
-          </Text>
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+      days.push(
+        <View key={`empty-${i}`} style={styles.calendarCell}>
+          <View style={styles.calendarCellContent} />
         </View>
-        
-        <View style={[
-          styles.statusBadge,
-          { backgroundColor: getStatusColor(item.status) + '20' }
-        ]}>
-          <Text style={[
-            styles.statusText,
-            { color: getStatusColor(item.status) }
+      );
+    }
+
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isSelectedDate = isSelected(day);
+      const hasApt = hasAppointment(day);
+
+      days.push(
+        <TouchableOpacity
+          key={day}
+          style={styles.calendarCell}
+          onPress={() => {
+            const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+            setSelectedDate(newDate);
+          }}
+        >
+          <View style={[
+            styles.calendarCellContent,
+            isSelectedDate && styles.selectedCellContent,
           ]}>
-            {item.status}
-          </Text>
+            <Text style={[
+              styles.calendarDay,
+              isSelectedDate && styles.selectedDayText,
+            ]}>
+              {day}
+            </Text>
+            {hasApt && (
+              <View style={styles.appointmentDotsContainer}>
+                <View style={[styles.appointmentDot, { backgroundColor: COLORS.purple }]} />
+                <View style={[styles.appointmentDot, { backgroundColor: COLORS.primaryBlue }]} />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // Fill remaining cells
+    const totalCells = firstDay + daysInMonth;
+    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let i = 0; i < remainingCells; i++) {
+      days.push(
+        <View key={`empty-end-${i}`} style={styles.calendarCell}>
+          <View style={styles.calendarCellContent} />
         </View>
-      </View>
-      
-      <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      
-      {/* Person Info */}
-      <View style={styles.personInfo}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
-          <Ionicons name="person" size={24} color={colors.primary} />
+      );
+    }
+
+    return days;
+  };
+
+  const renderFilterTab = (filter: AppointmentFilter, label: string) => {
+    const isActive = selectedFilter === filter;
+    
+    return (
+      <TouchableOpacity
+        key={filter}
+        onPress={() => setSelectedFilter(filter)}
+        style={[
+          styles.filterTab,
+          isActive ? styles.filterTabActive : styles.filterTabInactive,
+        ]}
+      >
+        <Text style={[
+          styles.filterTabText,
+          isActive ? styles.filterTabTextActive : styles.filterTabTextInactive
+        ]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderAppointmentCard = (item: Appointment) => {
+    return (
+      <View key={item.id} style={styles.appointmentCard}>
+        {/* Project Title */}
+        <Text style={styles.projectTitle}>
+          {item.projectDescription || item.phaseName || t('Initial Consultation')}
+        </Text>
+        
+        {/* Status Badge */}
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusBadgeText}>
+            {t('Design Consultation')}
+          </Text>
         </View>
         
-        <View style={styles.personDetails}>
-          <Text style={[styles.personName, { color: colors.text }]}>
-            {isTechnician ? item.userName : item.technicianName}
-          </Text>
-          <Text style={[styles.personRole, { color: colors.textSecondary }]}>
-            {isTechnician ? t('User') : t('Technician')}
-          </Text>
-        </View>
-      </View>
-      
-      {/* Date & Time */}
-      <View style={styles.dateTime}>
-        <View style={styles.dateRow}>
-          <Ionicons name="calendar" size={16} color="#FFA500" />
-          <Text style={[styles.dateText, { color: colors.text }]}>
-            {formatDate(item.requestedDate)}
+        {/* Date & Time */}
+        <View style={styles.infoRow}>
+          <Ionicons name="time-outline" size={12} color={COLORS.headerBlue} />
+          <Text style={styles.infoText}>
+            {formatDate(item.requestedDate)}  • {formatTime(item.requestedStartTime)}
           </Text>
         </View>
         
-        <View style={styles.timeRow}>
-          <Ionicons name="time" size={16} color="#00AA00" />
-          <Text style={[styles.timeText, { color: colors.text }]}>
-            {formatTime(item.requestedStartTime)} - {formatTime(item.requestedEndTime)}
+        {/* Location */}
+        {item.address && (
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={12} color={COLORS.headerBlue} />
+            <Text style={styles.infoText}>{item.address}</Text>
+          </View>
+        )}
+        
+        {/* Divider */}
+        <View style={styles.cardDivider} />
+        
+        {/* Total */}
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>{t('Total')}</Text>
+          <Text style={styles.totalAmount}>
+            ${item.phaseTotal?.toLocaleString() || '60,000'}
           </Text>
         </View>
+        
+        {/* Action Buttons */}
+        {renderActionButtons(item)}
       </View>
-      
-      {/* Location */}
-      {item.address && (
-        <View style={styles.location}>
-          <Ionicons name="location" size={16} color="#FF0000" />
-          <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-            {item.address}
-          </Text>
+    );
+  };
+
+  const renderActionButtons = (item: Appointment) => {
+    // Pending filter - technician can accept/reject
+    if (selectedFilter === 'pending' && isTechnician) {
+      return (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.acceptButton]}
+            onPress={() => acceptRequest(item.id)}
+          >
+            <Ionicons name="checkmark-circle-outline" size={14} color={COLORS.green} />
+            <Text style={[styles.actionButtonText, { color: COLORS.green }]}>{t('Accept')}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton]}
+            onPress={() => rejectRequest(item.id)}
+          >
+            <Ionicons name="close-circle-outline" size={14} color={COLORS.amber} />
+            <Text style={[styles.actionButtonText, { color: COLORS.amber }]}>{t('Reject')}</Text>
+          </TouchableOpacity>
         </View>
-      )}
-      
-      <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      
-      {/* Action Buttons */}
-      {selectedFilter === 'pending' && (
-        <View style={styles.actions}>
-          {isTechnician ? (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                onPress={() => acceptRequest(item.id)}
-                style={[styles.button, styles.acceptButton]}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.buttonText}>{t('Accept')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={() => rejectRequest(item.id)}
-                style={[styles.button, styles.rejectButton]}
-              >
-                <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.buttonText}>{t('Reject')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={() => cancelRequest(item.id)}
-              style={[styles.button, styles.cancelButton]}
-            >
-              <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.buttonText}>{t('Cancel Request')}</Text>
-            </TouchableOpacity>
-          )}
+      );
+    }
+    
+    // Today or Upcoming - user can change date or cancel
+    if ((selectedFilter === 'today' || selectedFilter === 'upcoming') && !isTechnician) {
+      return (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={[styles.actionButton, styles.changeDateButton]}>
+            <Text style={styles.changeDateButtonText}>{t('Change Date')}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => cancelRequest(item.id)}
+          >
+            <Text style={styles.cancelButtonText}>{t('Cancel Appointment')}</Text>
+          </TouchableOpacity>
         </View>
-      )}
-      
-      {selectedFilter === 'confirmed' && (
-        <View style={styles.actions}>
-          {isTechnician ? (
-            <TouchableOpacity
-              onPress={() => completeAppointment(item.id)}
-              style={[styles.button, styles.completeButton]}
-            >
-              <Ionicons name="checkmark-done-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.buttonText}>{t('Mark as Complete')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.waitingContainer}>
-              <Ionicons name="time" size={16} color={colors.textSecondary} />
-              <Text style={[styles.waitingText, { color: colors.textSecondary }]}>
-                {t('Waiting for appointment...')}
-              </Text>
-            </View>
-          )}
+      );
+    }
+    
+    // Technician - Today view can mark as complete
+    if ((selectedFilter === 'today' || selectedFilter === 'upcoming') && isTechnician) {
+      return (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.changeDateButton]}
+          >
+            <Text style={styles.changeDateButtonText}>{t('Change Date')}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.completeButton]}
+            onPress={() => completeAppointment(item.id)}
+          >
+            <Text style={styles.cancelButtonText}>{t('Mark Complete')}</Text>
+          </TouchableOpacity>
         </View>
-      )}
-      
-      {selectedFilter === 'completed' && (
-        <View style={styles.completedContainer}>
-          <Ionicons name="checkmark-circle" size={20} color="#00AA00" />
-          <Text style={styles.completedText}>{t('Appointment Completed')}</Text>
-        </View>
-      )}
-    </View>
-  );
+      );
+    }
+    
+    return null;
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.cardBackground, paddingTop: insets.top }]}>
-        {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primaryBlue}
+          />
+        }
+      >
+        {/* Calendar Section */}
+        <View style={styles.calendarSection}>
+          {/* Month Navigation */}
+          <View style={styles.monthNavigation}>
+            <TouchableOpacity onPress={() => navigateMonth('prev')} style={styles.navArrow}>
+              <Ionicons name="chevron-back" size={24} color={COLORS.headerBlue} />
+            </TouchableOpacity>
+            <View style={styles.monthTitleContainer}>
+              <Text style={styles.monthTitle}>
+                {MONTHS[currentMonth.getMonth()]}
+              </Text>
+              <Text style={styles.yearTitle}>
+                {currentMonth.getFullYear()}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => navigateMonth('next')} style={styles.navArrow}>
+              <Ionicons name="chevron-forward" size={24} color={COLORS.headerBlue} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Calendar Container */}
+          <View style={styles.calendarContainer}>
+            {/* Week Days Header */}
+            <View style={styles.weekDaysRow}>
+              {DAYS_OF_WEEK.map((day) => (
+                <View key={day} style={styles.weekDayCell}>
+                  <Text style={styles.weekDayText}>{day}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Calendar Grid */}
+            <View style={styles.calendarGrid}>
+              {renderCalendar()}
+            </View>
+          </View>
+        </View>
+
+        {/* Filter Tabs */}
+        <View style={styles.filterTabsContainer}>
+          {renderFilterTab('today', t('Today'))}
+          {renderFilterTab('pending', t('Pending'))}
+          {renderFilterTab('upcoming', t('Upcoming'))}
+          {renderFilterTab('completed', t('Completed'))}
+        </View>
+
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionIndicator} />
+          <Text style={styles.sectionTitle}>
+            {getSectionTitle()}
+          </Text>
+        </View>
+
+        {/* Appointments List */}
+        {isLoading && appointments.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primaryBlue} />
+            <Text style={styles.loadingText}>{t('Loading...')}</Text>
+          </View>
+        ) : appointments.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
+            <Text style={styles.emptyText}>{t('No appointments found')}</Text>
+          </View>
+        ) : (
+          <View style={styles.appointmentsList}>
+            {appointments.map((item) => renderAppointmentCard(item))}
+          </View>
         )}
-        <Text style={[styles.title, { color: colors.text }]}>
-          {t('Appointments')}
-        </Text>
-      </View>
 
-      {/* Filter Tabs */}
-      <View style={[styles.filterTabs, { backgroundColor: colors.cardBackground }]}>
-        {renderFilterTab('pending', 'time-outline', t('Pending'))}
-        {renderFilterTab('confirmed', 'checkmark-circle-outline', t('Confirmed'))}
-        {renderFilterTab('completed', 'checkmark-done-circle-outline', t('Completed'))}
-      </View>
-
-      {/* Appointments List */}
-      {isLoading && appointments.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.text }]}>
-            {t('Loading...')}
-          </Text>
-        </View>
-      ) : appointments.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="calendar-outline" size={64} color={colors.textSecondary} />
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            {t('No appointments found')}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={appointments}
-          renderItem={renderAppointmentCard}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
-          }
-        />
-      )}
+        {/* Bottom spacing */}
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </View>
   );
 }
@@ -567,218 +654,279 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.white,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  scrollView: {
+    flex: 1,
+  },
+  calendarSection: {
+    backgroundColor: COLORS.white,
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingTop: 8,
   },
-  backButton: {
-    marginRight: 12,
+  monthNavigation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  navArrow: {
+    padding: 8,
+  },
+  monthTitleContainer: {
+    alignItems: 'center',
+  },
+  monthTitle: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: COLORS.headerBlue,
+  },
+  yearTitle: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: COLORS.headerBlue,
+  },
+  calendarContainer: {
+    borderRadius: 14,
+    borderWidth: 0.7,
+    borderColor: COLORS.lightBlue,
+    overflow: 'hidden',
+  },
+  weekDaysRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.lightBlue,
+    paddingVertical: 12,
+  },
+  weekDayCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  weekDayText: {
+    fontSize: 14,
+    color: '#004A8A',
+    fontWeight: '400',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: COLORS.white,
+  },
+  calendarCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    borderTopWidth: 0.7,
+    borderLeftWidth: 0.7,
+    borderColor: COLORS.lightBlue,
+  },
+  calendarCellContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 4,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  selectedCellContent: {
+    backgroundColor: COLORS.primaryBlue,
+    borderRadius: 100,
+    margin: 4,
   },
-  filterTabs: {
+  calendarDay: {
+    fontSize: 14,
+    color: COLORS.headerBlue,
+  },
+  selectedDayText: {
+    color: COLORS.white,
+    fontWeight: '500',
+  },
+  appointmentDotsContainer: {
+    flexDirection: 'row',
+    marginTop: 2,
+    gap: 3,
+  },
+  appointmentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  filterTabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingVertical: 16,
+    gap: 8,
   },
   filterTab: {
     flex: 1,
-    flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginHorizontal: 4,
+  },
+  filterTabActive: {
+    backgroundColor: COLORS.primaryBlue,
+  },
+  filterTabInactive: {
+    backgroundColor: COLORS.gray,
   },
   filterTabText: {
-    fontSize: 14,
-    marginLeft: 8,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filterTabTextActive: {
+    color: COLORS.white,
+  },
+  filterTabTextInactive: {
+    color: COLORS.textSecondary,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  sectionIndicator: {
+    width: 4,
+    height: 20,
+    backgroundColor: COLORS.primaryBlue,
+    borderRadius: 100,
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '500',
+    color: COLORS.headerBlue,
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 60,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
+    color: COLORS.textSecondary,
   },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    paddingVertical: 60,
+    paddingHorizontal: 40,
   },
   emptyText: {
     marginTop: 16,
     fontSize: 16,
+    color: COLORS.textSecondary,
   },
-  listContent: {
+  appointmentsList: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  appointmentCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
     padding: 16,
-  },
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
+    borderTopWidth: 2,
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: COLORS.darkBlue,
   },
   projectTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 10,
     fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  divider: {
-    height: 1,
-    marginVertical: 12,
-  },
-  personInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    color: COLORS.textBody,
     marginBottom: 12,
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  statusBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.lightBlue,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginBottom: 12,
   },
-  personDetails: {
-    flex: 1,
-  },
-  personName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  personRole: {
+  statusBadgeText: {
     fontSize: 12,
+    fontWeight: '400',
+    color: COLORS.headerBlue,
   },
-  dateTime: {
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
+    gap: 6,
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  dateText: {
+  infoText: {
     fontSize: 14,
-    marginLeft: 6,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeText: {
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  location: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 8,
-  },
-  locationText: {
-    fontSize: 12,
-    marginLeft: 6,
+    color: COLORS.headerBlue,
     flex: 1,
   },
-  actions: {
-    marginTop: 4,
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#D9D9D9',
+    marginVertical: 12,
   },
-  buttonRow: {
+  totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-  },
-  button: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    flex: 1,
+    marginBottom: 16,
   },
-  acceptButton: {
-    backgroundColor: '#00AA00',
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
   },
-  rejectButton: {
-    backgroundColor: '#FF0000',
-  },
-  cancelButton: {
-    backgroundColor: '#FF0000',
-  },
-  completeButton: {
-    backgroundColor: '#0080FF',
-  },
-  buttonText: {
-    color: '#FFFFFF',
+  totalAmount: {
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
+    color: COLORS.green,
   },
-  waitingContainer: {
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 16,
+    borderRadius: 8,
+    gap: 6,
   },
-  waitingText: {
-    fontSize: 12,
-    marginLeft: 6,
+  acceptButton: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 0.5,
+    borderColor: COLORS.green,
   },
-  completedContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
+  rejectButton: {
+    backgroundColor: '#FFF8E1',
+    borderWidth: 0.5,
+    borderColor: COLORS.amber,
   },
-  completedText: {
-    fontSize: 12,
-    color: '#00AA00',
-    marginLeft: 6,
+  changeDateButton: {
+    backgroundColor: COLORS.darkBlue,
+  },
+  changeDateButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  cancelButton: {
+    backgroundColor: COLORS.lightBlue,
+    borderWidth: 0.5,
+    borderColor: COLORS.darkBlue,
+  },
+  completeButton: {
+    backgroundColor: COLORS.lightBlue,
+    borderWidth: 0.5,
+    borderColor: COLORS.green,
+  },
+  cancelButtonText: {
+    color: COLORS.darkBlue,
+    fontSize: 14,
+    fontWeight: '400',
+    textAlign: 'center',
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
-

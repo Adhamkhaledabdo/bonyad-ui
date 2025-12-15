@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Modal,
   Platform,
@@ -18,6 +17,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../context/ThemeContext';
 import { storage } from '../utils/storage';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 
 interface AvailabilityScreenProps {
   onBack: () => void;
@@ -70,6 +71,10 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editEndTime, setEditEndTime] = useState('17:00');
   const [availabilityMode, setAvailabilityMode] = useState<'FIXED_TIMES' | 'AVAILABLE_ANYTIME'>('FIXED_TIMES');
+  
+  // Custom popup hooks
+  const { alertState, showSuccess, showError, hideAlert } = useAlertPopup();
+  const { confirmState, showDeleteConfirmation, hideConfirmation } = useConfirmationPopup();
   
   // Time picker states
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
@@ -181,7 +186,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         await fetchAvailability();
         // Show success alert after refresh
         setTimeout(() => {
-          Alert.alert('Success', `Availability mode set to ${mode}`);
+          showSuccess(`Availability mode set to ${mode}`, t('Success'));
         }, 100);
       } else {
         const errorText = await response.text();
@@ -225,7 +230,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
             // Status was updated successfully, just show success
             console.log('✅ Status was updated successfully despite error response');
             setTimeout(() => {
-              Alert.alert('Success', `Availability mode set to ${mode}`);
+              showSuccess(`Availability mode set to ${mode}`, t('Success'));
             }, 100);
             return; // Exit early, don't throw error
           }
@@ -236,7 +241,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
       }
     } catch (error: any) {
       console.error('❌ Error setting availability mode:', error);
-      Alert.alert('Error', error.message || 'Failed to update availability mode');
+      showError(error.message || t('Failed to update availability mode'), t('Error'));
     } finally {
       setIsSaving(false);
     }
@@ -244,12 +249,12 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
 
   const handleAddSlot = async () => {
     if (!selectedDay) {
-      Alert.alert('Error', 'Please select a day');
+      showError(t('Please select a day'), t('Error'));
       return;
     }
 
     if (startTime >= endTime) {
-      Alert.alert('Error', 'End time must be after start time');
+      showError(t('End time must be after start time'), t('Error'));
       return;
     }
 
@@ -258,7 +263,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
       const token = await storage.getAuthToken();
 
       const response = await fetch(
-        buildApiUrl(API_ENDPOINTS.TECHNICIANS.ADD_AVAILABILITY_BULK),
+        buildApiUrl(API_ENDPOINTS.TECHNICIANS.ADD_AVAILABILITY),
         {
           method: 'POST',
           headers: {
@@ -266,13 +271,9 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            availabilities: [
-              {
-                dayOfWeek: selectedDay,
-                startTime,
-                endTime,
-              },
-            ],
+            dayOfWeek: selectedDay,
+            startTime,
+            endTime,
           }),
         }
       );
@@ -286,14 +287,14 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         setStartTime('09:00');
         setEndTime('17:00');
         setTimeout(() => {
-          Alert.alert('Success', 'Time slot added successfully');
+          showSuccess(t('Time slot added successfully'), t('Success'));
         }, 100);
       } else {
         throw new Error('Failed to add time slot');
       }
     } catch (error) {
       console.error('Error adding time slot:', error);
-      Alert.alert('Error', 'Failed to add time slot');
+      showError(t('Failed to add time slot'), t('Error'));
     } finally {
       setIsSaving(false);
     }
@@ -349,7 +350,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         await fetchAvailability();
         // Show success alert after refresh
         setTimeout(() => {
-          Alert.alert('Success', 'All time slots saved successfully');
+          showSuccess(t('All time slots saved successfully'), t('Success'));
         }, 100);
       } else {
         const errorText = await response.text();
@@ -358,7 +359,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
       }
     } catch (error: any) {
       console.error('❌ Error saving all slots:', error);
-      Alert.alert('Error', error.message || 'Failed to save all slots');
+      showError(error.message || t('Failed to save all slots'), t('Error'));
     } finally {
       setIsSaving(false);
     }
@@ -368,7 +369,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
     if (!editingSlot) return;
 
     if (editStartTime >= editEndTime) {
-      Alert.alert('Error', 'End time must be after start time');
+      showError(t('End time must be after start time'), t('Error'));
       return;
     }
 
@@ -394,7 +395,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
 
       // Then add new slot with updated times
       const addResponse = await fetch(
-        buildApiUrl(API_ENDPOINTS.TECHNICIANS.ADD_AVAILABILITY_BULK),
+        buildApiUrl(API_ENDPOINTS.TECHNICIANS.ADD_AVAILABILITY),
         {
           method: 'POST',
           headers: {
@@ -402,13 +403,9 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            availabilities: [
-              {
-                dayOfWeek: editingSlot.dayOfWeek,
-                startTime: editStartTime,
-                endTime: editEndTime,
-              },
-            ],
+            dayOfWeek: editingSlot.dayOfWeek,
+            startTime: editStartTime,
+            endTime: editEndTime,
           }),
         }
       );
@@ -420,55 +417,56 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         setShowEditModal(false);
         setEditingSlot(null);
         setTimeout(() => {
-          Alert.alert('Success', 'Time slot updated successfully');
+          showSuccess(t('Time slot updated successfully'), t('Success'));
         }, 100);
       } else {
         throw new Error('Failed to update time slot');
       }
     } catch (error) {
       console.error('Error updating time slot:', error);
-      Alert.alert('Error', 'Failed to update time slot');
+      showError(t('Failed to update time slot'), t('Error'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteSlot = async (slotId: number) => {
-    Alert.alert(
-      'Delete Time Slot',
-      'Are you sure you want to delete this time slot?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await storage.getAuthToken();
+    console.log('[Availability] Delete icon tapped for slot', slotId);
 
-              const response = await fetch(
-                buildApiUrlWithParams(API_ENDPOINTS.TECHNICIANS.DELETE_AVAILABILITY, { slotId }),
-                {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                  },
-                }
-              );
+    const confirmDelete = async () => {
+      try {
+        console.log('[Availability] Confirm delete for slot', slotId);
+        const token = await storage.getAuthToken();
 
-              if (response.ok) {
-                Alert.alert('Success', 'Time slot deleted successfully');
-                fetchAvailability();
-              } else {
-                throw new Error('Failed to delete time slot');
-              }
-            } catch (error) {
-              console.error('Error deleting time slot:', error);
-              Alert.alert('Error', 'Failed to delete time slot');
-            }
-          },
-        },
-      ]
+        const response = await fetch(
+          buildApiUrlWithParams(API_ENDPOINTS.TECHNICIANS.DELETE_AVAILABILITY, { slotId }),
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          showSuccess(t('Time slot deleted successfully'), t('Success'));
+          fetchAvailability();
+        } else {
+          const errorText = await response.text();
+          console.error('Error response deleting slot:', response.status, errorText);
+          throw new Error(errorText || 'Failed to delete time slot');
+        }
+      } catch (error) {
+        console.error('Error deleting time slot:', error);
+        showError((error as Error)?.message || t('Failed to delete time slot'), t('Error'));
+      }
+    };
+
+    showDeleteConfirmation(
+      t('Delete Time Slot'),
+      t('Are you sure you want to delete this time slot?'),
+      confirmDelete,
+      t('Delete')
     );
   };
 
@@ -1047,6 +1045,30 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
           </Card>
         </View>
       </Modal>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
   );
 }

@@ -33,7 +33,8 @@ export default function WebHeader({
   userType = 'user',
   onToggleChange,
 }: WebHeaderProps) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+  const isDarkMode = theme === 'dark';
   const { t, i18n } = useTranslation();
   const [hoveringUser, setHoveringUser] = React.useState(false);
   const [hoveringBonyader, setHoveringBonyader] = React.useState(false);
@@ -64,11 +65,14 @@ export default function WebHeader({
     secondaryColor: '#333333',
   };
 
+  const headerBackground = isDarkMode ? colors.primary : colors.cardBackground;
+  const headerBorder = isDarkMode ? colors.primaryDark : colors.border;
+
   // Determine if we should show login/get started button
   const shouldShowLoginButton = !isAuthenticated && (currentScreen === 'overview' || currentScreen === 'welcome');
 
   return (
-    <View style={[styles.header, { backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
+    <View style={[styles.header, { backgroundColor: headerBackground, borderBottomColor: headerBorder }]}>
       <View style={styles.headerContent}>
         {/* Logo */}
         <TouchableOpacity 

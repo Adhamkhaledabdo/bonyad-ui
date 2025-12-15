@@ -1,16 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { storage } from '../utils/storage';
+import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
+
+// Figma Design Colors
+const FIGMA_COLORS = {
+  primary: '#005DAC',
+  primaryDark: '#003867',
+  primaryLight: '#E6EFF7',
+  white: '#FFFFFF',
+  textBody: '#383838',
+  textSecondary: '#666666',
+  divider: '#D9D9D9',
+  borderLight: '#E6EFF7',
+};
 
 interface MyDataScreenProps {
   onBack: () => void;
@@ -23,6 +38,12 @@ interface MyDataScreenProps {
   isTechnician?: boolean;
 }
 
+interface UserProfile {
+  name?: string;
+  avatar?: string;
+  profileImage?: string;
+}
+
 export default function MyDataScreen({ 
   onBack, 
   onEditProfile, 
@@ -33,134 +54,204 @@ export default function MyDataScreen({
   onNavigateToAvailability,
   isTechnician = false 
 }: MyDataScreenProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+  const isRTL = i18n.language === 'ar';
+  
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = await storage.getAuthToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        buildApiUrl(API_ENDPOINTS.USER.PROFILE),
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Construct full URLs for images
+        if (data.profileImage || data.avatar) {
+          const imagePath = data.profileImage || data.avatar;
+          if (!imagePath.startsWith('http')) {
+            data.avatar = `${API_BASE_URL.replace('/api', '')}${imagePath}`;
+          } else {
+            data.avatar = imagePath;
+          }
+        }
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Theme-aware colors
+  const bgColor = isDarkMode ? colors.background : FIGMA_COLORS.white;
+  const cardBgColor = isDarkMode ? colors.cardBackground : FIGMA_COLORS.white;
+  const textColor = isDarkMode ? colors.text : FIGMA_COLORS.primaryDark;
+  const iconBgColor = isDarkMode ? colors.surface : FIGMA_COLORS.primaryLight;
+  const iconColor = isDarkMode ? colors.textSecondary : FIGMA_COLORS.textSecondary;
+  const borderColor = isDarkMode ? colors.border : FIGMA_COLORS.borderLight;
+  const dividerColor = isDarkMode ? colors.border : FIGMA_COLORS.divider;
+  const primaryColor = isDarkMode ? colors.primary : FIGMA_COLORS.primary;
+  const avatarBgColor = isDarkMode ? colors.surface : FIGMA_COLORS.primaryLight;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: bgColor, paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={primaryColor} />
+      </View>
+    );
+  }
+
+  const MenuOption = ({ 
+    icon, 
+    title, 
+    onPress 
+  }: { 
+    icon: keyof typeof Ionicons.glyphMap; 
+    title: string; 
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[
+        styles.menuOption,
+        { 
+          borderColor: borderColor,
+          backgroundColor: cardBgColor,
+        },
+        isRTL && styles.rowRTL,
+      ]}
+      onPress={onPress}
+    >
+      <View style={[styles.menuIconContainer, { backgroundColor: iconBgColor }]}>
+        <Ionicons name={icon} size={24} color={iconColor} />
+      </View>
+      <View style={[styles.menuTextContainer, isRTL && styles.textContainerRTL]}>
+        <Text style={[styles.menuTitle, { color: textColor }, isRTL && styles.textRTL]}>
+          {title}
+        </Text>
+      </View>
+      <Ionicons 
+        name={isRTL ? 'chevron-back' : 'chevron-forward'} 
+        size={24} 
+        color={primaryColor} 
+      />
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: bgColor, paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.cardBackground }]}>
+      <View style={[styles.headerRow, isRTL && styles.rowRTL]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons
+            name={isRTL ? 'chevron-forward' : 'chevron-back'}
+            size={24}
+            color={textColor}
+          />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('My Data')}</Text>
-        <View style={{ width: 40 }} />
+        <Text style={[styles.headerTitle, { color: textColor }]}>{t('User Profile')}</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 120) }}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom, 120) }
+        ]}
       >
-        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 120) }]}>
-          {/* Edit Profile Information */}
-          <TouchableOpacity
-            style={[styles.optionCard, { backgroundColor: colors.cardBackground }]}
+        {/* User Avatar Section */}
+        <View style={styles.userSection}>
+          <View style={[styles.avatarContainer, { backgroundColor: avatarBgColor }]}>
+            {userProfile?.avatar ? (
+              <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+            ) : (
+              <Ionicons name="person" size={50} color={primaryColor} />
+            )}
+          </View>
+          <Text style={[styles.userName, { color: textColor }]}>
+            {userProfile?.name || t('profile.usernamePlaceholder')}
+          </Text>
+        </View>
+
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+
+        {/* Menu Options */}
+        <View style={styles.menuSection}>
+          <MenuOption
+            icon="person-outline"
+            title={t('Edit Profile Information')}
             onPress={onEditProfile}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="person" size={28} color={colors.primary} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Edit Profile Information')}</Text>
-              <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                {t('Update your name, email, and profile picture')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-          </TouchableOpacity>
+          />
 
-          {/* Change Phone Number */}
-          <TouchableOpacity
-            style={[styles.optionCard, { backgroundColor: colors.cardBackground }]}
+          <MenuOption
+            icon="call-outline"
+            title={t('Change Phone Number')}
             onPress={onChangePhone}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="call" size={28} color={colors.primary} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Change Phone Number')}</Text>
-              <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                {t('Update your phone number')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-          </TouchableOpacity>
+          />
 
-          {/* Change Password */}
-          <TouchableOpacity
-            style={[styles.optionCard, { backgroundColor: colors.cardBackground }]}
+          <MenuOption
+            icon="lock-closed-outline"
+            title={t('Change Password')}
             onPress={onChangePassword}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="lock-closed" size={28} color={colors.primary} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Change Password')}</Text>
-              <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                {t('Update your password')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-          </TouchableOpacity>
+          />
 
           {/* Technician-specific options */}
           {isTechnician && (
             <>
-              {/* Services */}
-              <TouchableOpacity
-                style={[styles.optionCard, { backgroundColor: colors.cardBackground }]}
+              <MenuOption
+                icon="construct-outline"
+                title={t('Services')}
                 onPress={() => onNavigateToServices?.()}
-              >
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-                  <Ionicons name="construct" size={28} color={colors.primary} />
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Services')}</Text>
-                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                    {t('Manage your services')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-              </TouchableOpacity>
+              />
 
-              {/* Availability */}
-              <TouchableOpacity
-                style={[styles.optionCard, { backgroundColor: colors.cardBackground }]}
+              <MenuOption
+                icon="calendar-outline"
+                title={t('Availability')}
                 onPress={() => onNavigateToAvailability?.()}
-              >
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-                  <Ionicons name="calendar" size={28} color={colors.primary} />
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Availability')}</Text>
-                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                    {t('Manage your availability schedule')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-              </TouchableOpacity>
+              />
 
-              {/* Subscription */}
-              <TouchableOpacity
-                style={[styles.optionCard, { backgroundColor: colors.cardBackground }]}
+              <MenuOption
+                icon="star-outline"
+                title={t('Subscription')}
                 onPress={() => onNavigateToSubscription?.()}
-              >
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-                  <Ionicons name="star" size={28} color={colors.primary} />
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={[styles.optionTitle, { color: colors.text }]}>{t('Subscription')}</Text>
-                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                    {t('View and manage your subscription')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-              </TouchableOpacity>
+              />
             </>
           )}
         </View>
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: primaryColor }]}
+          onPress={onBack}
+        >
+          <Text style={styles.saveButtonText}>{t('Save')}</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -170,64 +261,111 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
+    fontSize: 20,
+    fontWeight: '400',
     textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 16,
+    gap: 32,
   },
-  optionCard: {
-    flexDirection: 'row',
+  userSection: {
     alignItems: 'center',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingVertical: 8,
+    gap: 24,
   },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  avatarContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    overflow: 'hidden',
   },
-  textContainer: {
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  divider: {
+    height: 0.5,
+    width: '100%',
+  },
+  menuSection: {
+    gap: 16,
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 12,
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuTextContainer: {
     flex: 1,
   },
-  optionTitle: {
-    fontSize: 18,
+  menuTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
   },
-  optionDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+  saveButton: {
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  rowRTL: {
+    flexDirection: 'row-reverse',
+  },
+  textRTL: {
+    textAlign: 'right',
+  },
+  textContainerRTL: {
+    alignItems: 'flex-end',
   },
 });
-

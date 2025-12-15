@@ -117,69 +117,80 @@ export default function NewProjectView({
     return () => clearTimeout(timeout);
   }, [animatedText, isTyping, currentTextIndex, i18n.language]);
 
-  // Render mobile layout
+  // Figma Design Colors
+  const FIGMA = {
+    primary100: '#003867',
+    primary70: '#00549B',
+    primary50: '#1A6DB4',
+    primary20: '#B3CEE6',
+    textHeaders: '#003867',
+    textBody: '#383838',
+    textWhite: '#FFFFFF',
+    textBackground: '#F0F0F0',
+    purple70: '#5E0BA1',
+    purple60: '#6A0DAD',
+    purple10: '#EFE6F5',
+    white: '#FFFFFF',
+  };
+
+  // Render mobile layout - Figma Design
   if (shouldRenderMobile) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-        {/* Back Button */}
-        {onBack && (
-          <View style={styles.backButtonContainer}>
-            <TouchableOpacity onPress={onBack} style={[styles.backButton, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: FIGMA.white }]}>
+        {/* Back Button - Figma style */}
+        <View style={styles.figmaBackContainer}>
+          {onBack && (
+            <TouchableOpacity onPress={onBack} style={styles.figmaBackButton}>
+              <Ionicons name="arrow-back" size={24} color={FIGMA.textBody} />
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.figmaScrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="hammer" size={60} color={colors.primary} />
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {technician ? t('Send Deal to') + ' ' + (technician.name || t('Technician')) : t('Create New Project')}
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {technician ? t('Create a project and send it directly to this technician') : t('Describe your project needs')}
+          {/* Title - Figma style */}
+          <View style={styles.figmaHeader}>
+            <Text style={styles.figmaTitle}>
+              {technician ? t('Send Deal to') + ' ' + (technician.name || t('Technician')) : t('Create Project')}
             </Text>
           </View>
 
-          {/* Main Choice Buttons */}
-          <View style={styles.choiceButtonsContainer}>
-            {/* AI Option */}
+          {/* Description - Figma style */}
+          <Text style={styles.figmaDescription}>
+            {t('Describe your need and we will help you define the scope of work, cost estimate and the expected duration.')}
+          </Text>
+
+          {/* Choice Cards - Figma style */}
+          <View style={styles.figmaChoiceCards}>
+            {/* AI Assistance Card */}
             <TouchableOpacity
-              style={styles.aiButton}
+              style={styles.figmaAiCard}
               onPress={onNavigateToAI}
               activeOpacity={0.8}
             >
-              <View style={[styles.aiButtonContent, { backgroundColor: colors.primary }]}>
-                <Ionicons name="sparkles" size={40} color="#fff" />
-                <Text style={styles.aiButtonTitle}>
-                  {t('Use AI Assistant')}
-                </Text>
-                <Text style={styles.aiButtonDescription}>
-                  {animatedText || t('AI will help you create your project')}
-                </Text>
+              <View style={styles.figmaAiIcon}>
+                <Ionicons name="chatbubbles" size={28} color={FIGMA.textWhite} />
+              </View>
+              <View style={styles.figmaCardTextContainer}>
+                <Text style={styles.figmaAiCardTitle}>{t('Use AI Assistance')}</Text>
+                <Text style={styles.figmaAiCardSubtitle}>{t('Define your scope of work')}</Text>
               </View>
             </TouchableOpacity>
 
-            {/* Manual Option */}
+            {/* Manual Card */}
             <TouchableOpacity
-              style={[styles.manualButton, { borderColor: colors.primary }]}
+              style={styles.figmaManualCard}
               onPress={onNavigateToManual}
               activeOpacity={0.8}
             >
-              <View style={[styles.manualButtonContent, { backgroundColor: colors.cardBackground }]}>
-                <Ionicons name="create-outline" size={40} color={colors.primary} />
-                <Text style={[styles.manualButtonTitle, { color: colors.primary }]}>
-                  {t('Fill Manually')}
-                </Text>
-                <Text style={[styles.manualButtonDescription, { color: colors.textSecondary }]}>
-                  {t('Fill all project details manually')}
-                </Text>
+              <View style={styles.figmaManualIcon}>
+                <Ionicons name="create-outline" size={28} color={FIGMA.purple60} />
+              </View>
+              <View style={styles.figmaCardTextContainer}>
+                <Text style={styles.figmaManualCardTitle}>{t('Fill Manually')}</Text>
+                <Text style={styles.figmaManualCardSubtitle}>{t('Fill in all project details yourself')}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -471,5 +482,99 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     minHeight: 48,
+  },
+  // ==================== FIGMA DESIGN STYLES ====================
+  figmaBackContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    height: 20,
+  },
+  figmaBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  figmaScrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 32,
+  },
+  figmaHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  figmaTitle: {
+    fontSize: 20,
+    fontWeight: '400',
+    color: '#003867', // primary100
+    textAlign: 'center',
+  },
+  figmaDescription: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#383838', // textBody
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  figmaChoiceCards: {
+    gap: 24,
+  },
+  figmaAiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A6DB4', // primary50
+    borderWidth: 0.5,
+    borderColor: '#B3CEE6', // primary20
+    borderRadius: 8,
+    padding: 16,
+    height: 100,
+    gap: 24,
+  },
+  figmaAiIcon: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaCardTextContainer: {
+    flex: 1,
+    gap: 6,
+  },
+  figmaAiCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  figmaAiCardSubtitle: {
+    fontSize: 14,
+    fontWeight: '300',
+    color: '#F0F0F0',
+  },
+  figmaManualCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFE6F5', // purple10
+    borderWidth: 0.5,
+    borderColor: '#5E0BA1', // purple70
+    borderRadius: 8,
+    padding: 16,
+    height: 100,
+    gap: 24,
+  },
+  figmaManualIcon: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaManualCardTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#6A0DAD', // purple60
+  },
+  figmaManualCardSubtitle: {
+    fontSize: 14,
+    fontWeight: '300',
+    color: '#6A0DAD', // purple60
   },
 });

@@ -50,6 +50,7 @@ export default function App() {
   const [bookingProjectId, setBookingProjectId] = useState<number | undefined>(undefined);
   const [viewTechnicianId, setViewTechnicianId] = useState<number | null>(null);
   const [overviewUserType, setOverviewUserType] = useState<'user' | 'provider'>('user'); // For overview page toggle
+  const [showOTPPopup, setShowOTPPopup] = useState(false); // OTP verification popup state
   const [currentNotification, setCurrentNotification] = useState<any | null>(null);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   const lastCheckedNotificationId = useRef<number | null>(null); // Track last checked notification ID
@@ -64,9 +65,11 @@ export default function App() {
         await SplashScreenNative.preventAutoHideAsync();
 
         await Font.loadAsync({
-          'Poppins-Regular': require('./assets/fonts/Poppins-Regular.ttf'),
-          'Poppins-SemiBold': require('./assets/fonts/Poppins-SemiBold.ttf'),
-          'Poppins-Bold': require('./assets/fonts/Poppins-Bold.ttf'),
+          // Sakkal Majalla font family - Primary app font (Arabic-friendly)
+          // Download from: https://alfont.com/sakkal-majalla-arabic-font-download.html
+          'SakkalMajalla': require('./assets/fonts/alfont_com_majalla.ttf'),
+          'SakkalMajalla-Regular': require('./assets/fonts/alfont_com_majalla.ttf'),
+          'SakkalMajalla-Bold': require('./assets/fonts/alfont_com_majalla.ttf'),
         });
 
         const localAssets = [
@@ -453,15 +456,16 @@ export default function App() {
     navigateToScreen(requiresOnboarding ? 'technicianOnboarding' : 'home');
   };
 
-  // Handle navigation to OTP screen after signup
+  // Handle showing OTP popup after signup
   const handleNavigateToOTP = (phone: string, role: 'user' | 'technician') => {
     setPhoneNumber(phone);
     setUserRole(role);
-    router.navigate('otp');
+    setShowOTPPopup(true);
   };
 
   // Handle successful OTP verification
   const handleOTPVerificationSuccess = async (token: string, id: number, role: string) => {
+    setShowOTPPopup(false); // Close the OTP popup
     setAuthToken(token);
     setUserId(id);
     setUserRole(role.toLowerCase() as 'user' | 'technician');
@@ -609,6 +613,8 @@ export default function App() {
         setBookingProjectId={setBookingProjectId}
         viewTechnicianId={viewTechnicianId}
         setViewTechnicianId={setViewTechnicianId}
+        showOTPPopup={showOTPPopup}
+        setShowOTPPopup={setShowOTPPopup}
         currentNotification={currentNotification}
         setCurrentNotification={setCurrentNotification}
         showNotificationPopup={showNotificationPopup}
@@ -657,6 +663,8 @@ function AppContent({
   setViewTechnicianId,
   overviewUserType,
   setOverviewUserType,
+  showOTPPopup,
+  setShowOTPPopup,
   authToken,
   setAuthToken,
   currentNotification,
@@ -851,20 +859,20 @@ function AppContent({
           />
         )}
 
+        {/* OTP Verification Popup - shown on top of login/signup */}
+        <OTPVerificationScreen
+          visible={showOTPPopup}
+          phoneNumber={phoneNumber}
+          role={userRole}
+          onVerificationSuccess={handleOTPVerificationSuccess}
+          onClose={() => setShowOTPPopup(false)}
+        />
+
         {currentScreen === 'technicianOnboarding' && (
           <TechnicianOnboardingScreen
             token={authToken}
             userId={userId}
             onFinished={() => navigate('home')}
-          />
-        )}
-        
-        {currentScreen === 'otp' && (
-          <OTPVerificationScreen
-            phoneNumber={phoneNumber}
-            role={userRole}
-            onVerificationSuccess={handleOTPVerificationSuccess}
-            onBack={() => navigate('signup')}
           />
         )}
         

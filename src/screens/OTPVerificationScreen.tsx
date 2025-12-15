@@ -1,36 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  ScrollView,
+  Modal,
   Platform,
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
   Dimensions,
   TextInput as RNTextInput,
+  Animated,
+  Easing,
+  ActivityIndicator,
+  Keyboard,
+  KeyboardEvent,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FontFamily, UIFontSizes } from '../constants/Fonts';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
 import { showAlert, showError } from '../utils/alert';
 
-interface OTPVerificationScreenProps {
+interface OTPVerificationPopupProps {
+  visible: boolean;
   phoneNumber: string;
   role: 'user' | 'technician';
   onVerificationSuccess: (token: string, userId: number, role: string) => void;
-  onBack: () => void;
+  onClose: () => void;
 }
 
-export default function OTPVerificationScreen({ phoneNumber, role, onVerificationSuccess, onBack }: OTPVerificationScreenProps) {
+// Figma Design Colors
+const figmaColors = {
+  background: '#E6EFF7',       // Blue- Primary/10
+  cardBackground: '#FFFFFF',
+  iconCircle: '#D6B3E1',       // Purple/20
+  iconColor: '#5E0BA1',        // Purple/70
+  titleBlue: '#1A6DB4',        // Blue- Primary/50
+  textDark: '#2D2D2D',
+  buttonBlue: '#005DAC',       // Blue- Primary/60
+  buttonGreen: '#22C55E',      // Success green
+  buttonRed: '#EF4444',        // Error red
+  linkNavy: '#003867',         // Blue- Primary/100
+  resendPurple: '#5E0BA1',     // Purple/70
+  otpBackground: '#FFF2CF',    // Amber/10
+  otpBorder: '#FFB703',        // Amber/60
+  overlay: 'rgba(0, 0, 0, 0.5)',
+};
+
+export default function OTPVerificationPopup({ 
+  visible, 
+  phoneNumber, 
+  role, 
+  onVerificationSuccess, 
+  onClose 
+}: OTPVerificationPopupProps) {
   const { t, i18n } = useTranslation();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, theme } = useTheme();
+  const isDarkMode = theme === 'dark';
   
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   
@@ -43,32 +71,134 @@ export default function OTPVerificationScreen({ phoneNumber, role, onVerificatio
 
   const IS_WEB = Platform.OS === 'web';
   const IS_LARGE_WEB = IS_WEB && screenWidth >= 1024;
-  const shouldRenderMobile = Platform.OS !== 'web' || !IS_LARGE_WEB;
 
+  // 4-digit OTP
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'loading' | 'success' | 'navigating' | 'error'>('idle');
+  const [typewriterText, setTypewriterText] = useState('');
   const inputRefs = useRef<(RNTextInput | null)[]>([]);
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const buttonColorAnim = useRef(new Animated.Value(0)).current; // 0 = blue, 1 = green, 2 = red
+  const buttonScaleAnim = useRef(new Animated.Value(1)).current;
+  const buttonShakeAnim = useRef(new Animated.Value(0)).current;
+  const keyboardOffsetAnim = useRef(new Animated.Value(0)).current; // For keyboard avoidance
+
+  // Pending success data to close popup after animation
+  const pendingSuccessData = useRef<{ token: string; userId: number; role: string } | null>(null);
+
+  // Keyboard handling for mobile
   useEffect(() => {
-    if (resendTimer > 0) {
-      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-      return () => clearTimeout(timer);
+    if (Platform.OS === 'web') return;
+
+    const keyboardWillShow = (event: KeyboardEvent) => {
+      const keyboardHeight = event.endCoordinates.height;
+      // Move popup up by half the keyboard height (adjust as needed)
+      Animated.spring(keyboardOffsetAnim, {
+        toValue: -(keyboardHeight * 0.4),
+        friction: 8,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const keyboardWillHide = () => {
+      Animated.spring(keyboardOffsetAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    // iOS uses 'keyboardWillShow/Hide', Android uses 'keyboardDidShow/Hide'
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, keyboardWillShow);
+    const hideSubscription = Keyboard.addListener(hideEvent, keyboardWillHide);
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setOtp(['', '', '', '']);
+      setResendTimer(60);
+      setCanResend(false);
+      setIsLoading(false);
+      setButtonState('idle');
+      setTypewriterText('');
+      buttonColorAnim.setValue(0);
+      buttonScaleAnim.setValue(1);
+      buttonShakeAnim.setValue(0);
+      keyboardOffsetAnim.setValue(0);
+      pendingSuccessData.current = null;
+      
+      // Animate in
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Focus first input after a short delay
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 300);
     } else {
-      setCanResend(true);
+      // Reset animations
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.9);
+      buttonColorAnim.setValue(0);
+      buttonScaleAnim.setValue(1);
+      buttonShakeAnim.setValue(0);
+      keyboardOffsetAnim.setValue(0);
     }
-  }, [resendTimer]);
+  }, [visible]);
 
   useEffect(() => {
-    // Auto-verify when all 4 digits are entered
-    if (otp.every(digit => digit !== '') && otp.join('').length === 4) {
-      const timer = setTimeout(() => {
-        handleVerify();
-      }, 100);
+    if (visible && resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
       return () => clearTimeout(timer);
+    } else if (resendTimer === 0) {
+      setCanResend(true);
     }
-  }, [otp]);
+  }, [resendTimer, visible]);
+
+  useEffect(() => {
+    // Auto-verify instantly when all 4 digits are entered
+    if (visible && otp.every(digit => digit !== '') && otp.join('').length === 4 && buttonState === 'idle') {
+      handleVerify();
+    }
+  }, [otp, visible, buttonState]);
+
+  // Mask phone number for display
+  const getMaskedPhone = () => {
+    if (phoneNumber.length >= 4) {
+      const lastFour = phoneNumber.slice(-4);
+      return `+966 *****${lastFour}`;
+    }
+    return phoneNumber;
+  };
 
   const handleOTPChange = (text: string, index: number) => {
     if (text.length > 1) {
@@ -103,6 +233,108 @@ export default function OTPVerificationScreen({ phoneNumber, role, onVerificatio
     }
   };
 
+  // Typewriter animation function
+  const animateTypewriter = (text: string, onComplete: () => void) => {
+    setTypewriterText('');
+    let currentIndex = 0;
+    
+    const typeNextChar = () => {
+      if (currentIndex < text.length) {
+        setTypewriterText(text.substring(0, currentIndex + 1));
+        currentIndex++;
+        setTimeout(typeNextChar, 50); // 50ms per character
+      } else {
+        // Wait a moment after finishing, then complete
+        setTimeout(onComplete, 500);
+      }
+    };
+    
+    typeNextChar();
+  };
+
+  const animateButtonSuccess = (data: { token: string; userId: number; role: string }) => {
+    setButtonState('success');
+    pendingSuccessData.current = data;
+    
+    // Set color directly to green (no animation through intermediate colors)
+    buttonColorAnim.setValue(1);
+    
+    // Bounce effect
+    Animated.sequence([
+      Animated.spring(buttonScaleAnim, {
+        toValue: 1.08,
+        friction: 3,
+        tension: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonScaleAnim, {
+        toValue: 1,
+        friction: 4,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // After showing "Verified!", start typewriter animation
+      setTimeout(() => {
+        setButtonState('navigating');
+        const navigatingText = t('Navigating to home...');
+        animateTypewriter(navigatingText, () => {
+          // After typewriter finishes, proceed with login
+          if (pendingSuccessData.current) {
+            onVerificationSuccess(
+              pendingSuccessData.current.token,
+              pendingSuccessData.current.userId,
+              pendingSuccessData.current.role
+            );
+          }
+        });
+      }, 200);
+    });
+  };
+
+  const animateButtonError = () => {
+    setButtonState('error');
+    
+    // Set color directly to red (no animation through green)
+    buttonColorAnim.setValue(2);
+    
+    // Shake and scale animations
+    Animated.parallel([
+      // Shake animation
+      Animated.sequence([
+        Animated.timing(buttonShakeAnim, { toValue: 12, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: -12, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: 3, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: -3, duration: 50, useNativeDriver: true }),
+        Animated.timing(buttonShakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      ]),
+      // Scale pulse
+      Animated.sequence([
+        Animated.timing(buttonScaleAnim, {
+          toValue: 0.92,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(buttonScaleAnim, {
+          toValue: 1,
+          friction: 4,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // Wait then set back to blue directly
+      setTimeout(() => {
+        buttonColorAnim.setValue(0);
+        setButtonState('idle');
+      }, 1200);
+    });
+  };
+
   const handleVerify = async () => {
     const otpCode = otp.join('');
     if (otpCode.length !== 4) {
@@ -111,6 +343,30 @@ export default function OTPVerificationScreen({ phoneNumber, role, onVerificatio
     }
 
     setIsLoading(true);
+    setButtonState('loading');
+    
+    // Store the loading animation reference so we can stop it
+    const loadingAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(buttonScaleAnim, {
+          toValue: 0.98,
+          duration: 400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonScaleAnim, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loadingAnimation.start();
+    
+    let isSuccess = false;
+    let successData: { token: string; userId: number; role: string } | null = null;
+    
     try {
       const url = buildApiUrl(API_ENDPOINTS.AUTH.VERIFY_OTP);
       const response = await fetch(url, {
@@ -132,12 +388,34 @@ export default function OTPVerificationScreen({ phoneNumber, role, onVerificatio
 
       const data = await response.json();
       await storage.saveAuthData(data.token, data.user.role, data.user.id, '');
-      showAlert(t('Account verified successfully!'));
-      onVerificationSuccess(data.token, data.user.id, data.user.role);
+      
+      isSuccess = true;
+      successData = { token: data.token, userId: data.user.id, role: data.user.role };
+      
     } catch (error: any) {
-      showError(error.message || t('Invalid OTP code'));
-    } finally {
-      setIsLoading(false);
+      isSuccess = false;
+    }
+    
+    // Stop loading animation and reset scale
+    loadingAnimation.stop();
+    buttonScaleAnim.setValue(1);
+    setIsLoading(false);
+    
+    // Delay to ensure clean transition before showing result
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    if (isSuccess && successData) {
+      // Animate to green and then close
+      animateButtonSuccess(successData);
+    } else {
+      // Animate to red then back to blue
+      animateButtonError();
+      
+      // Clear OTP on error
+      setOtp(['', '', '', '']);
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 1600);
     }
   };
 
@@ -174,321 +452,384 @@ export default function OTPVerificationScreen({ phoneNumber, role, onVerificatio
     }
   };
 
-  if (shouldRenderMobile) {
-    return (
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Image
-              source={require('../../assets/bonyad-logo.svg')}
-              style={styles.logo}
-              contentFit="contain"
-            />
-            <Text style={[styles.title, { color: colors.text }]}>{t('Enter Verification Code')}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {t('We sent a code to')} {phoneNumber}
-            </Text>
-          </View>
+  const handleClose = () => {
+    // Animate out then close
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
 
-          {/* OTP Inputs */}
-          <View style={styles.otpContainer}>
-            {otp.map((digit, index) => (
-              <RNTextInput
-                key={index}
-                ref={(ref) => {
-                  if (ref) inputRefs.current[index] = ref;
-                }}
-                style={[styles.otpInput, { backgroundColor: colors.cardBackground, borderColor: colors.border, color: colors.text }]}
-                value={digit}
-                onChangeText={(text) => handleOTPChange(text, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                keyboardType="number-pad"
-                maxLength={1}
-                textAlign="center"
-                selectTextOnFocus
-              />
-            ))}
-          </View>
+  // Interpolate button color with smoother transitions
+  const buttonBackgroundColor = buttonColorAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [
+      isDarkMode ? colors.primary : figmaColors.buttonBlue,
+      figmaColors.buttonGreen,
+      figmaColors.buttonRed,
+    ],
+  });
 
-          {/* Verify Button */}
-          <Button
-            mode="contained"
-            onPress={handleVerify}
-            disabled={otp.join('').length !== 4 || isLoading}
-            style={[styles.verifyButton, { backgroundColor: colors.primary }]}
-            contentStyle={styles.verifyButtonContent}
-            loading={isLoading}
-          >
-            {isLoading ? t('Verifying...') : t('Verify')}
-          </Button>
+  // Get button text based on state
+  const getButtonText = () => {
+    switch (buttonState) {
+      case 'success':
+        return t('Verified!');
+      case 'navigating':
+        return typewriterText || '|'; // Show cursor if empty
+      case 'error':
+        return t('Failed');
+      default:
+        return t('Verify');
+    }
+  };
 
-          {/* Resend OTP */}
-          <View style={styles.resendContainer}>
-            <Text style={[styles.resendText, { color: colors.textSecondary }]}>
-              {t("Didn't receive code?")}
-            </Text>
-            <TouchableOpacity
-              onPress={handleResend}
-              disabled={!canResend || isLoading}
-              style={[styles.resendButton, !canResend && styles.resendButtonDisabled]}
-            >
-              <Text style={[styles.resendButtonText, { color: canResend ? colors.primary : colors.textTertiary }]}>
-                {canResend ? t('Resend') : `${t('Resend code in')} ${resendTimer}s`}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    );
-  }
+  // Get button icon based on state
+  const getButtonIcon = () => {
+    switch (buttonState) {
+      case 'success':
+        return <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />;
+      case 'navigating':
+        return null; // No icon during typewriter animation
+      case 'error':
+        return <Ionicons name="close-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />;
+      default:
+        return null;
+    }
+  };
 
-  // Desktop layout - same as mobile for consistency
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={handleClose}
+      statusBarTranslucent
     >
-      <ScrollView
-        contentContainerStyle={[styles.desktopScrollContent, { paddingTop: insets.top }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.desktopFormContainer, { backgroundColor: colors.cardBackground }]}>
-          {/* Header */}
-          <View style={styles.desktopHeader}>
-            <TouchableOpacity onPress={onBack} style={styles.desktopBackButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Image
-              source={require('../../assets/bonyad-logo.svg')}
-              style={styles.desktopLogo}
-              contentFit="contain"
-            />
-            <Text style={[styles.desktopTitle, { color: colors.text }]}>{t('Enter Verification Code')}</Text>
-            <Text style={[styles.desktopSubtitle, { color: colors.textSecondary }]}>
-              {t('We sent a code to')} {phoneNumber}
-            </Text>
-          </View>
-
-          {/* OTP Inputs */}
-          <View style={styles.desktopOtpContainer}>
-            {otp.map((digit, index) => (
-              <RNTextInput
-                key={index}
-                ref={(ref) => {
-                  if (ref) inputRefs.current[index] = ref;
-                }}
-                style={[styles.desktopOtpInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-                value={digit}
-                onChangeText={(text) => handleOTPChange(text, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                keyboardType="number-pad"
-                maxLength={1}
-                textAlign="center"
-                selectTextOnFocus
-              />
-            ))}
-          </View>
-
-          {/* Verify Button */}
-          <Button
-            mode="contained"
-            onPress={handleVerify}
-            disabled={otp.join('').length !== 4 || isLoading}
-            style={[styles.desktopVerifyButton, { backgroundColor: colors.primary }]}
-            contentStyle={styles.desktopVerifyButtonContent}
-            loading={isLoading}
-          >
-            {isLoading ? t('Verifying...') : t('Verify')}
-          </Button>
-
-          {/* Resend OTP */}
-          <View style={styles.desktopResendContainer}>
-            <Text style={[styles.desktopResendText, { color: colors.textSecondary }]}>
-              {t("Didn't receive code?")}
-            </Text>
-            <TouchableOpacity
-              onPress={handleResend}
-              disabled={!canResend || isLoading}
-              style={[styles.desktopResendButton, !canResend && styles.desktopResendButtonDisabled]}
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <Animated.View 
+              style={[
+                styles.popupCard,
+                IS_LARGE_WEB && styles.popupCardDesktop,
+                {
+                  backgroundColor: isDarkMode ? colors.cardBackground : figmaColors.cardBackground,
+                  transform: [
+                    { scale: scaleAnim },
+                    { translateY: keyboardOffsetAnim },
+                  ],
+                }
+              ]}
             >
-              <Text style={[styles.desktopResendButtonText, { color: canResend ? colors.primary : colors.textTertiary }]}>
-                {canResend ? t('Resend') : `${t('Resend code in')} ${resendTimer}s`}
+              {/* Close Button */}
+              <TouchableOpacity 
+                onPress={handleClose} 
+                style={styles.closeButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons 
+                  name="close" 
+                  size={24} 
+                  color={isDarkMode ? colors.textSecondary : figmaColors.textDark} 
+                />
+              </TouchableOpacity>
+
+              {/* Mail Icon */}
+              <View style={styles.iconContainer}>
+                <View style={[styles.iconCircle, { backgroundColor: isDarkMode ? colors.primary + '30' : figmaColors.iconCircle }]}>
+                  <Ionicons name="mail-outline" size={IS_LARGE_WEB ? 40 : 32} color={isDarkMode ? colors.primary : figmaColors.iconColor} />
+                </View>
+              </View>
+
+              {/* Title */}
+              <View style={styles.titleContainer}>
+                <Text style={[styles.title, IS_LARGE_WEB && styles.titleDesktop, { color: isDarkMode ? colors.primary : figmaColors.titleBlue }]}>
+                  {t('Verify Your Identity')}
+                </Text>
+                <Text style={[styles.subtitle, IS_LARGE_WEB && styles.subtitleDesktop, { color: isDarkMode ? colors.textSecondary : figmaColors.textDark }]}>
+                  {t("We've sent a 4-digit code to")} {getMaskedPhone()}
+                </Text>
+              </View>
+
+              {/* OTP Label */}
+              <Text style={[styles.otpLabel, IS_LARGE_WEB && styles.otpLabelDesktop, { color: isDarkMode ? colors.text : figmaColors.textDark }]}>
+                {t('Enter your OTP code')}
               </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+              {/* OTP Inputs */}
+              <View style={styles.otpContainer}>
+                {otp.map((digit, index) => (
+                  <RNTextInput
+                    key={index}
+                    ref={(ref) => {
+                      if (ref) inputRefs.current[index] = ref;
+                    }}
+                    style={[
+                      styles.otpInput,
+                      IS_LARGE_WEB && styles.otpInputDesktop,
+                      {
+                        backgroundColor: isDarkMode ? colors.surface : figmaColors.otpBackground,
+                        borderColor: isDarkMode ? colors.border : figmaColors.otpBorder,
+                        color: isDarkMode ? colors.text : figmaColors.textDark,
+                      }
+                    ]}
+                    value={digit}
+                    onChangeText={(text) => handleOTPChange(text, index)}
+                    onKeyPress={(e) => handleKeyPress(e, index)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    selectTextOnFocus
+                    editable={!isLoading && buttonState === 'idle'}
+                  />
+                ))}
+              </View>
+
+              {/* Verify Button with Animated Background, Scale and Shake */}
+              <Animated.View
+                style={[
+                  styles.verifyButton,
+                  IS_LARGE_WEB && styles.verifyButtonDesktop,
+                  {
+                    backgroundColor: buttonBackgroundColor,
+                    opacity: (otp.join('').length !== 4 && buttonState === 'idle') ? 0.6 : 1,
+                    transform: [
+                      { scale: buttonScaleAnim },
+                      { translateX: buttonShakeAnim },
+                    ],
+                  }
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={handleVerify}
+                  disabled={otp.join('').length !== 4 || isLoading || buttonState !== 'idle'}
+                  style={styles.verifyButtonTouchable}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <View style={styles.buttonContent}>
+                      {getButtonIcon()}
+                      <Text style={[styles.verifyButtonText, IS_LARGE_WEB && styles.verifyButtonTextDesktop]}>
+                        {getButtonText()}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+
+              {/* Resend OTP */}
+              <View style={styles.resendContainer}>
+                <Text style={[styles.resendText, IS_LARGE_WEB && styles.resendTextDesktop, { color: isDarkMode ? colors.textSecondary : figmaColors.linkNavy }]}>
+                  {t("Didn't Receive Code?")}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleResend}
+                  disabled={!canResend || isLoading}
+                >
+                  <Text 
+                    style={[
+                      styles.resendLink,
+                      IS_LARGE_WEB && styles.resendLinkDesktop,
+                      { 
+                        color: canResend 
+                          ? (isDarkMode ? colors.primary : figmaColors.resendPurple)
+                          : (isDarkMode ? colors.textTertiary : '#999'),
+                      }
+                    ]}
+                  >
+                    {canResend ? t('Resend') : `${t('Resend')} (${resendTimer}s)`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </Animated.View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    backgroundColor: figmaColors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
+  popupCard: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+    position: 'relative',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.25)',
+      } as any,
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 16,
+      },
+    }),
   },
-  backButton: {
+  popupCardDesktop: {
+    maxWidth: 500,
+    padding: 32,
+    borderRadius: 12,
+  },
+  closeButton: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    padding: 8,
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    padding: 4,
   },
-  logo: {
-    width: 80,
-    height: 80,
+  iconContainer: {
+    alignItems: 'center',
     marginBottom: 16,
+    marginTop: 8,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: UIFontSizes.cardTitle, // Centralized: 22px
     fontWeight: 'bold',
-    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: FontFamily.heading,
+  },
+  titleDesktop: {
+    fontSize: UIFontSizes.sectionTitle, // Centralized: 26px
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: UIFontSizes.body, // Centralized: 16px
     textAlign: 'center',
+    fontFamily: FontFamily.body,
+  },
+  subtitleDesktop: {
+    fontSize: UIFontSizes.bodyLarge, // Centralized: 18px
+  },
+  otpLabel: {
+    fontSize: UIFontSizes.otpLabel, // Centralized: 18px
+    marginBottom: 12,
+    textAlign: 'center',
+    fontFamily: FontFamily.body,
+  },
+  otpLabelDesktop: {
+    fontSize: UIFontSizes.otpLabel, // Centralized: 18px
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 32,
+    justifyContent: 'center',
     gap: 12,
+    marginBottom: 24,
   },
   otpInput: {
     width: 60,
     height: 60,
-    borderRadius: 12,
-    borderWidth: 2,
-    fontSize: 24,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    fontSize: UIFontSizes.otpInput, // Centralized: 28px
     fontWeight: 'bold',
     textAlign: 'center',
     textAlignVertical: 'center',
-    padding: 0,
-    margin: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    fontFamily: FontFamily.primary,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+        lineHeight: 60,
+      } as any,
+      default: {
+        lineHeight: 32,
+      },
+    }),
+  },
+  otpInputDesktop: {
+    width: 74,
+    height: 74,
+    fontSize: UIFontSizes.otpInput,
+    borderRadius: 12,
+    ...Platform.select({
+      web: {
+        lineHeight: 74,
+      } as any,
+      default: {
+        lineHeight: 36,
+      },
+    }),
   },
   verifyButton: {
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: 10,
+    marginBottom: 20,
+    overflow: 'hidden',
   },
-  verifyButtonContent: {
-    paddingVertical: 8,
+  verifyButtonDesktop: {
+    borderRadius: 8,
+  },
+  verifyButtonTouchable: {
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: UIFontSizes.buttonMedium, // Centralized: 18px
+    fontWeight: '600',
+    fontFamily: FontFamily.button,
+  },
+  verifyButtonTextDesktop: {
+    fontSize: UIFontSizes.buttonMedium, // Centralized: 20px
   },
   resendContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 4,
   },
   resendText: {
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: UIFontSizes.body, // Centralized: 16px
+    fontWeight: '300',
+    fontFamily: FontFamily.body,
   },
-  resendButton: {
-    padding: 8,
+  resendTextDesktop: {
+    fontSize: UIFontSizes.bodyLarge, // Centralized: 18px
   },
-  resendButtonDisabled: {
-    opacity: 0.5,
-  },
-  resendButtonText: {
-    fontSize: 14,
+  resendLink: {
+    fontSize: UIFontSizes.link, // Centralized: 16px
     fontWeight: '600',
+    textDecorationLine: 'underline',
+    fontFamily: FontFamily.body,
   },
-  // Desktop styles
-  desktopScrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  desktopFormContainer: {
-    width: '100%',
-    maxWidth: 500,
-    borderRadius: 16,
-    padding: 40,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-      } as any,
-    }),
-  },
-  desktopHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
-    position: 'relative',
-  },
-  desktopBackButton: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    padding: 8,
-  },
-  desktopLogo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
-  },
-  desktopTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  desktopSubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  desktopOtpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 40,
-    gap: 16,
-  },
-  desktopOtpInput: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-    borderWidth: 2,
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  desktopVerifyButton: {
-    borderRadius: 12,
-    marginBottom: 32,
-  },
-  desktopVerifyButtonContent: {
-    paddingVertical: 12,
-  },
-  desktopResendContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  desktopResendText: {
-    fontSize: 15,
-    marginBottom: 8,
-  },
-  desktopResendButton: {
-    padding: 8,
-  },
-  desktopResendButtonDisabled: {
-    opacity: 0.5,
-  },
-  desktopResendButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+  resendLinkDesktop: {
+    fontSize: UIFontSizes.bodyLarge, // Centralized: 18px
   },
 });

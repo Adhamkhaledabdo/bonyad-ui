@@ -19,13 +19,14 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { FontFamily, UIFontSizes } from '../constants/Fonts';
 import { storage } from '../utils/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Button, Card, Surface, Portal, List, Divider } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
-import { showError, showAlert } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 import AnimatedRoleToggle from '../components/AnimatedRoleToggle';
 import { PhoneInput, NameInput, EmailInput, PasswordInput, TextAreaInput, CustomPicker, CustomTextInput, UploadButton, SelectedChips, CustomCheckbox } from '../components/CustomInput';
 import ThemeToggle from '../components/ThemeToggle';
@@ -49,6 +50,9 @@ export default function SignupScreen({
   const { colors, theme } = useTheme();
   const isDarkMode = theme === 'dark';
   const insets = useSafeAreaInsets();
+  
+  // Alert Popup Hook
+  const { alertState, showError, showAlert, showWarning, showAlertWithCountdown, hideAlert } = useAlertPopup();
 
   // Responsive state - updates on window resize
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -329,7 +333,7 @@ export default function SignupScreen({
   const handleSignup = async () => {
     // Check terms first and show alert
     if (!agreedToTerms) {
-      showAlert(t('Please agree to terms and conditions'));
+      showWarning(t('Please agree to terms and conditions'), t('Required'));
       return;
     }
 
@@ -337,33 +341,33 @@ export default function SignupScreen({
     setPhone(formattedPhone);
 
     if (!flags.phoneValid) {
-      showError(t('signup.validation.phone'));
+      showError(t('signup.validation.phone'), t('validation_failed'));
       return;
     }
 
     if (!flags.nameValid) {
-      showError(t('signup.validation.name'));
+      showError(t('signup.validation.name'), t('validation_failed'));
       return;
     }
 
     if (!flags.passwordValid) {
-      showError(t('signup.validation.password.requirements'));
+      showError(t('signup.validation.password.requirements'), t('validation_failed'));
       return;
     }
 
     if (!flags.confirmValid) {
-      showError(t('signup.validation.confirm'));
+      showError(t('signup.validation.confirm'), t('validation_failed'));
       return;
     }
 
     // Technician-specific validation
     if (selectedRole === 'technician') {
       if (!flags.emailValid) {
-        showError(t('signup.validation.email'));
+        showError(t('signup.validation.email'), t('validation_failed'));
         return;
       }
       if (selectedRegions.length === 0) {
-        showError(t('Please select at least one region'));
+        showError(t('Please select at least one region'), t('validation_failed'));
         return;
       }
     }
@@ -382,7 +386,7 @@ export default function SignupScreen({
       }
     } catch (error) {
       console.error('❌ Signup error:', error);
-      showError(t('network_error'));
+      showError(t('network_error'), t('Error'));
       setIsLoading(false);
     }
   };
@@ -460,6 +464,7 @@ export default function SignupScreen({
       // Handle error response
       setIsLoading(false);
       let errorMessage = t('validation_failed');
+      let errorCode = '';
       
       try {
         const contentType = response.headers.get('content-type');
@@ -469,7 +474,34 @@ export default function SignupScreen({
         if (contentType && contentType.includes('application/json')) {
           try {
             const data = JSON.parse(responseText);
-            errorMessage = data.message || data.error || t('validation_failed');
+            errorCode = data.errorCode || '';
+            const isArabic = i18n.language.startsWith('ar');
+            
+            // Existing account (verified or pending) -> show countdown and redirect to login
+            if (errorCode === 'USER_ALREADY_EXISTS' || errorCode === 'USER_ALREADY_EXISTS_PENDING') {
+              console.log('⚠️ Account already exists - showing countdown to login');
+              const message = data.messageEn && data.messageAr 
+                ? (isArabic ? data.messageAr : data.messageEn)
+                : t('Account already exists. Please sign in instead.');
+              const countdownText = isArabic ? 'الانتقال إلى تسجيل الدخول خلال' : 'Navigating to login in';
+              
+              showAlertWithCountdown(
+                t('validation_failed'),
+                message,
+                'info',
+                3,
+                countdownText,
+                () => onNavigateToLogin()
+              );
+              return;
+            }
+            
+            // Check for multilingual messages (messageEn/messageAr)
+            if (data.messageEn && data.messageAr) {
+              errorMessage = isArabic ? data.messageAr : data.messageEn;
+            } else {
+              errorMessage = data.message || data.error || t('validation_failed');
+            }
           } catch (jsonError) {
             // If JSON parsing fails, use the text response
             errorMessage = responseText || t('validation_failed');
@@ -483,7 +515,7 @@ export default function SignupScreen({
         errorMessage = t('validation_failed');
       }
       
-      showError(errorMessage);
+      showError(errorMessage, t('validation_failed'));
     }
   };
 
@@ -582,6 +614,7 @@ export default function SignupScreen({
       // Handle error response
       setIsLoading(false);
       let errorMessage = t('validation_failed');
+      let errorCode = '';
       
       try {
         const contentType = response.headers.get('content-type');
@@ -591,7 +624,34 @@ export default function SignupScreen({
         if (contentType && contentType.includes('application/json')) {
           try {
             const data = JSON.parse(responseText);
-            errorMessage = data.message || data.error || t('validation_failed');
+            errorCode = data.errorCode || '';
+            const isArabic = i18n.language.startsWith('ar');
+            
+            // Existing account (verified or pending) -> show countdown and redirect to login
+            if (errorCode === 'USER_ALREADY_EXISTS' || errorCode === 'USER_ALREADY_EXISTS_PENDING') {
+              console.log('⚠️ Account already exists - showing countdown to login');
+              const message = data.messageEn && data.messageAr 
+                ? (isArabic ? data.messageAr : data.messageEn)
+                : t('Account already exists. Please sign in instead.');
+              const countdownText = isArabic ? 'الانتقال إلى تسجيل الدخول خلال' : 'Navigating to login in';
+              
+              showAlertWithCountdown(
+                t('validation_failed'),
+                message,
+                'info',
+                3,
+                countdownText,
+                () => onNavigateToLogin()
+              );
+              return;
+            }
+            
+            // Check for multilingual messages (messageEn/messageAr)
+            if (data.messageEn && data.messageAr) {
+              errorMessage = isArabic ? data.messageAr : data.messageEn;
+            } else {
+              errorMessage = data.message || data.error || t('validation_failed');
+            }
           } catch (jsonError) {
             // If JSON parsing fails, use the text response
             errorMessage = responseText || t('validation_failed');
@@ -605,10 +665,19 @@ export default function SignupScreen({
         errorMessage = t('validation_failed');
       }
       
-      showError(errorMessage);
+      showError(errorMessage, t('validation_failed'));
     }
   };
 
+
+  // Figma Mobile Design Colors
+  const figmaMobileColors = {
+    background: '#FFFFFF',
+    titleBlue: '#1A6DB4',        // Title text
+    textDark: '#2D2D2D',         // Subtitle text
+    buttonBlue: '#005DAC',       // Create Account button
+    linkNavy: '#003867',         // Login link
+  };
 
   // Render Android style (always mobile) OR Web small/medium screen style
   const shouldRenderMobile = Platform.OS !== 'web' || IS_SMALL_WEB || IS_MEDIUM_WEB;
@@ -621,19 +690,19 @@ export default function SignupScreen({
     console.log('✅ Rendering MOBILE layout');
     return (
       <KeyboardAvoidingView 
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1, backgroundColor: isDarkMode ? colors.background : figmaMobileColors.background }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={[styles.mainContainer, { flex: 1, paddingTop: Platform.OS === 'web' ? 0 : insets.top, paddingBottom: Platform.OS === 'web' ? 0 : insets.bottom }]}>
           <ScrollView 
-            style={[styles.container, { backgroundColor: colors.background }]} 
+            style={[styles.container, { backgroundColor: isDarkMode ? colors.background : figmaMobileColors.background }]} 
             contentContainerStyle={[styles.scrollContent, Platform.OS === 'web' && styles.webScrollContent]}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            <View style={[styles.contentWrapper, Platform.OS === 'web' && { backgroundColor: colors.cardBackground }]}>
+            <View style={[styles.contentWrapper, { backgroundColor: isDarkMode ? colors.cardBackground : figmaMobileColors.background }]}>
               {/* Language Toggle at Top */}
               <View style={styles.languageToggleTop}>
                 <TouchableOpacity 
@@ -643,33 +712,51 @@ export default function SignupScreen({
                   <Ionicons 
                     name="globe-outline" 
                     size={18} 
-                    color={colors.primary} 
+                    color={isDarkMode ? colors.primary : figmaMobileColors.buttonBlue} 
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={[styles.langText, { color: colors.primary, fontWeight: '600' }]}>
+                  <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaMobileColors.buttonBlue, fontWeight: '600' }]}>
                     {i18n.language === 'ar' ? 'AR' : 'EN'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Image
-            source={require('../../assets/bonyad-logo.svg')}
-            style={styles.logo}
-            contentFit="contain"
-          />
-          <Text style={[styles.welcomeTitle, { color: colors.text }]}>{t('Create Account')}</Text>
-          <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>{t('Sign up to get started')}</Text>
-        </View>
+              {/* Logo Section - Figma Style: Cube + Text */}
+              <View style={styles.mobileLogoSection}>
+                <View style={styles.mobileLogoContainer}>
+                  <Image
+                    source={require('../../assets/bonyad-cube-logo.svg')}
+                    style={styles.mobileCubeLogo}
+                    contentFit="contain"
+                  />
+                  <View style={styles.mobileLogoTextContainer}>
+                    <Text style={[styles.mobileLogoText, { color: isDarkMode ? colors.text : figmaMobileColors.buttonBlue, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }]}>
+                      Bonyad
+                    </Text>
+                    <Text style={[styles.mobileLogoArabic, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.buttonBlue, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }]}>
+                      بُنيـــاد
+                    </Text>
+                  </View>
+                </View>
+              </View>
 
-      {/* Role Toggle - Enhanced with Animation */}
-      <View style={styles.roleToggleWrapper}>
-        <AnimatedRoleToggle
-          selectedRole={selectedRole}
-          onRoleChange={setSelectedRole}
-        />
-      </View>
+              {/* Welcome Section - Figma Style */}
+              <View style={styles.mobileWelcomeSection}>
+                <Text style={[styles.mobileWelcomeTitle, { color: isDarkMode ? colors.text : figmaMobileColors.titleBlue }]}>
+                  {t('Create an Account')}
+                </Text>
+                <Text style={[styles.mobileWelcomeSubtitle, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.textDark }]}>
+                  {t('Manage your properties and services.')}
+                </Text>
+              </View>
+
+              {/* Role Toggle - Enhanced with Animation */}
+              <View style={styles.roleToggleWrapper}>
+                <AnimatedRoleToggle
+                  selectedRole={selectedRole}
+                  onRoleChange={setSelectedRole}
+                />
+              </View>
 
       {/* Phone Input */}
       <PhoneInput
@@ -1051,49 +1138,85 @@ export default function SignupScreen({
         linkText={t('Terms and Conditions')}
       />
 
-        {/* Register Button */}
-        <Button
-          mode="contained"
-          onPress={handleSignup}
-          disabled={isLoading}
-          style={[
-            styles.registerButton, 
-            !agreedToTerms && styles.registerButtonDisabled, 
-            { backgroundColor: agreedToTerms ? colors.primary : '#9E9E9E' } // Gray when terms not agreed
-          ]}
-          contentStyle={styles.registerButtonContent}
-          loading={isLoading}
-        >
-          {t('Create Account')}
-        </Button>
+              {/* Create Account Button - Figma Style */}
+              <TouchableOpacity
+                onPress={handleSignup}
+                disabled={isLoading || !agreedToTerms}
+                style={[
+                  styles.mobileRegisterButton,
+                  { 
+                    backgroundColor: agreedToTerms 
+                      ? (isDarkMode ? colors.primary : figmaMobileColors.buttonBlue)
+                      : '#9E9E9E' 
+                  },
+                  (isLoading || !agreedToTerms) && { opacity: 0.7 }
+                ]}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.mobileRegisterButtonText}>
+                    {t('Create Account')}
+                  </Text>
+                )}
+              </TouchableOpacity>
 
+              {/* Login Link - Figma Style */}
+              <View style={[
+                styles.mobileLoginLinkContainer,
+                { flexDirection: i18n.language === 'ar' ? 'row-reverse' : 'row' }
+              ]}>
+                <Text style={[styles.mobileLoginLinkText, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.linkNavy }]}>
+                  {t('Already have an account?')}
+                </Text>
+                <TouchableOpacity onPress={onNavigateToLogin}>
+                  <Text style={[styles.mobileLoginLinkAction, { color: isDarkMode ? colors.primary : figmaMobileColors.linkNavy }]}>
+                    {t('Login')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-        {/* Login Link */}
-        <Button 
-          mode="text" 
-          onPress={onNavigateToLogin}
-          labelStyle={[styles.loginText, { color: colors.textSecondary }]}
-        >
-          {t('Already have an account?')} <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('Login')}</Text>
-        </Button>
-
-        {/* Theme Toggle */}
-        <ThemeToggle />
-          </View>
+              {/* Theme Toggle */}
+              <ThemeToggle />
+            </View>
+          </ScrollView>
+        </View>
           
+        {/* Alert Popup */}
+        <AlertPopup
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          countdown={alertState.countdown}
+          onClose={hideAlert}
+        />
+      </KeyboardAvoidingView>
+    );
+  }
 
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      );
-    }
-
-  // Render desktop layout (large screens) - Simplified version with same form structure
+  // Render desktop layout (large screens) - Figma Design Implementation
   console.log('🖥️ Rendering DESKTOP layout (Web large screen)');
   console.log('🎨 Desktop Layout Branding Panel:', { IS_LARGE_WEB, willShow: IS_LARGE_WEB });
   
+  // Figma Design Colors
+  const figmaColors = {
+    background: '#E6EFF7',       // Light blue background
+    cardBackground: '#FFFFFF',   // White card
+    primaryBlue: '#005DAC',      // Primary blue for buttons
+    titleBlue: '#1A6DB4',        // Title text blue
+    textDark: '#2D2D2D',         // Dark text
+    textNavy: '#003867',         // Navy text for inputs
+    inputBg: '#F0F0F0',          // Input background
+    inputBorder: '#80AED6',      // Input border
+    amberActive: '#FFB703',      // Amber for active toggle
+    amberBg: '#FFF2CF',          // Light amber background
+  };
+  
   return (
-    <View style={[styles.desktopContainer, { backgroundColor: colors.background }]}>
+    <View style={[styles.desktopContainer, { backgroundColor: isDarkMode ? colors.background : figmaColors.background }]}>
       {/* Language Toggle at Top Right */}
       <View style={styles.desktopLanguageToggle}>
         <TouchableOpacity 
@@ -1103,279 +1226,178 @@ export default function SignupScreen({
           <Ionicons 
             name="globe-outline" 
             size={18} 
-            color={colors.primary} 
+            color={isDarkMode ? colors.primary : figmaColors.primaryBlue} 
             style={{ marginRight: 6 }}
           />
-          <Text style={[styles.langText, { color: colors.primary, fontWeight: '600' }]}>
+          <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaColors.primaryBlue, fontWeight: '600' }]}>
             {i18n.language === 'ar' ? 'AR' : 'EN'}
           </Text>
         </TouchableOpacity>
       </View>
 
       <View style={[styles.desktopWrapper, !IS_LARGE_WEB && styles.desktopWrapperNoBranding]}>
-        {/* Left Side - Branding (Only on large web screens >= 1024px) */}
+        {/* Left Side - Bonyad Logo & Branding (Only on large web screens >= 1024px) */}
         {IS_LARGE_WEB && (
           <Animated.View
             style={[
               styles.desktopLeftPanel,
               {
-                backgroundColor: isDarkMode ? colors.cardBackground : colors.primary,
+                backgroundColor: isDarkMode ? colors.cardBackground : figmaColors.background,
                 opacity: fadeAnim,
                 transform: [{ translateX: slideAnim }],
-                borderRightWidth: isDarkMode ? StyleSheet.hairlineWidth : 0,
-                borderRightColor: isDarkMode ? colors.border : 'transparent',
-                ...(Platform.OS === 'web'
-                  ? {
-                      boxShadow: isDarkMode
-                        ? 'inset -12px 0 32px rgba(0,0,0,0.55)'
-                        : 'inset -10px 0 30px rgba(0,0,0,0.12)',
-                    }
-                  : {}),
               },
             ]}
           >
-            <View
+            {/* Figma Layout: Cube Logo + Text Side by Side - NEVER FLIP */}
+            <Animated.View 
               style={[
-                styles.desktopLeftPanelGradient,
+                styles.desktopBranding,
                 {
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)',
-                },
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }],
+                  flexDirection: 'row', // Always LTR - logo should not flip
+                  alignItems: 'center',
+                  gap: 33, // Figma: gap-[33px]
+                }
               ]}
             >
-              <Animated.View 
-                style={[
-                  styles.desktopBranding,
-                  {
-                    opacity: fadeAnim,
-                    transform: [{ scale: scaleAnim }],
-                  }
-                ]}
-              >
+              {/* Bonyad 3D Cube Logo - Figma: 221x265px */}
+              <Image
+                source={require('../../assets/bonyad-cube-logo.svg')}
+                style={{
+                  width: 221,
+                  height: 265,
+                } as any}
+                contentFit="contain"
+              />
+              
+              {/* Brand Text Container - Figma: w-[414px], gap-[19px] */}
+              <View style={{ 
+                flexDirection: 'column', 
+                gap: 19, // Figma: gap-[19px]
+                alignItems: 'flex-start', // Always left-aligned
+                width: 414, // Figma: w-[414px]
+              }}>
+                {/* "Bonyad" Text - Figma: 96px, Extra Bold, #005DAC */}
                 <Animated.Text 
                   style={[
-                    styles.desktopBrandTitle,
                     {
                       opacity: fadeAnim,
-                      transform: [{ translateY: slideAnim }],
-                      color: isDarkMode ? colors.text : '#FFFFFF',
-                      ...Platform.select({
-                        web: {
-                          filter: blurAnim.interpolate({
-                            inputRange: [0, 8],
-                            outputRange: ['blur(0px)', 'blur(8px)'],
-                            extrapolate: 'clamp',
-                          }) as any,
-                          WebkitFilter: blurAnim.interpolate({
-                            inputRange: [0, 8],
-                            outputRange: ['blur(0px)', 'blur(8px)'],
-                            extrapolate: 'clamp',
-                          }) as any,
-                        },
-                      }),
+                      color: isDarkMode ? colors.text : figmaColors.primaryBlue,
+                      fontSize: 96, // Figma: text-[96px]
+                      fontWeight: '800', // Figma: font-extrabold
+                      letterSpacing: -1,
+                      lineHeight: 96,
+                      fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' : undefined,
                     }
                   ]}
                 >
-                  {t('Create Account')}
+                  Bonyad
                 </Animated.Text>
+                
+                {/* Arabic "بُنياد" Text - Figma: ~64px styled text, #005DAC */}
                 <Animated.Text 
                   style={[
-                    styles.desktopBrandSubtitle,
                     {
                       opacity: fadeAnim,
-                      transform: [{ translateY: slideAnim }],
-                      color: isDarkMode ? colors.textSecondary : 'rgba(255,255,255,0.85)',
+                      color: isDarkMode ? colors.textSecondary : figmaColors.primaryBlue,
+                      fontSize: 72, // Scaled to match Figma proportions
+                      fontWeight: '700',
+                      letterSpacing: 8, // Add letter spacing for Arabic styling
+                      lineHeight: 116, // Figma: h-[116px]
+                      textAlign: 'left', // Always left-aligned
+                      fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' : undefined,
                     }
                   ]}
                 >
-                  {t('Sign up to get started')}
+                  بُنيـــاد
                 </Animated.Text>
-                <View style={styles.desktopFeatures}>
-                  <Animated.View 
-                    style={[
-                      styles.desktopFeature,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateX: slideAnim }],
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.2)',
-                      }
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.desktopFeatureIcon,
-                        { backgroundColor: isDarkMode ? 'rgba(51,163,255,0.25)' : 'rgba(255,255,255,0.25)' },
-                      ]}
-                    >
-                      <Ionicons
-                        name="person-add"
-                        size={28}
-                        color={isDarkMode ? colors.primaryLight || colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <Animated.Text 
-                      style={[
-                        styles.desktopFeatureText,
-                        {
-                          opacity: fadeAnim,
-                          color: isDarkMode ? colors.text : '#FFFFFF',
-                        }
-                      ]}
-                    >
-                      {t('Easy Registration')}
-                    </Animated.Text>
-                  </Animated.View>
-                  <Animated.View 
-                    style={[
-                      styles.desktopFeature,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateX: slideAnim }],
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.2)',
-                      }
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.desktopFeatureIcon,
-                        { backgroundColor: isDarkMode ? 'rgba(51,163,255,0.25)' : 'rgba(255,255,255,0.25)' },
-                      ]}
-                    >
-                      <Ionicons
-                        name="shield-checkmark"
-                        size={28}
-                        color={isDarkMode ? colors.primaryLight || colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <Animated.Text 
-                      style={[
-                        styles.desktopFeatureText,
-                        {
-                          opacity: fadeAnim,
-                          color: isDarkMode ? colors.text : '#FFFFFF',
-                        }
-                      ]}
-                    >
-                      {t('Secure & Private')}
-                    </Animated.Text>
-                  </Animated.View>
-                  <Animated.View 
-                    style={[
-                      styles.desktopFeature,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateX: slideAnim }],
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.2)',
-                      }
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.desktopFeatureIcon,
-                        { backgroundColor: isDarkMode ? 'rgba(51,163,255,0.25)' : 'rgba(255,255,255,0.25)' },
-                      ]}
-                    >
-                      <Ionicons
-                        name="rocket"
-                        size={28}
-                        color={isDarkMode ? colors.primaryLight || colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <Animated.Text 
-                      style={[
-                        styles.desktopFeatureText,
-                        {
-                          opacity: fadeAnim,
-                          color: isDarkMode ? colors.text : '#FFFFFF',
-                        }
-                      ]}
-                    >
-                      {t('Get Started in Minutes')}
-                    </Animated.Text>
-                  </Animated.View>
-                </View>
-              </Animated.View>
-            </View>
+              </View>
+            </Animated.View>
           </Animated.View>
         )}
 
-        {/* Right Side - Signup Form (Takes full width if no branding panel) */}
-        <Animated.View 
+        {/* Right Side - Signup Form Card */}
+        <Animated.View
           style={[
-            styles.desktopRightPanel, 
-            { backgroundColor: colors.cardBackground },
+            styles.desktopRightPanel,
+            { 
+              backgroundColor: isDarkMode ? colors.background : figmaColors.background,
+              paddingHorizontal: 40,
+              paddingVertical: 40,
+            },
             !IS_LARGE_WEB && styles.desktopRightPanelFullWidth,
             {
               opacity: fadeAnim,
               transform: [{ translateX: Animated.multiply(slideAnim, -1) }],
-            }
+            },
           ]}
         >
           <ScrollView 
-            contentContainerStyle={styles.desktopFormContainer}
+            contentContainerStyle={[styles.desktopFormContainer, { justifyContent: 'center' }]}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
             bounces={false}
             style={styles.desktopScrollView}
           >
-            <Animated.View 
+            {/* White Card Container */}
+            <Animated.View
               style={[
                 styles.desktopForm,
                 {
                   opacity: fadeAnim,
                   transform: [{ scale: scaleAnim }],
-                }
+                  backgroundColor: isDarkMode ? colors.cardBackground : figmaColors.cardBackground,
+                  padding: 32,
+                  borderRadius: 8,
+                  maxWidth: 557,
+                  width: '100%',
+                  alignSelf: 'center',
+                  ...Platform.select({
+                    web: {
+                      boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)' as any,
+                    },
+                  }),
+                },
               ]}
             >
-              {/* Logo on Desktop */}
-               <Image
-                 source={require('../../assets/bonyad-logo.svg')}
-                 style={styles.desktopFormLogo as any}
-                 contentFit="contain"
-               />
-              
-              <Text style={[styles.desktopFormTitle, { color: colors.text }]}>{t('Create Account')}</Text>
-              <Text style={[styles.desktopFormSubtitle, { color: colors.textSecondary }]}>{t('Sign up to get started')}</Text>
+              {/* Welcome Header */}
+              <View style={{ alignItems: 'center', marginBottom: 24, gap: 8 }}>
+                <Text style={[styles.desktopFormTitle, { 
+                  color: isDarkMode ? colors.text : figmaColors.titleBlue, 
+                  fontSize: 24, 
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  marginBottom: 0,
+                }]}>
+                  {t('Create an Account')}
+                </Text>
+                <Text style={[styles.desktopFormSubtitle, { 
+                  color: isDarkMode ? colors.textSecondary : figmaColors.textDark, 
+                  fontSize: 16,
+                  fontWeight: '400',
+                  textAlign: 'center',
+                  marginBottom: 0,
+                }]}>
+                  {t('Manage your properties and services.')}
+                </Text>
+              </View>
 
-              {/* Role Toggle - Enhanced with Animation */}
-              <View style={styles.desktopRoleToggleWrapper}>
+              {/* Role Toggle - Enhanced with Figma Amber Colors */}
+              <View style={[styles.desktopRoleToggleWrapper, { marginBottom: 24 }]}>
                 <AnimatedRoleToggle
                   selectedRole={selectedRole}
                   onRoleChange={setSelectedRole}
                 />
               </View>
 
-              {/* Form Fields - Same as mobile but with desktop styles */}
-              <PhoneInput
-                label={t('Mobile number')}
-                value={phone}
-                onChangeText={handlePhoneChange}
-                placeholder={t('auth.placeholders.phone')}
-                autoCapitalize="none"
-                maxLength={9}
-                selectionColor={colors.primary}
-                onFocus={handleFieldFocus('phone')}
-                onBlur={handleFieldBlur('phone')}
-                style={styles.tightInputSpacing}
-              />
-              {focusedField === 'phone' && (
-                <View style={[styles.validationHintGroup, { alignItems: alignment }]}>
-                  <ValidationHintItem
-                    passed={flags.phoneValid}
-                    label={t('signup.validation.phone')}
-                    isFirst
-                  />
-                </View>
-              )}
-
+              {/* Form Fields */}
               <NameInput
                 label={t('Full Name')}
                 value={name}
                 onChangeText={setName}
                 placeholder={t('Enter your full name')}
-                selectionColor={colors.primary}
+                selectionColor={isDarkMode ? colors.primary : figmaColors.primaryBlue}
                 onFocus={handleFieldFocus('name')}
                 onBlur={handleFieldBlur('name')}
                 style={styles.tightInputSpacing}
@@ -1390,7 +1412,29 @@ export default function SignupScreen({
                 </View>
               )}
 
-              {/* Technician-Only Fields - Reuse existing modals and logic */}
+              <PhoneInput
+                label={t('Mobile Number')}
+                value={phone}
+                onChangeText={handlePhoneChange}
+                placeholder={t('auth.placeholders.phone')}
+                autoCapitalize="none"
+                maxLength={9}
+                selectionColor={isDarkMode ? colors.primary : figmaColors.primaryBlue}
+                onFocus={handleFieldFocus('phone')}
+                onBlur={handleFieldBlur('phone')}
+                style={styles.tightInputSpacing}
+              />
+              {focusedField === 'phone' && (
+                <View style={[styles.validationHintGroup, { alignItems: alignment }]}>
+                  <ValidationHintItem
+                    passed={flags.phoneValid}
+                    label={t('signup.validation.phone')}
+                    isFirst
+                  />
+                </View>
+              )}
+
+              {/* Technician-Only Fields */}
               {selectedRole === 'technician' && (
                 <>
                   <EmailInput
@@ -1398,7 +1442,7 @@ export default function SignupScreen({
                     value={email}
                     onChangeText={handleEmailChange}
                     placeholder={t('Enter your email')}
-                    selectionColor={colors.primary}
+                    selectionColor={isDarkMode ? colors.primary : figmaColors.primaryBlue}
                     onFocus={handleFieldFocus('email')}
                     onBlur={handleFieldBlur('email')}
                     style={styles.tightInputSpacing}
@@ -1437,7 +1481,7 @@ export default function SignupScreen({
                   />
                   {isLoadingRegions && (
                     <View style={{ marginTop: -20, marginBottom: 8, alignItems: 'center' }}>
-                      <ActivityIndicator size="small" color={colors.primary} />
+                      <ActivityIndicator size="small" color={isDarkMode ? colors.primary : figmaColors.primaryBlue} />
                     </View>
                   )}
 
@@ -1493,7 +1537,7 @@ export default function SignupScreen({
                 onChangeText={handlePasswordChange}
                 placeholder={t('auth.placeholders.password')}
                 autoCapitalize="none"
-                selectionColor={colors.primary}
+                selectionColor={isDarkMode ? colors.primary : figmaColors.primaryBlue}
                 onFocus={handleFieldFocus('password')}
                 onBlur={handleFieldBlur('password')}
                 style={styles.tightInputSpacing}
@@ -1525,12 +1569,12 @@ export default function SignupScreen({
               )}
 
               <PasswordInput
-                label={t('Confirm Password')}
+                label={t('Re-Enter Password')}
                 value={confirmPassword}
                 onChangeText={handleConfirmPasswordChange}
-                placeholder={t('Confirm your password')}
+                placeholder={t('auth.placeholders.password')}
                 autoCapitalize="none"
-                selectionColor={colors.primary}
+                selectionColor={isDarkMode ? colors.primary : figmaColors.primaryBlue}
                 onFocus={handleFieldFocus('confirm')}
                 onBlur={handleFieldBlur('confirm')}
                 style={styles.tightInputSpacing}
@@ -1553,34 +1597,56 @@ export default function SignupScreen({
                 linkText={t('Terms and Conditions')}
               />
 
+              {/* Create Account Button - Figma Blue */}
               <Button
                 mode="contained"
                 onPress={handleSignup}
                 disabled={isLoading}
-                style={[
-                  styles.desktopRegisterButton, 
-                  !agreedToTerms && styles.desktopRegisterButtonDisabled,
-                  { backgroundColor: agreedToTerms ? colors.primary : '#9E9E9E' } // Gray when terms not agreed
-                ]}
-                contentStyle={styles.desktopRegisterButtonContent}
+                style={[styles.desktopRegisterButton, { 
+                  backgroundColor: agreedToTerms 
+                    ? (isDarkMode ? colors.primary : figmaColors.primaryBlue)
+                    : '#9E9E9E',
+                  borderRadius: 8,
+                }]}
+                contentStyle={[styles.desktopRegisterButtonContent, { paddingVertical: 12 }]}
+                labelStyle={{ fontSize: UIFontSizes.buttonMedium, fontWeight: '600', color: '#FFFFFF', fontFamily: FontFamily.button }}
                 loading={isLoading}
               >
                 {t('Create Account')}
               </Button>
 
-              <View style={styles.desktopLoginLink}>
-                <Text style={[styles.desktopLoginText, { color: colors.textSecondary }]}>
-                  {t('Already have an account?')}{' '}
+              {/* Login Link */}
+              <View style={[
+                styles.desktopLoginLink, 
+                { 
+                  marginTop: 8,
+                  flexDirection: i18n.language === 'ar' ? 'row-reverse' : 'row',
+                  gap: 8, // Add gap between text and link
+                }
+              ]}>
+                <Text style={[styles.desktopLoginText, { 
+                  color: isDarkMode ? colors.textSecondary : figmaColors.textNavy, 
+                  fontSize: UIFontSizes.link,
+                  fontWeight: '300',
+                }]}>
+                  {t('Already have an account?')}
                 </Text>
                 <TouchableOpacity onPress={onNavigateToLogin}>
-                  <Text style={[styles.desktopLoginLinkText, { color: colors.primary }]}>
+                  <Text style={[styles.desktopLoginLinkText, { 
+                    color: isDarkMode ? colors.primary : figmaColors.textNavy,
+                    fontSize: UIFontSizes.link,
+                    fontWeight: '600',
+                    textDecorationLine: 'underline',
+                  }]}>
                     {t('Login')}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Theme Toggle */}
-              <ThemeToggle />
+              <View style={{ marginTop: 16 }}>
+                <ThemeToggle />
+              </View>
             </Animated.View>
           </ScrollView>
         </Animated.View>
@@ -1695,6 +1761,17 @@ export default function SignupScreen({
           </View>
         </View>
       </Modal>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        countdown={alertState.countdown}
+        onClose={hideAlert}
+      />
     </View>
   );
 }
@@ -1815,6 +1892,90 @@ const styles = StyleSheet.create({
         marginBottom: 24,
       },
     }),
+  },
+  // Mobile Figma Design Styles
+  mobileLogoSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  mobileLogoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mobileCubeLogo: {
+    width: 53,
+    height: 64,
+  } as any,
+  mobileLogoTextContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+  },
+  mobileLogoText: {
+    fontSize: UIFontSizes.logoText, // Centralized: 30px
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    // Logo uses system font, not SakkalMajalla
+  },
+  mobileLogoArabic: {
+    fontSize: UIFontSizes.logoArabic, // Centralized: 24px
+    fontWeight: '600',
+    letterSpacing: 2,
+    // Logo uses system font, not SakkalMajalla
+  },
+  mobileWelcomeSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  mobileWelcomeTitle: {
+    fontSize: UIFontSizes.welcomeTitle, // Centralized: 32px
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: FontFamily.heading,
+  },
+  mobileWelcomeSubtitle: {
+    fontSize: UIFontSizes.welcomeSubtitle, // Centralized: 20px
+    fontWeight: '400',
+    textAlign: 'center',
+    fontFamily: FontFamily.body,
+  },
+  mobileRegisterButton: {
+    width: '100%',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  mobileRegisterButtonText: {
+    color: '#FFFFFF',
+    fontSize: UIFontSizes.buttonMedium, // Centralized: 18px
+    fontWeight: '400',
+    textAlign: 'center',
+    fontFamily: FontFamily.button,
+  },
+  mobileLoginLinkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  mobileLoginLinkText: {
+    fontSize: UIFontSizes.link, // Centralized: 16px
+    fontWeight: '300',
+    fontFamily: FontFamily.body,
+  },
+  mobileLoginLinkAction: {
+    fontSize: UIFontSizes.link, // Centralized: 16px
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    fontFamily: FontFamily.body,
   },
   roleButton: {
     flex: 1,
@@ -2162,8 +2323,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   langText: {
-    fontSize: 16,
+    fontSize: UIFontSizes.langToggle, // Centralized: 18px
     fontWeight: '600',
+    fontFamily: FontFamily.primary,
   },
   langTextActive: {
     fontWeight: 'bold',
@@ -2247,7 +2409,9 @@ const styles = StyleSheet.create({
     flex: 0.45,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 60,
+    paddingVertical: 60,
+    paddingLeft: 120, // Push content more to the right
+    paddingRight: 40,
     position: 'relative',
     overflow: 'hidden' as any,
   },
@@ -2265,7 +2429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 700,
     paddingHorizontal: 40,
     position: 'relative',
     zIndex: 10,
@@ -2403,14 +2567,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   } as any,
   desktopFormTitle: {
-    fontSize: 36,
+    fontSize: UIFontSizes.desktop.formTitle, // Centralized: 44px
     fontWeight: '700',
     marginBottom: 12,
+    fontFamily: FontFamily.heading,
   },
   desktopFormSubtitle: {
-    fontSize: 18,
+    fontSize: UIFontSizes.desktop.formSubtitle, // Centralized: 22px
     marginBottom: 40,
-    lineHeight: 26,
+    lineHeight: 30,
+    fontFamily: FontFamily.body,
   },
   desktopRoleToggle: {
     flexDirection: 'row',
@@ -2508,11 +2674,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   desktopLoginText: {
-    fontSize: 16,
+    fontSize: UIFontSizes.desktop.linkText, // Centralized: 24px
+    fontFamily: FontFamily.body,
   },
   desktopLoginLinkText: {
-    fontSize: 16,
+    fontSize: UIFontSizes.desktop.linkText, // Centralized: 24px
     fontWeight: '600',
+    fontFamily: FontFamily.body,
   },
 });
 

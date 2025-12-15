@@ -100,21 +100,31 @@ export const API_ENDPOINTS = {
     REVIEWS: '/technicians/:id/reviews',
     SERVICES: '/technician/services/my-services',
     ADD_SERVICES: '/technician/services/add',
-    REMOVE_SERVICE: '/technician/services/remove/:serviceId',
+    REMOVE_SERVICE: '/technicians/services/:serviceId',
     AVAILABILITY: '/technicians/availability',
+    ADD_AVAILABILITY: '/technicians/availability',
     SET_AVAILABILITY: '/technicians/availability/set',
     ADD_AVAILABILITY_BULK: '/technicians/availability/bulk',
     DELETE_AVAILABILITY: '/technicians/availability/:slotId',
-    SUBSCRIPTION: '/technicians/subscription',
-    SUBSCRIBE: '/technicians/subscribe',
-    CANCEL_SUBSCRIPTION: '/technicians/subscription',
+    SUBSCRIPTION: '/users/subscription',
+    SUBSCRIBE: '/users/subscribe',
+    CANCEL_SUBSCRIPTION: '/users/subscription',
+    SUBSCRIPTION_BIDS: '/users/subscription/bids',
     RESERVATIONS: '/technician/reservations/:id/:action',
   },
   
   // Portfolio
   PORTFOLIO: {
-    LIST: '/portfolios',
+    CREATE: '/portfolios/create',
+    MY: '/portfolios/my',
     BY_USER: '/portfolios/user/:userId',
+    UPDATE: '/portfolios/update',
+    ADD_PROJECT: '/portfolios/projects/add',
+    UPDATE_PROJECT: '/portfolios/projects/:projectId',
+    DELETE_PROJECT: '/portfolios/projects/:projectId',
+    MY_PROJECTS: '/portfolios/projects/my',
+    USER_PROJECTS: '/portfolios/projects/user/:userId',
+    UPLOAD_PHOTO: '/portfolios/projects/upload-photo',
   },
   
   // Reviews
@@ -150,6 +160,7 @@ export const API_ENDPOINTS = {
     CREATE: '/signatures',
     STATUS: '/signatures/:projectId/status',
     VIEW: '/contracts/:projectId',
+    GENERATE_PDF: '/contracts/test/generate-pdf',
   },
   
   // Notifications

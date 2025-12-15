@@ -1,3 +1,10 @@
+/**
+ * BidFormModal
+ * 
+ * Popup modal for technicians to submit a bid for a project.
+ * Styled to match the app's Figma design system.
+ */
+
 import React, { useState } from 'react';
 import {
   View,
@@ -11,6 +18,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +27,38 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
+import { showSuccess, showError } from '../utils/alert';
+
+// ===== DESIGN TOKENS FROM FIGMA =====
+const COLORS = {
+  // Primary Blues
+  primary100: '#003867',
+  primary80: '#004A8A',
+  primary70: '#00549B',
+  primary60: '#005DAC',
+  primary50: '#1A6DB4',
+  primary10: '#E6EFF7',
+  // Greens
+  green90: '#007B36',
+  green80: '#008B3E',
+  green60: '#00AC4F',
+  green10: '#E6F5EC',
+  // Purple
+  purple100: '#3C076D',
+  purple10: '#EFE6F5',
+  // Amber
+  amber60: '#FFB703',
+  amber10: '#FFF8E6',
+  // Text
+  textHeader: '#003867',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  textDividers: '#D9D9D9',
+  textWhite: '#FFFFFF',
+  // Backgrounds
+  bgWhite: '#FFFFFF',
+  bgOverlay: 'rgba(0, 56, 103, 0.5)',
+};
 
 interface BidFormModalProps {
   visible: boolean;
@@ -32,31 +73,22 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
   const insets = useSafeAreaInsets();
   const [bidPrice, setBidPrice] = useState('');
   const [bidDescription, setBidDescription] = useState('');
-  const [bidComments, setBidComments] = useState('');
   const [estimatedDays, setEstimatedDays] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const showSuccessFeedback = (message: string, onDismiss: () => void) => {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.alert(message);
-      }
-      onDismiss();
-    } else {
-      Alert.alert(t('Success'), message, [
-        {
-          text: t('OK'),
-          onPress: onDismiss,
-        },
-      ]);
-    }
-  };
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const IS_WEB = Platform.OS === 'web';
+  const IS_MOBILE = Platform.OS === 'ios' || Platform.OS === 'android';
+  
+  // Larger modal dimensions - matching VisitRequestModal
+  const modalWidth = IS_WEB ? Math.min(520, screenWidth - 32) : screenWidth - 32;
+  const modalMaxHeight = IS_MOBILE ? screenHeight - 100 : screenHeight * 0.85;
 
   const formatBudget = (budget: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'decimal',
+    return new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-SA' : 'en-US', {
+      style: 'currency',
+      currency: 'SAR',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
     }).format(budget);
   };
 
@@ -102,11 +134,6 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
       const url = buildApiUrl(API_ENDPOINTS.BIDS.CREATE);
       console.log('🔍 Creating bid on:', url);
 
-      // Combine description and comments
-      const fullComment = bidComments.trim() 
-        ? `${bidDescription.trim()}\n\n${bidComments.trim()}`
-        : bidDescription.trim();
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -117,33 +144,40 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
           projectId: project.id,
           proposedBudget: parseFloat(bidPrice),
           estimatedDurationDays: parseInt(estimatedDays),
-          comment: fullComment,
+          comment: bidDescription.trim(),
         }),
       });
 
       console.log('📥 Create Bid Response:', response.status);
 
       if (response.ok) {
-        const handleDismiss = () => {
+        showSuccess(t('Bid submitted successfully'));
+        setTimeout(() => {
           setBidPrice('');
           setBidDescription('');
-          setBidComments('');
           setEstimatedDays('');
           onClose();
           onSuccess?.();
-        };
-
-        showSuccessFeedback(t('Bid submitted successfully'), handleDismiss);
+        }, 1000);
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to create bid:', errorText);
-        Alert.alert(t('Error'), 'Failed to submit bid');
+        showError(t('Failed to submit bid'));
       }
     } catch (error) {
       console.error('❌ Error submitting bid:', error);
-      Alert.alert(t('Error'), 'Error submitting bid');
+      showError(t('Error submitting bid'));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setBidPrice('');
+      setBidDescription('');
+      setEstimatedDays('');
+      onClose();
     }
   };
 
@@ -152,425 +186,445 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 10) }]}>
-            <TouchableOpacity onPress={onClose} disabled={isSubmitting}>
-              <View style={styles.cancelButton}>
-                <Ionicons name="close" size={24} color="#FF4444" />
-                <Text style={styles.cancelText}>{t('Cancel')}</Text>
-              </View>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {t('Place Bid')}
-            </Text>
-            <TouchableOpacity
-              onPress={submitBid}
-              disabled={isSubmitDisabled}
-              style={[
-                styles.submitButton,
-                isSubmitDisabled && { opacity: 0.6 }
-              ]}
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardView}
             >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="send" size={20} color="#FFFFFF" />
-                  <Text style={styles.submitText}>{t('Submit Bid')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Project Info */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="information-circle" size={28} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Project Info')}
-                </Text>
-              </View>
-              <View style={[styles.infoCard, { backgroundColor: colors.cardBackground }]}>
-                <Text style={[styles.projectDescription, { color: colors.textSecondary }]} numberOfLines={3}>
-                  {project?.description}
-                </Text>
-                <View style={styles.projectDetails}>
-                  <View style={[styles.categoryBadge, { backgroundColor: colors.primary + '10' }]}>
-                    <Text style={[styles.categoryText, { color: colors.primary }]}>
-                      {getServiceName()}
-                    </Text>
+              <View style={[styles.modalContainer, { width: modalWidth, maxHeight: modalMaxHeight }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                  <View style={styles.headerIconContainer}>
+                    <Ionicons name="cash" size={28} color={COLORS.green80} />
                   </View>
-                  <View style={styles.budgetRow}>
-                    <Text style={[styles.budgetAmount, { color: colors.primary }]}>
-                      {formatBudget(project?.budget || 0)}
-                    </Text>
-                    <Text style={[styles.budgetCurrency, { color: colors.textSecondary }]}>SAR</Text>
-                  </View>
+                  <Text style={styles.headerTitle}>{t('Place Bid')}</Text>
+                  <TouchableOpacity 
+                    onPress={handleClose} 
+                    style={styles.closeButton}
+                    disabled={isSubmitting}
+                  >
+                    <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
                 </View>
-              </View>
-            </View>
 
-            {/* Bid Price */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="cash" size={28} color="#10B981" />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Bid Price')}
-                </Text>
-              </View>
-              <View style={[styles.inputCard, { backgroundColor: colors.cardBackground }]}>
-                <View style={styles.priceInputRow}>
-                  <TextInput
+                {/* Content */}
+                <ScrollView 
+                  style={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.scrollContentContainer}
+                >
+                  {/* Project Info Card */}
+                  <View style={styles.projectCard}>
+                    <View style={styles.projectCardHeader}>
+                      <Ionicons name="briefcase-outline" size={16} color={COLORS.primary80} />
+                      <Text style={styles.projectCardLabel}>{t('Project')}</Text>
+                    </View>
+                    <Text style={styles.projectDescription} numberOfLines={3}>
+                      {project?.description || t('No description')}
+                    </Text>
+                    <View style={styles.projectMeta}>
+                      {getServiceName() && (
+                        <View style={styles.serviceBadge}>
+                          <Text style={styles.serviceText}>{getServiceName()}</Text>
+                        </View>
+                      )}
+                      {project?.budget && (
+                        <View style={styles.budgetRow}>
+                          <Text style={styles.budgetLabel}>{t('Budget')}:</Text>
+                          <Text style={styles.budgetText}>{formatBudget(project.budget)}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Bid Price Input */}
+                  <View style={styles.inputSection}>
+                    <View style={styles.inputHeader}>
+                      <Ionicons name="cash-outline" size={16} color={COLORS.green80} />
+                      <Text style={[styles.inputLabel, { color: COLORS.green80 }]}>{t('Your Bid Price')}</Text>
+                      <Text style={styles.requiredText}>*</Text>
+                    </View>
+                    <View style={styles.priceInputContainer}>
+                      <TextInput
+                        style={styles.priceInput}
+                        placeholder="0"
+                        placeholderTextColor={COLORS.textSecondary}
+                        value={bidPrice}
+                        onChangeText={setBidPrice}
+                        keyboardType="decimal-pad"
+                        editable={!isSubmitting}
+                      />
+                      <View style={styles.currencyBadge}>
+                        <Text style={styles.currencyText}>SAR</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Duration Input */}
+                  <View style={styles.inputSection}>
+                    <View style={styles.inputHeader}>
+                      <Ionicons name="time-outline" size={16} color={COLORS.primary80} />
+                      <Text style={styles.inputLabel}>{t('Estimated Duration')}</Text>
+                      <Text style={styles.requiredText}>*</Text>
+                    </View>
+                    <View style={styles.durationInputContainer}>
+                      <TextInput
+                        style={styles.durationInput}
+                        placeholder="0"
+                        placeholderTextColor={COLORS.textSecondary}
+                        value={estimatedDays}
+                        onChangeText={setEstimatedDays}
+                        keyboardType="number-pad"
+                        editable={!isSubmitting}
+                      />
+                      <View style={styles.daysBadge}>
+                        <Ionicons name="calendar-outline" size={16} color={COLORS.primary80} />
+                        <Text style={styles.daysText}>{t('Days')}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Description Input */}
+                  <View style={styles.inputSection}>
+                    <View style={styles.inputHeader}>
+                      <Ionicons name="document-text-outline" size={16} color={COLORS.amber60} />
+                      <Text style={[styles.inputLabel, { color: COLORS.amber60 }]}>{t('Proposal Description')}</Text>
+                      <Text style={styles.requiredText}>*</Text>
+                    </View>
+                    <TextInput
+                      style={styles.textArea}
+                      placeholder={t('Describe your approach, experience, and why you are the best fit for this project...')}
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={bidDescription}
+                      onChangeText={setBidDescription}
+                      multiline
+                      numberOfLines={4}
+                      maxLength={500}
+                      editable={!isSubmitting}
+                    />
+                    <Text style={styles.charCount}>
+                      {bidDescription.length}/500
+                    </Text>
+                  </View>
+                </ScrollView>
+
+                {/* Action Buttons - Fixed at bottom */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleClose}
+                    disabled={isSubmitting}
+                  >
+                    <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={[
-                      styles.priceInput,
-                      { color: colors.text, borderColor: bidPrice ? colors.primary : colors.border }
+                      styles.submitButton, 
+                      isSubmitDisabled && styles.submitButtonDisabled
                     ]}
-                    placeholder={t('Enter price')}
-                    placeholderTextColor={colors.textSecondary}
-                    value={bidPrice}
-                    onChangeText={setBidPrice}
-                    keyboardType="decimal-pad"
-                  />
-                  <View style={[styles.currencyBadge, { backgroundColor: colors.primary + '10' }]}>
-                    <Text style={[styles.currencyText, { color: colors.primary }]}>SAR</Text>
-                  </View>
-                </View>
-                {bidPrice && parseFloat(bidPrice) > 0 && (
-                  <View style={styles.priceInfo}>
-                    <Text style={[styles.priceInfoText, { color: '#10B981' }]}>
-                      {formatBudget(parseFloat(bidPrice))} {t('SAR')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            {/* Bid Description */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="document-text" size={28} color="#F59E0B" />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Bid Description')}
-                </Text>
-              </View>
-              <View style={[styles.inputCard, { backgroundColor: colors.cardBackground }]}>
-                <TextInput
-                  style={[
-                    styles.textArea,
-                    { color: colors.text, borderColor: bidDescription ? '#F59E0B' : colors.border }
-                  ]}
-                  placeholder={t('Describe your bid')}
-                  placeholderTextColor={colors.textSecondary}
-                  value={bidDescription}
-                  onChangeText={setBidDescription}
-                  multiline
-                  numberOfLines={6}
-                  maxLength={500}
-                />
-                <View style={styles.charCount}>
-                  <Text style={[styles.charCountText, { color: colors.textSecondary }]}>
-                    {bidDescription.length}/500
-                  </Text>
-                  {bidDescription.length > 450 && (
-                    <Text style={styles.warningText}>
-                      {t('Approaching limit')}
-                    </Text>
-                  )}
+                    onPress={submitBid}
+                    disabled={isSubmitDisabled}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator size="small" color={COLORS.textWhite} />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={18} color={COLORS.textWhite} />
+                        <Text style={styles.submitButtonText}>{t('Submit Bid')}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </View>
               </View>
-            </View>
-
-            {/* Additional Comments */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="chatbubbles" size={28} color="#8B5CF6" />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Additional Comments')}
-                </Text>
-                <View style={[styles.optionalBadge, { backgroundColor: colors.border }]}>
-                  <Text style={[styles.optionalText, { color: colors.textSecondary }]}>
-                    {t('Optional')}
-                  </Text>
-                </View>
-              </View>
-              <View style={[styles.inputCard, { backgroundColor: colors.cardBackground }]}>
-                <TextInput
-                  style={[
-                    styles.textArea,
-                    { color: colors.text, borderColor: bidComments ? '#8B5CF6' : colors.border }
-                  ]}
-                  placeholder={t('Any special requests')}
-                  placeholderTextColor={colors.textSecondary}
-                  value={bidComments}
-                  onChangeText={setBidComments}
-                  multiline
-                  numberOfLines={4}
-                  maxLength={200}
-                />
-                <View style={styles.charCount}>
-                  <Text style={[styles.charCountText, { color: colors.textSecondary }]}>
-                    {bidComments.length}/200
-                  </Text>
-                  {bidComments.length > 180 && (
-                    <Text style={styles.warningText}>
-                      {t('Approaching limit')}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {/* Estimated Duration */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="time" size={28} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {t('Estimated Duration')}
-                </Text>
-              </View>
-              <View style={[styles.inputCard, { backgroundColor: colors.cardBackground }]}>
-                <View style={styles.durationInputRow}>
-                  <TextInput
-                    style={[
-                      styles.durationInput,
-                      { color: colors.text, borderColor: estimatedDays ? colors.primary : colors.border }
-                    ]}
-                    placeholder={t('Enter days')}
-                    placeholderTextColor={colors.textSecondary}
-                    value={estimatedDays}
-                    onChangeText={setEstimatedDays}
-                    keyboardType="number-pad"
-                  />
-                  <View style={[styles.durationBadge, { backgroundColor: colors.primary + '10' }]}>
-                    <Ionicons name="calendar" size={20} color={colors.primary} />
-                    <Text style={[styles.durationText, { color: colors.primary }]}>
-                      {t('Days')}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
         </View>
-      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardView: {
+  overlay: {
     flex: 1,
+    backgroundColor: COLORS.bgOverlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
-  container: {
-    flex: 1,
+  keyboardView: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 4px 24px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    padding: 20,
+    paddingBottom: 16,
+    gap: 14,
     borderBottomWidth: 1,
+    borderBottomColor: COLORS.textDividers,
   },
-  cancelButton: {
-    flexDirection: 'row',
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.green10,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#FF4444',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  content: {
     flex: 1,
-    padding: 20,
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textHeader,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary10,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+  },
+  scrollContent: {
+    flexGrow: 0,
+    maxHeight: 400,
+  },
+  scrollContentContainer: {
+    padding: 20,
+    gap: 20,
+  },
+  projectCard: {
+    backgroundColor: COLORS.primary10,
+    borderRadius: 12,
+    padding: 16,
     gap: 12,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  projectCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  infoCard: {
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+  projectCardLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary80,
   },
   projectDescription: {
     fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 12,
+    fontWeight: '400',
+    color: COLORS.textBody,
+    lineHeight: 20,
   },
-  projectDetails: {
+  projectMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 4,
   },
-  categoryBadge: {
-    paddingHorizontal: 12,
+  serviceBadge: {
+    backgroundColor: COLORS.bgWhite,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 6,
   },
-  categoryText: {
+  serviceText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '500',
+    color: COLORS.primary80,
   },
   budgetRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  budgetAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  budgetLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
-  budgetCurrency: {
+  budgetText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: COLORS.green80,
   },
-  inputCard: {
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+  inputSection: {
+    gap: 10,
   },
-  priceInputRow: {
+  inputHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary80,
+  },
+  requiredText: {
+    fontSize: 14,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  // Keep right-side unit pills consistent width (SAR / Days)
+  unitBadge: {
+    width: 96,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   priceInput: {
     flex: 1,
-    fontSize: 20,
-    fontWeight: '500',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    fontSize: 22,
+    fontWeight: '600',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.green80,
+    backgroundColor: COLORS.green10,
+    color: COLORS.green80,
+    textAlign: 'center',
   },
   currencyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    // Keep same width as Days badge
+    width: 96,
+    backgroundColor: COLORS.green10,
+    borderWidth: 1,
+    borderColor: COLORS.green80,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   currencyText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  priceInfo: {
-    alignItems: 'flex-end',
-    marginTop: 8,
-  },
-  priceInfoText: {
-    fontSize: 12,
-    fontWeight: '500',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#10B98120',
-  },
-  textArea: {
     fontSize: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    textAlignVertical: 'top',
-    minHeight: 100,
+    fontWeight: '700',
+    color: COLORS.green80,
   },
-  charCount: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  charCountText: {
-    fontSize: 12,
-  },
-  warningText: {
-    fontSize: 12,
-    color: '#F59E0B',
-  },
-  optionalBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  optionalText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  durationInputRow: {
+  durationInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   durationInput: {
     flex: 1,
     fontSize: 20,
     fontWeight: '500',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    // Match money input style but in blue
+    borderColor: COLORS.primary80,
+    backgroundColor: COLORS.primary10,
+    color: COLORS.primary80,
+    textAlign: 'center',
   },
-  durationBadge: {
+  daysBadge: {
+    // Keep same width as SAR badge
+    width: 96,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: 8,
+    backgroundColor: COLORS.primary10,
+    borderWidth: 1,
+    borderColor: COLORS.primary80,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 10,
+    justifyContent: 'center',
   },
-  durationText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  daysText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.primary80,
+  },
+  textArea: {
+    fontSize: 15,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.textDividers,
+    backgroundColor: COLORS.bgWhite,
+    textAlignVertical: 'top',
+    minHeight: 120,
+    color: COLORS.textBody,
+  },
+  charCount: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'right',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.textDividers,
+    backgroundColor: COLORS.bgWhite,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.purple10,
+    borderWidth: 1.5,
+    borderColor: COLORS.purple100,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.purple100,
+  },
+  submitButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.primary60,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textWhite,
   },
 });
-

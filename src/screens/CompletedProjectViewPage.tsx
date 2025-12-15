@@ -780,6 +780,7 @@ const styles = StyleSheet.create({
   },
   projectTitleContainer: {
     flex: 1,
+    gap: 8,
   },
   projectTitle: {
     fontSize: 18,

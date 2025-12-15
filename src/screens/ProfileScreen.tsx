@@ -7,17 +7,33 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/Colors';
-import { Card } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
 import { useTheme } from '../context/ThemeContext';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
+
+// Figma Design Colors
+const FIGMA_COLORS = {
+  primary: '#005DAC',
+  primaryDark: '#003867',
+  primaryLight: '#E6EFF7',
+  purple: '#6A0DAD',
+  purpleLight: '#EFE6F5',
+  greenSuccess: '#1A9F78',
+  greenLight: '#E6F5EC',
+  textBody: '#383838',
+  textSecondary: '#999999',
+  textGray: '#A3A3A3',
+  divider: '#D9D9D9',
+  white: '#FFFFFF',
+  iconBg: '#E6EFF7',
+};
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -56,9 +72,20 @@ interface UserDetails {
   };
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
+  propertiesCount?: number;
+  appointmentsCount?: number;
+  ticketsCount?: number;
 }
 
-export default function ProfileScreen({ onLogout, onBack, onNavigateToEditProfile, onNavigateToPortfolio, onNavigateToSubscription, onNavigateToServices, onNavigateToAvailability }: ProfileScreenProps) {
+export default function ProfileScreen({ 
+  onLogout, 
+  onBack, 
+  onNavigateToEditProfile, 
+  onNavigateToPortfolio, 
+  onNavigateToSubscription, 
+  onNavigateToServices, 
+  onNavigateToAvailability 
+}: ProfileScreenProps) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors, theme, toggleTheme } = useTheme();
@@ -66,10 +93,14 @@ export default function ProfileScreen({ onLogout, onBack, onNavigateToEditProfil
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState(i18n.language);
   const isDarkMode = theme === 'dark';
+  const isRTL = i18n.language === 'ar';
+  
+  // Custom popup hooks
+  const { alertState, showError, hideAlert } = useAlertPopup();
+  const { confirmState, showLogoutConfirmation, hideConfirmation } = useConfirmationPopup();
 
   // Watch for language changes and force re-render
   useEffect(() => {
-    // Set initial language state
     setLanguage(i18n.language);
     
     const handleLanguageChange = (lng: string) => {
@@ -77,7 +108,6 @@ export default function ProfileScreen({ onLogout, onBack, onNavigateToEditProfil
       setLanguage(lng);
     };
 
-    // Listen for language changes
     i18n.on('languageChanged', handleLanguageChange);
 
     return () => {
@@ -93,7 +123,7 @@ export default function ProfileScreen({ onLogout, onBack, onNavigateToEditProfil
     try {
       const token = await storage.getAuthToken();
       if (!token) {
-        Alert.alert(t('Error'), t('No authentication token found'));
+        showError(t('No authentication token found'), t('Error'));
         return;
       }
 
@@ -123,48 +153,28 @@ export default function ProfileScreen({ onLogout, onBack, onNavigateToEditProfil
 
         setUserDetails(data);
       } else {
-        Alert.alert(t('Error'), t('Failed to load profile'));
+        showError(t('Failed to load profile'), t('Error'));
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      Alert.alert(t('Error'), t('Failed to load profile'));
+      showError(t('Failed to load profile'), t('Error'));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLogout = () => {
-    // Use platform-specific confirmation
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const confirmed = window.confirm(t('profile.confirmLogout'));
-      if (confirmed) {
-        // Execute logout for web
-        onLogout();
-      }
-    } else {
-      // Use Alert for mobile
-      Alert.alert(
-        t('Logout'),
-        t('profile.confirmLogout'),
-        [
-          { text: t('Cancel'), style: 'cancel' },
-          {
-            text: t('Logout'),
-            style: 'destructive',
-            onPress: () => {
-              onLogout();
-            },
-          },
-        ]
-      );
-    }
+    showLogoutConfirmation(
+      t('Logout'),
+      t('profile.confirmLogout'),
+      onLogout
+    );
   };
 
   const toggleLanguage = () => {
     const currentLang = i18n.language;
     const newLang = currentLang === 'en' ? 'ar' : 'en';
     
-    // Change language
     i18n.changeLanguage(newLang).then(() => {
       console.log('Language changed to:', newLang);
       setLanguage(newLang);
@@ -183,237 +193,330 @@ export default function ProfileScreen({ onLogout, onBack, onNavigateToEditProfil
     toggleTheme();
   };
 
+  // Theme-aware colors
+  const bgColor = isDarkMode ? colors.background : FIGMA_COLORS.white;
+  const cardBgColor = isDarkMode ? colors.cardBackground : FIGMA_COLORS.white;
+  const textColor = isDarkMode ? colors.text : FIGMA_COLORS.textBody;
+  const headerTextColor = isDarkMode ? colors.text : FIGMA_COLORS.primaryDark;
+  const secondaryTextColor = isDarkMode ? colors.textSecondary : FIGMA_COLORS.textSecondary;
+  const dividerColor = isDarkMode ? colors.border : FIGMA_COLORS.divider;
+  const primaryColor = isDarkMode ? colors.primary : FIGMA_COLORS.primary;
+  const iconBgColor = isDarkMode ? colors.surface : FIGMA_COLORS.iconBg;
+  const statBgColor = isDarkMode ? colors.surface : FIGMA_COLORS.purpleLight;
+  const statBorderColor = isDarkMode ? colors.border : FIGMA_COLORS.purple;
+  const successColor = isDarkMode ? colors.success : FIGMA_COLORS.greenSuccess;
+  const successBgColor = isDarkMode ? 'rgba(26, 159, 120, 0.15)' : FIGMA_COLORS.greenLight;
+  const avatarBgColor = isDarkMode ? colors.surface : FIGMA_COLORS.primaryLight;
+
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.loadingContainer, { paddingTop: insets.top, backgroundColor: bgColor }]}>
+        <ActivityIndicator size="large" color={primaryColor} />
       </View>
     );
   }
 
   const user = userDetails;
   const isTechnician = user?.role?.toUpperCase() === 'TECHNICIAN';
+  const isVerified = user?.status === 'APPROVED' || user?.status === 'VERIFIED';
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {/* Back Button */}
-      {onBack && (
-        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.cardBackground }]} onPress={onBack}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-      )}
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 120) }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 120), paddingTop: 16 }}
       >
-        <View style={styles.content}>
-          {/* Profile Image with Blue Border */}
-          <View style={styles.profileImageContainer}>
-            <View style={[styles.profileImageBorder, { borderColor: colors.primary, backgroundColor: colors.cardBackground }]}>
+        {/* Page Title */}
+        <View style={styles.pageTitleContainer}>
+          <Text style={[styles.pageTitle, { color: headerTextColor }]}>{t('profile.myProfile')}</Text>
+        </View>
+
+        {/* Main Profile Card */}
+        <View style={[styles.mainCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+          {/* User Welcome Section */}
+          <TouchableOpacity 
+            style={[styles.userWelcomeSection, isRTL && styles.rowRTL]} 
+            onPress={() => onNavigateToEditProfile?.()}
+          >
+            <View style={[styles.profileImageContainer, { backgroundColor: avatarBgColor }]}>
               {user?.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.profileImage} />
               ) : (
-                <View style={[styles.profileImagePlaceholder, { backgroundColor: colors.gray100 }]}>
-                  <Ionicons name="person" size={50} color={colors.primary} />
-                </View>
+                <Ionicons name="person" size={24} color={primaryColor} />
               )}
             </View>
-          </View>
-
-          {/* User Info Card */}
-          <Card style={[styles.userInfoCard, { backgroundColor: colors.cardBackground }]}>
-            <Card.Content style={styles.userInfoContent}>
-              <Text style={[styles.userName, { color: colors.text }]}>{user?.name || t('profile.usernamePlaceholder')}</Text>
-              {(user?.phone || user?.phoneNumber) && (
-                <View style={styles.phoneRow}>
-                  <Ionicons name="call" size={14} color={colors.primary} />
-                  <Text style={[styles.phoneText, { color: colors.textSecondary }]}>{user.phone || user.phoneNumber}</Text>
-                </View>
-              )}
-              {user?.email && (
-                <View style={styles.phoneRow}>
-                  <Ionicons name="mail" size={14} color={colors.primary} />
-                  <Text style={[styles.phoneText, { color: colors.textSecondary }]}>{user.email}</Text>
-                </View>
-              )}
-              <Text style={[styles.roleText, { color: colors.primary }]}>
-                {isTechnician ? t('Service Provider') : t('User')}
+            <View style={[styles.userWelcomeText, isRTL && styles.textContainerRTL]}>
+              <Text style={[styles.welcomeLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                {t('Welcome')}
               </Text>
-              {user?.status && (
-                <View style={[styles.statusBadge, { backgroundColor: user.status === 'APPROVED' ? '#4CAF50' : '#FF9800' }]}>
-                  <Text style={styles.statusText}>{user.status}</Text>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
-
-          {/* Additional Info for Technicians */}
-          {isTechnician && (
-            <Card style={[styles.additionalInfoCard, { backgroundColor: colors.cardBackground }]}>
-              <Card.Content style={styles.additionalInfoContent}>
-                {user?.yearsOfExperience && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="time" size={18} color={colors.primary} />
-                    <Text style={[styles.infoText, { color: colors.text }]}>
-                      {user.yearsOfExperience} {t('Years of Experience')}
-                    </Text>
-                  </View>
-                )}
-                {user?.regions && user.regions.length > 0 && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="location" size={18} color={colors.primary} />
-                    <View style={styles.regionsContainer}>
-                      <Text style={[styles.infoText, { color: colors.text }]}>
-                        {user.regions.map((region, index) => 
-                          i18n.language === 'ar' ? region.nameAr : region.nameEn
-                        ).join(', ')}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {user?.description && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="document-text" size={18} color={colors.primary} />
-                    <Text style={[styles.infoText, { color: colors.text }]}>
-                      {user.description}
-                    </Text>
-                  </View>
-                )}
-                {user?.averageRating && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="star" size={18} color="#FFD700" />
-                    <Text style={[styles.infoText, { color: colors.text }]}>
-                      {user.averageRating.toFixed(1)} / 5.0
-                    </Text>
-                  </View>
-                )}
-                {user?.subscriptionCategory && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="card" size={18} color={colors.primary} />
-                    <Text style={[styles.infoText, { color: colors.text }]}>
-                      {i18n.language === 'ar' ? user.subscriptionCategory.nameAr : user.subscriptionCategory.nameEn}
-                    </Text>
-                  </View>
-                )}
-              </Card.Content>
-            </Card>
-          )}
-
-          {/* Menu Items */}
-          <View style={styles.menuSection}>
-            {isTechnician ? (
-              <>
-                <ProfileMenuCard
-                  title={t('My Data')}
-                  icon="person"
-                  onPress={() => onNavigateToEditProfile?.()}
-                  colors={colors}
-                />
-                <ProfileMenuCard
-                  title={t('My Portfolio')}
-                  icon="briefcase"
-                  onPress={() => onNavigateToPortfolio?.()}
-                  colors={colors}
-                />
-              </>
-            ) : (
-              <>
-                <ProfileMenuCard
-                  title={t('My Data')}
-                  icon="person"
-                  onPress={() => onNavigateToEditProfile?.()}
-                  colors={colors}
-                />
-              </>
-            )}
-          </View>
-
-          {/* Change Language */}
-          <TouchableOpacity 
-            key={`language-toggle-${language}`}
-            style={[styles.settingsRow, { backgroundColor: colors.cardBackground }]} 
-            onPress={toggleLanguage}
-          >
-            <View style={[styles.settingsIconContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="globe" size={20} color={colors.primary} />
+              <Text style={[styles.userName, { color: headerTextColor }, isRTL && styles.textRTL]}>
+                {user?.name || t('profile.usernamePlaceholder')}
+              </Text>
             </View>
-            <Text style={[styles.settingsText, { color: colors.text }]}>{t('Change Language')}</Text>
-            <Text 
-              key={`language-badge-${language}`}
-              style={[styles.languageBadge, { color: colors.primary, backgroundColor: colors.primary + '20' }]}
-            >
-              {language === 'en' ? 'EN' : 'AR'}
-            </Text>
+            <Ionicons 
+              name={isRTL ? 'chevron-back' : 'chevron-forward'} 
+              size={24} 
+              color={primaryColor} 
+            />
           </TouchableOpacity>
 
-          {/* Dark Mode Toggle */}
-          <View style={[styles.settingsRow, { backgroundColor: colors.cardBackground }]}>
-            <View style={[styles.settingsIconContainer, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons
-                name={isDarkMode ? 'moon' : 'sunny'}
-                size={20}
-                color={colors.primary}
-              />
+          {/* Divider */}
+          <View style={[styles.cardDivider, { backgroundColor: dividerColor }]} />
+
+          {/* My Info Section */}
+          <View style={styles.myInfoSection}>
+            <View style={[styles.myInfoHeader, isRTL && styles.rowRTL]}>
+              <View style={isRTL && styles.textContainerRTL}>
+                <Text style={[styles.myInfoTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  {t('profile.myInfo')}
+                </Text>
+                <Text style={[styles.myInfoSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.userAccount')}
+                </Text>
             </View>
-            <Text style={[styles.settingsText, { color: colors.text }]}>{t('Dark Mode')}</Text>
+          </View>
+
+            {/* Info Rows */}
+            <View style={styles.infoRows}>
+              {/* Account Status */}
+              <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
+                <Text style={[styles.infoLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.accountStatus')}
+                </Text>
+                <View style={[styles.verifiedBadge, { backgroundColor: successBgColor, borderColor: successColor }]}>
+                  <Ionicons name="checkmark-circle" size={10} color={successColor} />
+                  <Text style={[styles.verifiedText, { color: successColor }]}>
+                    {isVerified ? t('profile.verified') : t('profile.pending')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Email */}
+              <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
+                <Text style={[styles.infoLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.email')}
+                </Text>
+                <Text style={[styles.infoValue, { color: textColor }, isRTL && styles.textRTL]}>
+                  {user?.email || '-'}
+                </Text>
+              </View>
+
+              {/* Phone Number */}
+              <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
+                <Text style={[styles.infoLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.phoneNumber')}
+                </Text>
+                <Text style={[styles.infoValue, { color: textColor }, isRTL && styles.textRTL]}>
+                  {user?.phone || user?.phoneNumber || '-'}
+                </Text>
+              </View>
+                </View>
+                </View>
+
+          {/* Stats Cards */}
+          <View style={[styles.statsContainer, isRTL && styles.rowRTL]}>
+            <View style={[styles.statCard, { backgroundColor: statBgColor, borderColor: statBorderColor }]}>
+              <Text style={[styles.statNumber, { color: textColor }]}>{user?.propertiesCount || 0}</Text>
+              <Text style={[styles.statLabel, { color: textColor }]}>{t('profile.properties')}</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: statBgColor, borderColor: statBorderColor }]}>
+              <Text style={[styles.statNumber, { color: textColor }]}>{user?.appointmentsCount || 0}</Text>
+              <Text style={[styles.statLabel, { color: textColor }]}>{t('profile.appointments')}</Text>
+                  </View>
+            <View style={[styles.statCard, { backgroundColor: statBgColor, borderColor: statBorderColor }]}>
+              <Text style={[styles.statNumber, { color: textColor }]}>{user?.ticketsCount || 0}</Text>
+              <Text style={[styles.statLabel, { color: textColor }]}>{t('profile.ticket')}</Text>
+                    </View>
+                  </View>
+                  </View>
+
+        {/* Settings Section Card */}
+        <View style={[styles.settingsCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+          {/* Language */}
+          <TouchableOpacity 
+            style={[styles.settingItem, isRTL && styles.rowRTL]}
+            onPress={toggleLanguage}
+          >
+            <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+              <Ionicons name="globe-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+            </View>
+            <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                {t('profile.language')}
+              </Text>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                {t('profile.appLanguage')}
+              </Text>
+            </View>
+            <View style={[styles.languageBadge, { backgroundColor: iconBgColor }]}>
+              <Text style={[styles.languageBadgeText, { color: isDarkMode ? colors.text : '#666666' }]}>
+              {language === 'en' ? 'EN' : 'AR'}
+            </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Dark Mode */}
+          <View style={[styles.settingItem, isRTL && styles.rowRTL]}>
+            <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+              <Ionicons name="moon-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+            </View>
+            <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                {t('Dark Mode')}
+              </Text>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                {isDarkMode ? t('On') : t('Off')}
+              </Text>
+            </View>
             <TouchableOpacity onPress={handleToggleDarkMode}>
-              <View style={[styles.toggleSwitch, isDarkMode && styles.toggleSwitchActive, { backgroundColor: isDarkMode ? colors.primary : colors.gray300 }]}>
-                <View style={[styles.toggleThumb, isDarkMode && styles.toggleThumbActive, { backgroundColor: colors.white }]} />
+              <View style={[styles.toggleSwitch, { backgroundColor: isDarkMode ? primaryColor : 'rgba(153, 153, 153, 0.5)' }]}>
+                <View style={[styles.toggleThumb, isDarkMode && styles.toggleThumbActive]} />
               </View>
             </TouchableOpacity>
           </View>
 
-          {/* Logout Button */}
-          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.cardBackground, borderColor: colors.error }]} onPress={handleLogout}>
-            <Ionicons name="log-out" size={20} color={colors.error} />
-            <Text style={[styles.logoutText, { color: colors.error }]}>{t('Logout')}</Text>
+          {/* User Mode Toggle (for regular users) */}
+          {!isTechnician && (
+            <View style={[styles.settingItem, isRTL && styles.rowRTL]}>
+              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+              </View>
+              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  {t('User Mode')}
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('Advanced')}
+                </Text>
+              </View>
+              <View style={[styles.toggleSwitch, { backgroundColor: 'rgba(153, 153, 153, 0.5)' }]}>
+                <View style={styles.toggleThumb} />
+              </View>
+            </View>
+          )}
+
+          {/* Support Center */}
+          <TouchableOpacity style={[styles.settingItem, isRTL && styles.rowRTL]}>
+            <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+              <Ionicons name="help-circle-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+            </View>
+            <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                {t('profile.supportCenter')}
+              </Text>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                {t('profile.getHelpContactUs')}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
+
+        {/* Technician Menu Items */}
+        {isTechnician && (
+          <View style={[styles.technicianCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+            <TouchableOpacity 
+              style={[styles.menuItem, isRTL && styles.rowRTL]}
+              onPress={() => onNavigateToEditProfile?.()}
+            >
+              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+              </View>
+              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  {t('My Data')}
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.editPersonalInfo')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.menuItem, isRTL && styles.rowRTL]}
+              onPress={() => onNavigateToPortfolio?.()}
+            >
+              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                <Ionicons name="briefcase-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+              </View>
+              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  {t('My Portfolio')}
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.managePortfolio')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* User Menu Items */}
+        {!isTechnician && (
+          <View style={[styles.userMenuCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+            <TouchableOpacity 
+              style={[styles.menuItem, isRTL && styles.rowRTL]}
+              onPress={() => onNavigateToEditProfile?.()}
+            >
+              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+              </View>
+              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  {t('My Data')}
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.editPersonalInfo')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Logout Card */}
+        <View style={[styles.logoutCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+        <TouchableOpacity 
+          style={[styles.logoutItem, isRTL && styles.rowRTL]}
+          onPress={handleLogout}
+        >
+          <View style={styles.logoutIconContainer}>
+              <Ionicons name="log-out-outline" size={24} color={FIGMA_COLORS.purple} />
+          </View>
+            <Text style={[styles.logoutText, isRTL && styles.textRTL]}>{t('Logout')}</Text>
+        </TouchableOpacity>
+        </View>
       </ScrollView>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
-  );
-}
-
-// Profile Menu Card Component
-interface ProfileMenuCardProps {
-  title: string;
-  icon: string;
-  onPress: () => void;
-  colors: any;
-}
-
-function ProfileMenuCard({ title, icon, onPress, colors }: ProfileMenuCardProps) {
-  return (
-    <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.cardBackground }]} onPress={onPress}>
-      <View style={[styles.menuIconContainer, { backgroundColor: colors.primary + '20' }]}>
-        <Ionicons name={icon as any} size={20} color={colors.primary} />
-      </View>
-      <Text style={[styles.menuText, { color: colors.text }]}>{title}</Text>
-      <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
   },
   loadingContainer: {
     flex: 1,
@@ -423,168 +526,261 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 20,
-  },
-  profileImageContainer: {
+
+  // Page Title
+  pageTitleContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 20,
+    paddingVertical: 24,
   },
-  profileImageBorder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+  pageTitle: {
+    fontSize: 20,
+    fontWeight: '400',
   },
-  profileImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+
+  // Main Card
+  mainCard: {
+    marginHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    paddingVertical: 16,
   },
-  profileImagePlaceholder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userInfoCard: {
-    marginBottom: 30,
-  },
-  userInfoContent: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  phoneRow: {
+
+  // User Welcome Section
+  userWelcomeSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 24,
+  },
+  profileImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  userWelcomeText: {
+    flex: 1,
     gap: 6,
-    marginBottom: 8,
   },
-  phoneText: {
+  welcomeLabel: {
     fontSize: 14,
+    fontWeight: '300',
   },
-  roleText: {
-    fontSize: 14,
-    fontWeight: '500',
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginTop: 8,
+
+  // Card Divider
+  cardDivider: {
+    height: 0.5,
+    marginHorizontal: 16,
+    marginVertical: 6,
   },
-  statusText: {
-    color: '#fff',
-    fontSize: 12,
+
+  // My Info Section
+  myInfoSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  myInfoHeader: {
+    marginBottom: 16,
+  },
+  myInfoTitle: {
+    fontSize: 16,
     fontWeight: '600',
   },
-  additionalInfoCard: {
-    marginBottom: 20,
+  myInfoSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginTop: 4,
   },
-  additionalInfoContent: {
-    padding: 16,
+  infoRows: {
+    gap: 8,
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  regionsContainer: {
-    flex: 1,
-  },
-  menuSection: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  menuCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  menuText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    gap: 12,
-  },
-  settingsIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settingsText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  languageBadge: {
+  infoLabel: {
     fontSize: 14,
     fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
   },
-  toggleSwitch: {
-    width: 50,
-    height: 28,
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 14,
+    borderWidth: 1,
+  },
+  verifiedText: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+
+  // Stats Cards
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 8,
+    marginTop: 8,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    padding: 8,
+    gap: 6,
+  },
+  statNumber: {
+    fontSize: 14,
+    fontWeight: '200',
+  },
+  statLabel: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+
+  // Settings Card
+  settingsCard: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 16,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  settingSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+
+  // Language Badge
+  languageBadge: {
+    paddingHorizontal: 15,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+  languageBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Toggle Switch
+  toggleSwitch: {
+    width: 48,
+    height: 24,
+    borderRadius: 9999,
     justifyContent: 'center',
     padding: 2,
   },
-  toggleSwitchActive: {},
   toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: FIGMA_COLORS.white,
   },
   toggleThumbActive: {
-    transform: [{ translateX: 22 }],
+    transform: [{ translateX: 24 }],
   },
-  logoutButton: {
+
+  // Technician Card
+  technicianCard: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 16,
+  },
+
+  // User Menu Card
+  userMenuCard: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 16,
+  },
+
+  // Menu Items
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 12,
+  },
+
+  // Logout Card
+  logoutCard: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderRadius: 6,
+    borderWidth: 0.5,
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    marginTop: 20,
-    gap: 8,
+  },
+  logoutItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  logoutIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
+    color: FIGMA_COLORS.purple,
+  },
+
+  // RTL Support
+  rowRTL: {
+    flexDirection: 'row-reverse',
+  },
+  textRTL: {
+    textAlign: 'right',
+  },
+  textContainerRTL: {
+    alignItems: 'flex-end',
   },
 });

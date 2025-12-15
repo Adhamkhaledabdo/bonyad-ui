@@ -12,28 +12,36 @@ import {
   Image,
   Modal,
   Platform,
+  Alert,
+  TextInput,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { PieChart, BarChart } from 'react-native-chart-kit';
+// import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
 import ProjectDetailModal from './ProjectDetailModal';
-import TechnicianBidsView from './TechnicianBidsView';
+import ProjectDetailScreen from './ProjectDetailScreen';
+import PendingProjectScreen from './PendingProjectScreen';
+import BidReceivedProjectScreen from './BidReceivedProjectScreen';
+import ApprovedProjectScreen from './ApprovedProjectScreen';
 import BidFormModal from './BidFormModal';
 import VisitRequestModal from './VisitRequestModal';
-import PhaseEditingPage from './PhaseEditingPage';
-import ContractSigningPage from './ContractSigningPage';
-import ProjectProgressPage from './ProjectProgressPage';
+// PhaseEditingPage is now integrated into ApprovedProjectScreen via PhaseManagementModal
+import ContractSigningProjectScreen from './ContractSigningProjectScreen';
+import InProgressProjectScreen from './InProgressProjectScreen';
 import UserPhaseViewPage from './UserPhaseViewPage';
-import UserPhaseReviewPage from './UserPhaseReviewPage';
-import UserContractSigningPage from './UserContractSigningPage';
-import UserProjectProgressPage from './UserProjectProgressPage';
-import CompletedProjectViewPage from './CompletedProjectViewPage';
+// UserPhaseReviewPage removed - PHASE_PLANNING now uses ApprovedProjectScreen
+// ContractSigningPage and UserContractSigningPage replaced by ContractSigningProjectScreen
+// ProjectProgressPage and UserProjectProgressPage replaced by InProgressProjectScreen
+import CompletedProjectScreen from './CompletedProjectScreen';
 import TechnicianProfileView from './TechnicianProfileView';
 import OwnerProjectEditScreen from './OwnerProjectEditScreen';
+import NewProjectView from './NewProjectView';
+import ConversationalAIForm from './ConversationalAIForm';
+import ManualProjectForm from './ManualProjectForm';
 
 interface ProjectsScreenProps {
   onBack?: () => void;
@@ -54,6 +62,15 @@ interface Project {
   serviceNameEn: string;
   serviceNameAr: string;
   serviceId: number;
+  createdAt: string;
+  timeRequiredDays?: number;
+  requirements?: string[];
+  needsVisit?: boolean;
+  needsBooking?: boolean;
+  assignedTechnician?: {
+    id: number;
+    name: string;
+  } | null;
   phases?: Array<{
     id: number;
     phaseNumber: number;
@@ -71,8 +88,37 @@ interface Service {
   imageUrl: string;
 }
 
-const CONTAINER_PADDING = 20; // Padding from listContent style
-const CARD_GAP = 16; // Gap between cards in a row
+const CONTAINER_PADDING = 16; // Padding from Figma design
+const CARD_GAP = 12; // Gap between cards in a row (24px / 2)
+
+// Figma Design Colors
+const FIGMA_COLORS = {
+  // Blues
+  primary100: '#003867',
+  primary70: '#00549B',
+  primary60: '#005DAC',
+  primary50: '#1A6DB4',
+  primary40: '#4D8EC5',
+  primary30: '#80AED6',
+  primary20: '#B3CEE6',
+  primary10: '#E6EFF7',
+  // Text
+  textHeaders: '#003867',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  textPrimary: '#6E6E6E',
+  textWhite: '#FFFFFF',
+  // Amber
+  amber60: '#FFB703',
+  amber10: '#FFF2CF',
+  // Purple
+  purple70: '#5E0BA1',
+  purple60: '#6A0DAD',
+  purple10: '#EFE6F5',
+  // Background
+  background: '#F0F0F0',
+  white: '#FFFFFF',
+};
 
 export default function ProjectsScreen({ onBack, filter = 'available', onOpenChat, onViewTechnician, onBookAppointment, onRequestVisit, onFilterChange }: ProjectsScreenProps) {
   const { t, i18n } = useTranslation();
@@ -84,6 +130,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectDetail, setShowProjectDetail] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -92,7 +139,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [localFilter, setLocalFilter] = useState<'all' | 'available' | 'running' | 'completed' | 'bid_received' | 'direct_offers'>(filter || 'available');
   // New pages for technicians and users
-  const [currentPage, setCurrentPage] = useState<'list' | 'phase-editing' | 'contract-signing' | 'progress' | 'user-phase-view' | 'user-phase-review' | 'user-contract-signing' | 'user-progress' | 'completed-project' | 'technician-profile' | 'project-detail' | 'owner-edit'>('list');
+  const [currentPage, setCurrentPage] = useState<'list' | 'contract-signing' | 'progress' | 'user-phase-view' | 'user-contract-signing' | 'user-progress' | 'completed-project' | 'technician-profile' | 'project-detail' | 'owner-edit' | 'project-detail-screen' | 'pending-project' | 'bid-received-project' | 'technician-pending-project' | 'technician-bid-received' | 'approved-project' | 'technician-approved-project' | 'new-project' | 'ai-form' | 'manual-form'>('list');
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<number | null>(null);
 
   // Update local filter when prop changes
@@ -202,7 +249,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
 
   useEffect(() => {
     filterProjects();
-  }, [selectedCategory, projects, userRole, localFilter]);
+  }, [selectedCategory, projects, userRole, localFilter, searchQuery]);
 
   const loadServices = async () => {
     try {
@@ -418,6 +465,23 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
       }
     }
 
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(p => {
+        const description = p.description?.toLowerCase() || '';
+        const serviceNameEn = p.serviceNameEn?.toLowerCase() || '';
+        const serviceNameAr = p.serviceNameAr?.toLowerCase() || '';
+        const address = p.address?.toLowerCase() || '';
+        return (
+          description.includes(query) ||
+          serviceNameEn.includes(query) ||
+          serviceNameAr.includes(query) ||
+          address.includes(query)
+        );
+      });
+    }
+
     setFilteredProjects(filtered);
   };
 
@@ -481,6 +545,121 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
     };
   };
 
+  // Handler for project card press
+  const handleProjectCardPress = (item: Project) => {
+    const status = item.status?.toUpperCase();
+    const isTechnician = userRole?.toUpperCase() === 'TECHNICIAN';
+    
+    // For technicians in running projects, navigate to specific pages based on status
+    if (isTechnician && localFilter === 'running') {
+      console.log('🔵 [ProjectsScreen] Technician clicked on running project');
+      console.log('🔵 [ProjectsScreen] Project Status:', status);
+      setSelectedProject(item);
+      
+      if (status === 'APPROVED') {
+        console.log('🔵 [ProjectsScreen] Navigating to ApprovedProjectScreen (Technician)');
+        setCurrentPage('technician-approved-project');
+      } else if (status === 'PHASE_PLANNING') {
+        console.log('🔵 [ProjectsScreen] Navigating to ApprovedProjectScreen with Phase Management (Technician)');
+        setCurrentPage('technician-approved-project');
+      } else if (status === 'CONTRACT_SIGNING') {
+        console.log('🔵 [ProjectsScreen] Navigating to ContractSigningPage');
+        setCurrentPage('contract-signing');
+      } else if (status === 'IN_PROGRESS') {
+        console.log('🔵 [ProjectsScreen] Navigating to ProjectProgressPage');
+        setCurrentPage('progress');
+      } else {
+        // Fallback to ProjectDetailModal for other statuses
+        setShowProjectDetail(true);
+      }
+    } 
+    // For users in running projects, navigate to specific pages based on status
+    else if (!isTechnician && localFilter === 'running') {
+      console.log('🔵 [ProjectsScreen] User clicked on running project');
+      console.log('🔵 [ProjectsScreen] Project Status:', status);
+      setSelectedProject(item);
+      
+      if (status === 'APPROVED') {
+        console.log('🔵 [ProjectsScreen] Navigating to ApprovedProjectScreen (User)');
+        setCurrentPage('approved-project');
+      } else if (status === 'PHASE_PLANNING') {
+        console.log('🔵 [ProjectsScreen] Navigating to ApprovedProjectScreen (User - Phase Planning)');
+        setCurrentPage('approved-project');
+      } else if (status === 'CONTRACT_SIGNING') {
+        console.log('🔵 [ProjectsScreen] Navigating to UserContractSigningPage');
+        setCurrentPage('user-contract-signing');
+      } else if (status === 'IN_PROGRESS') {
+        console.log('🔵 [ProjectsScreen] Navigating to UserProjectProgressPage');
+        setCurrentPage('user-progress');
+      } else {
+        // For other statuses, use ProjectDetailModal
+        setShowProjectDetail(true);
+      }
+    }
+    // For users and technicians in completed projects, navigate to CompletedProjectScreen
+    else if (localFilter === 'completed' || status === 'COMPLETED') {
+      console.log('🔵 [ProjectsScreen] Clicked on completed project');
+      console.log('🔵 [ProjectsScreen] Project Status:', status);
+      console.log('🔵 [ProjectsScreen] Is Technician:', isTechnician);
+      setSelectedProject(item);
+      setCurrentPage('completed-project');
+    }
+    // For technicians in available filter, use PendingProjectScreen with isTechnician
+    else if (isTechnician && localFilter === 'available') {
+      console.log('🔵 [ProjectsScreen] Technician clicked on available project');
+      console.log('🔵 [ProjectsScreen] Project Status:', status);
+      setSelectedProject(item);
+      setCurrentPage('technician-pending-project');
+    }
+    // For technicians in bid_received filter (My Bids), use BidReceivedProjectScreen
+    else if (isTechnician && localFilter === 'bid_received') {
+      console.log('🔵 [ProjectsScreen] Technician clicked on bid_received project (My Bids)');
+      console.log('🔵 [ProjectsScreen] Project Status:', status);
+      setSelectedProject(item);
+      setCurrentPage('technician-bid-received');
+    }
+    // For users in available filter with PENDING status, use PendingProjectScreen
+    else if (!isTechnician && localFilter === 'available' && status === 'PENDING') {
+      console.log('🔵 [ProjectsScreen] User clicked on PENDING project');
+      setSelectedProject(item);
+      setCurrentPage('pending-project');
+    }
+    // For users in available filter with BID_RECEIVED status, use BidReceivedProjectScreen
+    else if (!isTechnician && localFilter === 'available' && status === 'BID_RECEIVED') {
+      console.log('🔵 [ProjectsScreen] User clicked on BID_RECEIVED project');
+      setSelectedProject(item);
+      setCurrentPage('bid-received-project');
+    }
+    // For other filters or cases, use ProjectDetailModal
+    else {
+      setSelectedProject(item);
+      setShowProjectDetail(true);
+    }
+  };
+
+  // Figma-styled project card for grid layout
+  const renderFigmaProjectCard = ({ item, index }: { item: Project; index: number }) => {
+    const serviceName = i18n.language === 'ar' ? item.serviceNameAr : item.serviceNameEn;
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.figmaProjectCard,
+          { marginRight: index % 2 === 0 ? CARD_GAP : 0 },
+        ]}
+        onPress={() => handleProjectCardPress(item)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.figmaProjectTitle} numberOfLines={1}>
+          {serviceName || t('Project')}
+        </Text>
+        <Text style={styles.figmaProjectDescription} numberOfLines={2}>
+          {item.description || t('project description')}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   const renderProjectCard = ({ item }: { item: Project }) => {
     const serviceName = i18n.language === 'ar' ? item.serviceNameAr : item.serviceNameEn;
     const isTechnician = userRole?.toUpperCase() === 'TECHNICIAN';
@@ -500,66 +679,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
         ]}
       >
         <TouchableOpacity
-          onPress={() => {
-            const status = item.status?.toUpperCase();
-            const isTechnician = userRole?.toUpperCase() === 'TECHNICIAN';
-            
-            // For technicians in running projects, navigate to specific pages based on status
-            if (isTechnician && localFilter === 'running') {
-              console.log('🔵 [ProjectsScreen] Technician clicked on running project');
-              console.log('🔵 [ProjectsScreen] Project Status:', status);
-              setSelectedProject(item);
-              
-              if (status === 'APPROVED' || status === 'PHASE_PLANNING') {
-                console.log('🔵 [ProjectsScreen] Navigating to PhaseEditingPage');
-                setCurrentPage('phase-editing');
-              } else if (status === 'CONTRACT_SIGNING') {
-                console.log('🔵 [ProjectsScreen] Navigating to ContractSigningPage');
-                setCurrentPage('contract-signing');
-              } else if (status === 'IN_PROGRESS') {
-                console.log('🔵 [ProjectsScreen] Navigating to ProjectProgressPage');
-                setCurrentPage('progress');
-              } else {
-                // Fallback to ProjectDetailModal for other statuses
-                setShowProjectDetail(true);
-              }
-            } 
-            // For users in running projects, navigate to specific pages based on status
-            else if (!isTechnician && localFilter === 'running') {
-              console.log('🔵 [ProjectsScreen] User clicked on running project');
-              console.log('🔵 [ProjectsScreen] Project Status:', status);
-              setSelectedProject(item);
-              
-              if (status === 'APPROVED') {
-                console.log('🔵 [ProjectsScreen] Navigating to UserPhaseViewPage');
-                setCurrentPage('user-phase-view');
-              } else if (status === 'PHASE_PLANNING') {
-                console.log('🔵 [ProjectsScreen] Navigating to UserPhaseReviewPage');
-                setCurrentPage('user-phase-review');
-              } else if (status === 'CONTRACT_SIGNING') {
-                console.log('🔵 [ProjectsScreen] Navigating to UserContractSigningPage');
-                setCurrentPage('user-contract-signing');
-              } else if (status === 'IN_PROGRESS') {
-                console.log('🔵 [ProjectsScreen] Navigating to UserProjectProgressPage');
-                setCurrentPage('user-progress');
-              } else {
-                // For other statuses, use ProjectDetailModal
-                setShowProjectDetail(true);
-              }
-            }
-            // For users in completed projects, navigate to CompletedProjectViewPage
-            else if (!isTechnician && (localFilter === 'completed' || status === 'COMPLETED')) {
-              console.log('🔵 [ProjectsScreen] User clicked on completed project');
-              console.log('🔵 [ProjectsScreen] Project Status:', status);
-              setSelectedProject(item);
-              setCurrentPage('completed-project');
-            }
-            // For other filters or cases, use ProjectDetailModal
-            else {
-              setSelectedProject(item);
-              setShowProjectDetail(true);
-            }
-          }}
+          onPress={() => handleProjectCardPress(item)}
           activeOpacity={0.7}
         >
           {/* Header */}
@@ -718,23 +838,25 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
   return (
     <>
       {/* New Pages for Technicians in Running Projects */}
+      
+      {/* Approved Project Screen - Technician View (handles both APPROVED and PHASE_PLANNING) */}
       {userRole?.toUpperCase() === 'TECHNICIAN' && 
        localFilter === 'running' && 
        selectedProject && 
-       currentPage === 'phase-editing' && (
-        <PhaseEditingPage
+       currentPage === 'technician-approved-project' && (
+        <ApprovedProjectScreen
           project={selectedProject}
+          isTechnician={true}
           onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from PhaseEditingPage');
+            console.log('🔵 [ProjectsScreen] Back from ApprovedProjectScreen (Technician)');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
           onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] PhaseEditingPage success - reloading projects');
+            console.log('🔵 [ProjectsScreen] ApprovedProjectScreen (Technician) success - reloading projects');
             loadProjects();
-            setCurrentPage('list');
-            setSelectedProject(null);
           }}
+          onOpenChat={onOpenChat}
         />
       )}
 
@@ -742,15 +864,16 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
        localFilter === 'running' && 
        selectedProject && 
        currentPage === 'contract-signing' && (
-        <ContractSigningPage
+        <ContractSigningProjectScreen
           project={selectedProject}
+          isTechnician={true}
           onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from ContractSigningPage');
+            console.log('🔵 [ProjectsScreen] Back from ContractSigningProjectScreen (Technician)');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
           onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] ContractSigningPage success - reloading projects');
+            console.log('🔵 [ProjectsScreen] ContractSigningProjectScreen success - reloading projects');
             loadProjects();
             setCurrentPage('list');
             setSelectedProject(null);
@@ -762,16 +885,17 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
        localFilter === 'running' && 
        selectedProject && 
        currentPage === 'progress' && (
-        <ProjectProgressPage
+        <InProgressProjectScreen
           project={selectedProject}
+          isTechnician={true}
           onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from ProjectProgressPage');
+            console.log('🔵 [ProjectsScreen] Back from InProgressProjectScreen (Technician)');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
-          onRequestVisit={onRequestVisit}
+          onOpenChat={onOpenChat}
           onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] ProjectProgressPage success - reloading projects');
+            console.log('🔵 [ProjectsScreen] InProgressProjectScreen (Technician) success - reloading projects');
             loadProjects();
             setCurrentPage('list');
             setSelectedProject(null);
@@ -780,6 +904,34 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
       )}
 
       {/* User Pages for Running Projects */}
+      
+      {/* Approved Project Screen - User View */}
+      {userRole?.toUpperCase() !== 'TECHNICIAN' && 
+       localFilter === 'running' && 
+       selectedProject && 
+       currentPage === 'approved-project' && (
+        <ApprovedProjectScreen
+          project={selectedProject}
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from ApprovedProjectScreen (User)');
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] ApprovedProjectScreen success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onProceedToContract={() => {
+            console.log('🔵 [ProjectsScreen] Proceeding to contract signing');
+            setCurrentPage('user-contract-signing');
+          }}
+          onOpenChat={onOpenChat}
+        />
+      )}
+
+      {/* Legacy UserPhaseViewPage - kept for backwards compatibility */}
       {userRole?.toUpperCase() !== 'TECHNICIAN' && 
        localFilter === 'running' && 
        selectedProject && 
@@ -800,39 +952,22 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
         />
       )}
 
-      {userRole?.toUpperCase() !== 'TECHNICIAN' && 
-       localFilter === 'running' && 
-       selectedProject && 
-       currentPage === 'user-phase-review' && (
-        <UserPhaseReviewPage
-          project={selectedProject}
-          onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from UserPhaseReviewPage');
-            setCurrentPage('list');
-            setSelectedProject(null);
-          }}
-          onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] UserPhaseReviewPage success - reloading projects');
-            loadProjects();
-            setCurrentPage('list');
-            setSelectedProject(null);
-          }}
-        />
-      )}
+      {/* UserPhaseReviewPage removed - PHASE_PLANNING now uses ApprovedProjectScreen */}
 
       {userRole?.toUpperCase() !== 'TECHNICIAN' && 
        localFilter === 'running' && 
        selectedProject && 
        currentPage === 'user-contract-signing' && (
-        <UserContractSigningPage
+        <ContractSigningProjectScreen
           project={selectedProject}
+          isTechnician={false}
           onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from UserContractSigningPage');
+            console.log('🔵 [ProjectsScreen] Back from ContractSigningProjectScreen (User)');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
           onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] UserContractSigningPage success - reloading projects');
+            console.log('🔵 [ProjectsScreen] ContractSigningProjectScreen success - reloading projects');
             loadProjects();
             setCurrentPage('list');
             setSelectedProject(null);
@@ -844,16 +979,18 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
        localFilter === 'running' && 
        selectedProject && 
        currentPage === 'user-progress' && (
-        <UserProjectProgressPage
+        <InProgressProjectScreen
           project={selectedProject}
+          isTechnician={false}
           onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from UserProjectProgressPage');
+            console.log('🔵 [ProjectsScreen] Back from InProgressProjectScreen (User)');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
+          onOpenChat={onOpenChat}
           onBookAppointment={onBookAppointment}
           onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] UserProjectProgressPage success - reloading projects');
+            console.log('🔵 [ProjectsScreen] InProgressProjectScreen (User) success - reloading projects');
             loadProjects();
             setCurrentPage('list');
             setSelectedProject(null);
@@ -861,19 +998,30 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
         />
       )}
 
-      {userRole?.toUpperCase() !== 'TECHNICIAN' && 
-       selectedProject && 
+      {selectedProject && 
        currentPage === 'completed-project' && (
-        <CompletedProjectViewPage
+        <CompletedProjectScreen
           project={selectedProject}
+          isTechnician={userRole?.toUpperCase() === 'TECHNICIAN'}
           onBack={() => {
-            console.log('🔵 [ProjectsScreen] Back from CompletedProjectViewPage');
+            console.log('🔵 [ProjectsScreen] Back from CompletedProjectScreen');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
+          onOpenChat={onOpenChat}
           onSuccess={() => {
-            console.log('🔵 [ProjectsScreen] CompletedProjectViewPage success - reloading projects');
+            console.log('🔵 [ProjectsScreen] CompletedProjectScreen success - reloading projects');
             loadProjects();
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onStartNewProject={() => {
+            console.log('🔵 [ProjectsScreen] Start new project from CompletedProjectScreen');
+            setCurrentPage('new-project');
+            setSelectedProject(null);
+          }}
+          onViewAllProjects={() => {
+            console.log('🔵 [ProjectsScreen] View all projects from CompletedProjectScreen');
             setCurrentPage('list');
             setSelectedProject(null);
           }}
@@ -892,6 +1040,110 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
           }}
           onSuccess={() => {
             console.log('🔵 [ProjectsScreen] OwnerProjectEditScreen success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+        />
+      )}
+
+      {/* Pending Project Screen - For PENDING status */}
+      {userRole?.toUpperCase() !== 'TECHNICIAN' &&
+       selectedProject &&
+       currentPage === 'pending-project' && (
+        <PendingProjectScreen
+          project={selectedProject}
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from PendingProjectScreen');
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onEditProject={() => {
+            console.log('🔵 [ProjectsScreen] Edit project from PendingProjectScreen');
+            setCurrentPage('owner-edit');
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] PendingProjectScreen success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+        />
+      )}
+
+      {/* Bid Received Project Screen - For BID_RECEIVED status (User view) */}
+      {userRole?.toUpperCase() !== 'TECHNICIAN' &&
+       selectedProject &&
+       currentPage === 'bid-received-project' && (
+        <BidReceivedProjectScreen
+          project={selectedProject}
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from BidReceivedProjectScreen');
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] BidReceivedProjectScreen success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onOpenChat={onOpenChat}
+          onViewTechnician={(technicianId) => {
+            setSelectedTechnicianId(technicianId);
+            setCurrentPage('technician-profile');
+          }}
+        />
+      )}
+
+      {/* Technician Bid Received Project Screen - For technicians viewing their bids (My Bids tab) */}
+      {userRole?.toUpperCase() === 'TECHNICIAN' &&
+       selectedProject &&
+       currentPage === 'technician-bid-received' && (
+        <BidReceivedProjectScreen
+          project={selectedProject}
+          isTechnician={true}
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from TechnicianBidReceivedProjectScreen');
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] TechnicianBidReceivedProjectScreen success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onOpenChat={onOpenChat}
+          onViewTechnician={(technicianId) => {
+            setSelectedTechnicianId(technicianId);
+            setCurrentPage('technician-profile');
+          }}
+        />
+      )}
+
+      {/* Technician Pending Project Screen - For technicians viewing available projects */}
+      {userRole?.toUpperCase() === 'TECHNICIAN' &&
+       selectedProject &&
+       currentPage === 'technician-pending-project' && (
+        <PendingProjectScreen
+          project={selectedProject}
+          isTechnician={true}
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from TechnicianPendingProjectScreen');
+            setCurrentPage('list');
+            setSelectedProject(null);
+          }}
+          onAskForVisit={() => {
+            console.log('🔵 [ProjectsScreen] Ask for Visit from TechnicianPendingProjectScreen');
+            setShowVisitRequest(true);
+          }}
+          onBidNow={() => {
+            console.log('🔵 [ProjectsScreen] Bid Now from TechnicianPendingProjectScreen');
+            setShowBidForm(true);
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] TechnicianPendingProjectScreen success - reloading projects');
             loadProjects();
             setCurrentPage('list');
             setSelectedProject(null);
@@ -939,12 +1191,17 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
         );
       })()}
 
-      {/* Tabs for Large Web Screens */}
-      {IS_LARGE_WEB && (() => {
+      {/* Filter Tabs - All Screens */}
+      {(() => {
         const isTechnician = userRole?.toUpperCase() === 'TECHNICIAN';
         return (
-          <View style={[styles.tabsContainer, { backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
-            <View style={styles.tabsRow}>
+          <View style={[IS_LARGE_WEB ? styles.tabsContainer : styles.mobileTabsContainer, { backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={IS_LARGE_WEB ? undefined : styles.mobileTabsContent}
+            >
+              <View style={IS_LARGE_WEB ? styles.tabsRow : styles.mobileTabsRow}>
               <TouchableOpacity
                 style={[
                   styles.tabButton,
@@ -1024,7 +1281,8 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
                   {t('Completed')}
                 </Text>
               </TouchableOpacity>
-            </View>
+              </View>
+            </ScrollView>
           </View>
         );
       })()}
@@ -1121,26 +1379,18 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
         />
       )}
 
-      {/* Project Detail Modal - Show different modal based on user role and project status */}
-      {userRole?.toUpperCase() === 'TECHNICIAN' && 
-       selectedProject && 
-       (selectedProject.status?.toUpperCase() === 'PENDING' || localFilter === 'available') ? (
-        // TECHNICIAN: Show TechnicianBidsView for available/pending projects (bids and visit requests)
-        <TechnicianBidsView
-          visible={showProjectDetail}
-          project={selectedProject}
-          onClose={() => {
-            setShowProjectDetail(false);
-            setSelectedProject(null);
-          }}
-          onSuccess={() => {
-            // Reload projects after bid withdrawal or visit request
-            loadProjects();
-          }}
-        />
-      ) : (
-        // USER/HOMEOWNER OR TECHNICIAN (for non-running projects): Show ProjectDetailModal
-        // This includes phase planning, approval, contract signing, and payment
+      {/* Floating Action Button - Add New Project */}
+      <TouchableOpacity
+        style={styles.figmaFab}
+        onPress={() => setCurrentPage('new-project')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={24} color={FIGMA_COLORS.amber60} />
+      </TouchableOpacity>
+
+      {/* Project Detail Modal - Show ProjectDetailModal for general project details */}
+      {/* Note: Specific screens like PendingProjectScreen and BidReceivedProjectScreen are now 
+          used for specific statuses via currentPage navigation */}
         <ProjectDetailModal
           visible={showProjectDetail && currentPage === 'list'}
           project={selectedProject}
@@ -1156,41 +1406,106 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
             loadProjects();
           }}
         />
+
+          </View>
       )}
 
-      {/* Bid Form Modal - Only show for technicians */}
+      {/* Bid Form Modal - Only show for technicians (outside of currentPage === 'list' to work from any screen) */}
       {selectedProject && userRole?.toUpperCase() === 'TECHNICIAN' && (
         <BidFormModal
           visible={showBidForm}
           project={selectedProject}
           onClose={() => {
             setShowBidForm(false);
-            setSelectedProject(null);
+            // Don't clear selectedProject if on technician-pending-project page
+            if (currentPage !== 'technician-pending-project') {
+              setSelectedProject(null);
+            }
           }}
           onSuccess={() => {
             setShowBidForm(false);
             loadProjects(); // Refresh projects after successful bid
+            // Go back to list after successful bid
+            if (currentPage === 'technician-pending-project') {
+              setCurrentPage('list');
+              setSelectedProject(null);
+            }
           }}
         />
       )}
 
-      {/* Visit Request Modal - Only show for technicians */}
+      {/* Visit Request Modal - Only show for technicians (outside of currentPage === 'list' to work from any screen) */}
       {selectedProject && userRole?.toUpperCase() === 'TECHNICIAN' && (
         <VisitRequestModal
           visible={showVisitRequest}
           project={selectedProject}
           onClose={() => {
             setShowVisitRequest(false);
-            setSelectedProject(null);
+            // Don't clear selectedProject if on technician-pending-project page
+            if (currentPage !== 'technician-pending-project') {
+              setSelectedProject(null);
+            }
           }}
           onSuccess={() => {
             setShowVisitRequest(false);
             loadProjects(); // Refresh projects after successful visit request
+            // Go back to list after successful visit request
+            if (currentPage === 'technician-pending-project') {
+              setCurrentPage('list');
+              setSelectedProject(null);
+            }
           }}
         />
       )}
-    </View>
+
+      {/* New Project View - For creating new projects */}
+      {currentPage === 'new-project' && (
+        <NewProjectView
+          onNavigateToAI={() => {
+            console.log('🔵 [ProjectsScreen] Navigate to AI project creation');
+            setCurrentPage('ai-form');
+          }}
+          onNavigateToManual={() => {
+            console.log('🔵 [ProjectsScreen] Navigate to manual project creation');
+            setCurrentPage('manual-form');
+          }}
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from NewProjectView');
+            setCurrentPage('list');
+          }}
+        />
       )}
+
+      {/* AI Project Creation Form */}
+      {currentPage === 'ai-form' && (
+        <ConversationalAIForm
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from AI Form');
+            setCurrentPage('new-project');
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] AI Form success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+          }}
+        />
+      )}
+
+      {/* Manual Project Creation Form */}
+      {currentPage === 'manual-form' && (
+        <ManualProjectForm
+          onBack={() => {
+            console.log('🔵 [ProjectsScreen] Back from Manual Form');
+            setCurrentPage('new-project');
+          }}
+          onSuccess={() => {
+            console.log('🔵 [ProjectsScreen] Manual Form success - reloading projects');
+            loadProjects();
+            setCurrentPage('list');
+          }}
+        />
+      )}
+      <View style={{ height: 40 }} />
     </>
   );
 }
@@ -1423,6 +1738,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 100,
+    ...Platform.select({
+      web: {
+        minHeight: '60vh' as any,
+        paddingTop: 120,
+        paddingBottom: 120,
+      },
+    }),
   },
   emptyText: {
     fontSize: 16,
@@ -1438,6 +1760,17 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  mobileTabsContainer: {
+    borderBottomWidth: 1,
+  },
+  mobileTabsContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  mobileTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   tabsRow: {
     flexDirection: 'row',
     gap: 0,
@@ -1450,17 +1783,25 @@ const styles = StyleSheet.create({
     }),
   },
   tabButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: Platform.select({ web: 16, default: 10 }),
+    paddingHorizontal: Platform.select({ web: 24, default: 16 }),
     borderBottomWidth: 3,
-    minWidth: 120,
+    minWidth: Platform.select({ web: 120, default: 80 }),
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: Platform.select({ web: 0, default: 20 }),
+    backgroundColor: Platform.select({ 
+      web: 'transparent', 
+      default: 'transparent',
+    }),
     ...Platform.select({
       web: {
         flexShrink: 0 as any,
         cursor: 'pointer' as any,
         userSelect: 'none' as any,
+      },
+      default: {
+        marginRight: 8,
       },
     }),
   },
@@ -1475,6 +1816,125 @@ const styles = StyleSheet.create({
         whiteSpace: 'nowrap' as any,
       },
     }),
+  },
+  // ==================== FIGMA DESIGN STYLES ====================
+  figmaContent: {
+    flex: 1,
+    paddingHorizontal: CONTAINER_PADDING,
+    paddingTop: 16,
+  },
+  figmaTitleSection: {
+    marginBottom: 16,
+  },
+  figmaTitle: {
+    fontSize: 20,
+    fontWeight: '400',
+    color: '#003867', // FIGMA_COLORS.textHeaders
+    marginBottom: 4,
+  },
+  figmaSubtitle: {
+    fontSize: 16,
+    fontWeight: '300',
+    color: '#383838', // FIGMA_COLORS.textBody
+  },
+  figmaSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6EFF7', // FIGMA_COLORS.primary10
+    borderWidth: 0.5,
+    borderColor: '#003867', // FIGMA_COLORS.primary100
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 43,
+    gap: 12,
+    marginBottom: 16,
+  },
+  figmaSearchInput: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '200',
+    color: '#003867', // FIGMA_COLORS.primary100
+    height: '100%',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as any,
+      },
+    }),
+  },
+  figmaViewAllRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  figmaViewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  figmaViewAllText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#003867', // FIGMA_COLORS.primary100
+    marginRight: 4,
+  },
+  figmaGridContainer: {
+    paddingBottom: 80, // Space for FAB
+  },
+  figmaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  figmaProjectCard: {
+    width: '48%',
+    minWidth: 150,
+    height: 100,
+    borderWidth: 1,
+    borderColor: '#00549B', // FIGMA_COLORS.primary70
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: CARD_GAP,
+    justifyContent: 'center',
+  },
+  figmaProjectTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#383838', // FIGMA_COLORS.textBody
+    marginBottom: 6,
+  },
+  figmaProjectDescription: {
+    fontSize: 14,
+    fontWeight: '300',
+    color: '#A3A3A3', // FIGMA_COLORS.textSecondary
+  },
+  figmaFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 100, // Above navigation bar
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFF2CF', // FIGMA_COLORS.amber10
+    borderWidth: 2,
+    borderColor: '#FFB703', // FIGMA_COLORS.amber60
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    zIndex: 999,
+    elevation: 4,
+  },
+  figmaEmptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  figmaEmptyText: {
+    fontSize: 16,
+    color: '#A3A3A3', // FIGMA_COLORS.textSecondary
+    marginTop: 16,
   },
 });
 

@@ -17,13 +17,14 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { FontFamily, UIFontSizes } from '../constants/Fonts';
 import { storage } from '../utils/storage';
 import { Button, Card, Surface } from 'react-native-paper';
 import { useFCMNotifications } from '../utils/useFCMNotifications';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
-import { showAlert, showError } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 import AnimatedRoleToggle from '../components/AnimatedRoleToggle';
 import { PhoneInput, PasswordInput } from '../components/CustomInput';
 import ThemeToggle from '../components/ThemeToggle';
@@ -51,6 +52,9 @@ export default function LoginScreen({
   
   // FCM Notifications Hook
   const { fcmToken, hasPermission, isLoading: fcmLoading } = useFCMNotifications();
+  
+  // Alert Popup Hook
+  const { alertState, showError, showAlert, hideAlert } = useAlertPopup();
   
   // Responsive state - updates on window resize
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -141,7 +145,7 @@ export default function LoginScreen({
 
       // Validation
       if (!formattedPhone || !password) {
-        showError(t('auth.errors.missingCredentials'));
+        showError(t('auth.errors.missingCredentials'), t('validation_failed'));
         setIsLoading(false);
         return;
       }
@@ -171,15 +175,18 @@ export default function LoginScreen({
       console.log('📥 Login Response:', data);
 
       // Check for pending verification FIRST (before status/token checks)
-      if (data.message && (
-        data.message.toLowerCase().includes('pending verification') || 
-        data.message.toLowerCase().includes('otp sent')
-      )) {
-        console.log('⚠️ Account pending verification - redirecting to OTP');
-        setIsLoading(false);
+      // Handle errorCode: USER_ALREADY_EXISTS_PENDING
+      if (data.errorCode === 'USER_ALREADY_EXISTS_PENDING' || 
+          (data.message && (
+            data.message.toLowerCase().includes('pending verification') || 
+            data.message.toLowerCase().includes('otp sent')
+          ))
+      ) {
+        console.log('⚠️ Account pending verification - redirecting to OTP screen');
+        // Note: OTP is already sent by backend, no need to call resend endpoint here
         
-        // Navigate to OTP screen with phone number, role, and password
-        // The OTP screen will handle verification and then navigate to home
+        setIsLoading(false);
+        // Navigate to OTP screen with phone number and role
         onNavigateToOTP(formattedPhone, selectedRole);
         return;
       }
@@ -203,35 +210,51 @@ export default function LoginScreen({
         
         onLoginSuccess(selectedRole, data.token, userId);
       } else {
-        const message = data.message || t('validation_failed');
-        showAlert(t('validation_failed'), message);
+        // Check for multilingual messages (messageEn/messageAr)
+        const isArabic = i18n.language.startsWith('ar');
+        let message = t('validation_failed');
+        if (data.messageEn && data.messageAr) {
+          message = isArabic ? data.messageAr : data.messageEn;
+        } else {
+          message = data.message || data.error || t('validation_failed');
+        }
+        showError(message, t('validation_failed'));
       }
     } catch (error) {
       console.error('❌ Login error:', error);
-      showError(t('network_error'));
+      showError(t('network_error'), t('Error'));
     } finally {
       setIsLoading(false);
     }
   };
 
 
+  // Figma Mobile Design Colors
+  const figmaMobileColors = {
+    background: '#FFFFFF',
+    titleBlue: '#1A6DB4',        // Welcome back text
+    textDark: '#2D2D2D',         // Subtitle text
+    buttonBlue: '#005DAC',       // Login button
+    linkNavy: '#003867',         // Create account link
+  };
+
   // Render Android style (always mobile) OR Web small screen style
   if (Platform.OS !== 'web' || IS_SMALL_WEB || IS_MEDIUM_WEB) {
     return (
       <KeyboardAvoidingView 
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1, backgroundColor: isDarkMode ? colors.background : figmaMobileColors.background }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={[styles.mainContainer, { flex: 1, paddingTop: Platform.OS === 'web' ? 0 : insets.top, paddingBottom: Platform.OS === 'web' ? 0 : insets.bottom }]}>
           <ScrollView 
-            style={[styles.container, { backgroundColor: colors.background }]} 
+            style={[styles.container, { backgroundColor: isDarkMode ? colors.background : figmaMobileColors.background }]} 
             contentContainerStyle={[styles.scrollContent, Platform.OS === 'web' && styles.webScrollContent]}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            <View style={[styles.contentWrapper, Platform.OS === 'web' && { backgroundColor: colors.cardBackground }]}>
+            <View style={[styles.contentWrapper, { backgroundColor: isDarkMode ? colors.cardBackground : figmaMobileColors.background }]}>
               {/* Language Toggle at Top */}
               <View style={styles.languageToggleTop}>
                 <TouchableOpacity 
@@ -241,106 +264,150 @@ export default function LoginScreen({
                   <Ionicons 
                     name="globe-outline" 
                     size={18} 
-                    color={colors.primary} 
+                    color={isDarkMode ? colors.primary : figmaMobileColors.buttonBlue} 
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={[styles.langText, { color: colors.primary, fontWeight: '600' }]}>
+                  <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaMobileColors.buttonBlue, fontWeight: '600', fontSize: 18 }]}>
                     {i18n.language === 'ar' ? 'AR' : 'EN'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Image
-            source={require('../../assets/bonyad-logo.svg')}
-            style={styles.logo}
-            contentFit="contain"
-          />
-          <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-            {t('Welcome back')}
-          </Text>
-          <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
-            {t('Log in to your account')}
-          </Text>
+                {/* Logo Section - Figma Style: Cube + Text */}
+              <View style={styles.mobileLogoSection}>
+                <View style={styles.mobileLogoContainer}>
+                  <Image
+                    source={require('../../assets/bonyad-cube-logo.svg')}
+                    style={styles.mobileCubeLogo}
+                    contentFit="contain"
+                  />
+                  <View style={styles.mobileLogoTextContainer}>
+                    <Text style={[styles.mobileLogoText, { color: isDarkMode ? colors.text : figmaMobileColors.buttonBlue, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }]}>
+                      Bonyad
+                    </Text>
+                    <Text style={[styles.mobileLogoArabic, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.buttonBlue, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }]}>
+                      بُنيـــاد
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Welcome Section - Figma Style */}
+              <View style={styles.mobileWelcomeSection}>
+                <Text style={[styles.mobileWelcomeTitle, { color: isDarkMode ? colors.text : figmaMobileColors.titleBlue, fontSize: UIFontSizes.welcomeTitle }]}>
+                  {t('Welcome back')}
+                </Text>
+                <Text style={[styles.mobileWelcomeSubtitle, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.textDark, fontSize: UIFontSizes.welcomeSubtitle }]}>
+                  {t('Manage your properties and services.')}
+                </Text>
+              </View>
+
+              {/* Role Toggle (User / Technician) */}
+              <View style={styles.roleToggleWrapper}>
+                <AnimatedRoleToggle
+                  selectedRole={selectedRole}
+                  onRoleChange={setSelectedRole}
+                />
+              </View>
+
+              {/* Form Section */}
+              <View style={styles.mobileFormSection}>
+                {/* Phone Input */}
+                <PhoneInput
+                  label={t('Mobile number')}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder={t('auth.placeholders.phone')}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {/* Password Input */}
+                <PasswordInput
+                  label={t('Password')}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={t('auth.placeholders.password')}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {/* Login Button - Figma Style */}
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  style={[
+                    styles.mobileLoginButton,
+                    { backgroundColor: isDarkMode ? colors.primary : figmaMobileColors.buttonBlue },
+                    isLoading && { opacity: 0.7 }
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={[styles.mobileLoginButtonText, { fontSize: UIFontSizes.buttonMedium }]}>
+                      {t('Login')}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Create Account Link - Figma Style */}
+                <View style={[
+                  styles.mobileCreateAccountContainer,
+                  { flexDirection: i18n.language === 'ar' ? 'row-reverse' : 'row' }
+                ]}>
+                  <Text style={[styles.mobileCreateAccountText, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.linkNavy, fontSize: 14 }]}>
+                    {t("Don't have an account?")}
+                  </Text>
+                  <TouchableOpacity onPress={onNavigateToSignup}>
+                    <Text style={[styles.mobileCreateAccountLink, { color: isDarkMode ? colors.primary : figmaMobileColors.linkNavy, fontSize: 14 }]}>
+                      {t('Create an account')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
+            </View>
+          </ScrollView>
         </View>
-
-      {/* Role Toggle (User / Technician) - Enhanced with Animation */}
-      <View style={styles.roleToggleWrapper}>
-        <AnimatedRoleToggle
-          selectedRole={selectedRole}
-          onRoleChange={setSelectedRole}
-        />
-      </View>
-
-      {/* Phone Input */}
-      <PhoneInput
-        label={t('Mobile number')}
-        value={phone}
-        onChangeText={setPhone}
-        placeholder={t('auth.placeholders.phone')}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      {/* Password Input */}
-      <PasswordInput
-        label={t('Password')}
-        value={password}
-        onChangeText={setPassword}
-        placeholder={t('auth.placeholders.password')}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      {/* Forgot Password */}
-      <Button
-        mode="text"
-        onPress={onNavigateToForgotPassword}
-        style={styles.forgotPasswordButton}
-        labelStyle={[styles.forgotPasswordText, { color: colors.primary }]}
-      >
-        {t('Forgot Password?')}
-      </Button>
-
-        {/* Login Button */}
-        <Button
-          mode="contained"
-          onPress={handleLogin}
-          disabled={isLoading}
-          style={[styles.loginButton, isLoading && styles.loginButtonDisabled, { backgroundColor: colors.primary }]}
-          contentStyle={styles.loginButtonContent}
-          loading={isLoading}
-        >
-          {t('Login')}
-        </Button>
-
-        {/* Sign Up Link */}
-        <Button 
-          mode="text" 
-          onPress={onNavigateToSignup}
-          labelStyle={[styles.signupText, { color: colors.textSecondary }]}
-        >
-          {t("Don't have an account?")} <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('Sign Up')}</Text>
-        </Button>
-
-        {/* Theme Toggle */}
-        <ThemeToggle />
-          </View>
           
-
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      );
-    }
+        {/* Alert Popup */}
+        <AlertPopup
+          visible={alertState.visible}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          buttons={alertState.buttons}
+          countdown={alertState.countdown}
+          onClose={hideAlert}
+        />
+      </KeyboardAvoidingView>
+    );
+  }
 
   // Render web desktop layout (large screens only on web)
   console.log('🖥️ Rendering DESKTOP layout (Web large screen)');
   console.log('🎨 Desktop Layout Branding Panel:', { IS_LARGE_WEB, willShow: IS_LARGE_WEB });
   
+  // Figma Design Colors
+  const figmaColors = {
+    background: '#E6EFF7',       // Light blue background
+    cardBackground: '#FFFFFF',   // White card
+    primaryBlue: '#005DAC',      // Primary blue for buttons
+    titleBlue: '#1A6DB4',        // Title text blue
+    textDark: '#2D2D2D',         // Dark text
+    textNavy: '#003867',         // Navy text for inputs
+    inputBg: '#F0F0F0',          // Input background
+    inputBorder: '#80AED6',      // Input border
+    amberActive: '#FFB703',      // Amber for active toggle
+    amberBg: '#FFF2CF',          // Light amber background
+  };
+  
   return (
-    <View style={[styles.desktopContainer, { backgroundColor: colors.background }]}>
+    <View style={[styles.desktopContainer, { backgroundColor: isDarkMode ? colors.background : figmaColors.background }]}>
       {/* Language Toggle at Top Right */}
       <View style={styles.desktopLanguageToggle}>
         <TouchableOpacity 
@@ -350,209 +417,106 @@ export default function LoginScreen({
           <Ionicons 
             name="globe-outline" 
             size={18} 
-            color={colors.primary} 
+            color={isDarkMode ? colors.primary : figmaColors.primaryBlue} 
             style={{ marginRight: 6 }}
           />
-          <Text style={[styles.langText, { color: colors.primary, fontWeight: '600' }]}>
+          <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaColors.primaryBlue, fontWeight: '600', fontSize: 18 }]}>
             {i18n.language === 'ar' ? 'AR' : 'EN'}
           </Text>
         </TouchableOpacity>
       </View>
 
       <View style={[styles.desktopWrapper, !IS_LARGE_WEB && styles.desktopWrapperNoBranding]}>
-        {/* Left Side - Branding (Only on large web screens >= 1024px) */}
+        {/* Left Side - Bonyad Logo & Branding (Only on large web screens >= 1024px) */}
         {IS_LARGE_WEB && (
           <Animated.View
             style={[
               styles.desktopLeftPanel,
               {
-                backgroundColor: isDarkMode ? colors.cardBackground : colors.primary,
+                backgroundColor: isDarkMode ? colors.cardBackground : figmaColors.background,
                 opacity: fadeAnim,
                 transform: [{ translateX: slideAnim }],
-                borderRightWidth: isDarkMode ? StyleSheet.hairlineWidth : 0,
-                borderRightColor: isDarkMode ? colors.border : 'transparent',
-                ...(Platform.OS === 'web'
-                  ? {
-                      boxShadow: isDarkMode
-                        ? 'inset -12px 0 32px rgba(0,0,0,0.55)'
-                        : 'inset -10px 0 30px rgba(0,0,0,0.12)',
-                    }
-                  : {}),
               },
             ]}
           >
-            <View
+            {/* Figma Layout: Cube Logo + Text Side by Side - NEVER FLIP */}
+            <Animated.View 
               style={[
-                styles.desktopLeftPanelGradient,
+                styles.desktopBranding,
                 {
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)',
-                },
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }],
+                  flexDirection: 'row', // Always LTR - logo should not flip
+                  alignItems: 'center',
+                  gap: 33, // Figma: gap-[33px]
+                }
               ]}
             >
-              <Animated.View 
-                style={[
-                  styles.desktopBranding,
-                  {
-                    opacity: fadeAnim,
-                    transform: [{ scale: scaleAnim }],
-                  }
-                ]}
-              >
+              {/* Bonyad 3D Cube Logo - Figma: 221x265px */}
+              <Image
+                source={require('../../assets/bonyad-cube-logo.svg')}
+                style={{
+                  width: 221,
+                  height: 265,
+                } as any}
+                contentFit="contain"
+              />
+              
+              {/* Brand Text Container - Figma: w-[414px], gap-[19px] */}
+              <View style={{ 
+                flexDirection: 'column', 
+                gap: 19, // Figma: gap-[19px]
+                alignItems: 'flex-start', // Always left-aligned
+                width: 414, // Figma: w-[414px]
+              }}>
+                {/* "Bonyad" Text - Figma: 96px, Extra Bold, #005DAC */}
                 <Animated.Text 
                   style={[
-                    styles.desktopBrandTitle,
                     {
                       opacity: fadeAnim,
-                      transform: [{ translateY: slideAnim }],
-                      color: isDarkMode ? colors.text : '#FFFFFF',
-                      ...Platform.select({
-                        web: {
-                          filter: blurAnim.interpolate({
-                            inputRange: [0, 8],
-                            outputRange: ['blur(0px)', 'blur(8px)'],
-                            extrapolate: 'clamp',
-                          }) as any,
-                          WebkitFilter: blurAnim.interpolate({
-                            inputRange: [0, 8],
-                            outputRange: ['blur(0px)', 'blur(8px)'],
-                            extrapolate: 'clamp',
-                          }) as any,
-                        },
-                      }),
+                      color: isDarkMode ? colors.text : figmaColors.primaryBlue,
+                      fontSize: 96, // Figma: text-[96px]
+                      fontWeight: '800', // Figma: font-extrabold
+                      letterSpacing: -1,
+                      lineHeight: 96,
+                      fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' : undefined,
                     }
                   ]}
                 >
-                  {t('Welcome back')}
+                  Bonyad
                 </Animated.Text>
+                
+                {/* Arabic "بُنياد" Text - Figma: ~64px styled text, #005DAC */}
                 <Animated.Text 
                   style={[
-                    styles.desktopBrandSubtitle,
                     {
                       opacity: fadeAnim,
-                      transform: [{ translateY: slideAnim }],
-                      color: isDarkMode ? colors.textSecondary : 'rgba(255,255,255,0.85)',
+                      color: isDarkMode ? colors.textSecondary : figmaColors.primaryBlue,
+                      fontSize: 72, // Scaled to match Figma proportions
+                      fontWeight: '700',
+                      letterSpacing: 8, // Add letter spacing for Arabic styling
+                      lineHeight: 116, // Figma: h-[116px]
+                      textAlign: 'left', // Always left-aligned
+                      fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' : undefined,
                     }
                   ]}
                 >
-                  {t('Log in to your account')}
+                  بُنيـــاد
                 </Animated.Text>
-                <View style={styles.desktopFeatures}>
-                  <Animated.View
-                    style={[
-                      styles.desktopFeature,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateX: slideAnim }],
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.2)',
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.desktopFeatureIcon,
-                        { backgroundColor: isDarkMode ? 'rgba(51,163,255,0.25)' : 'rgba(255,255,255,0.25)' },
-                      ]}
-                    >
-                      <Ionicons
-                        name="shield-checkmark"
-                        size={28}
-                        color={isDarkMode ? colors.primaryLight || colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <Animated.Text
-                      style={[
-                        styles.desktopFeatureText,
-                        {
-                          opacity: fadeAnim,
-                          color: isDarkMode ? colors.text : '#FFFFFF',
-                        },
-                      ]}
-                    >
-                      {t('Secure & Safe')}
-                    </Animated.Text>
-                  </Animated.View>
-                  <Animated.View
-                    style={[
-                      styles.desktopFeature,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateX: slideAnim }],
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.2)',
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.desktopFeatureIcon,
-                        { backgroundColor: isDarkMode ? 'rgba(51,163,255,0.25)' : 'rgba(255,255,255,0.25)' },
-                      ]}
-                    >
-                      <Ionicons
-                        name="people"
-                        size={28}
-                        color={isDarkMode ? colors.primaryLight || colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <Animated.Text
-                      style={[
-                        styles.desktopFeatureText,
-                        {
-                          opacity: fadeAnim,
-                          color: isDarkMode ? colors.text : '#FFFFFF',
-                        },
-                      ]}
-                    >
-                      {t('Trusted by Thousands')}
-                    </Animated.Text>
-                  </Animated.View>
-                  <Animated.View
-                    style={[
-                      styles.desktopFeature,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateX: slideAnim }],
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.2)',
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.desktopFeatureIcon,
-                        { backgroundColor: isDarkMode ? 'rgba(51,163,255,0.25)' : 'rgba(255,255,255,0.25)' },
-                      ]}
-                    >
-                      <Ionicons
-                        name="rocket"
-                        size={28}
-                        color={isDarkMode ? colors.primaryLight || colors.primary : '#FFFFFF'}
-                      />
-                    </View>
-                    <Animated.Text
-                      style={[
-                        styles.desktopFeatureText,
-                        {
-                          opacity: fadeAnim,
-                          color: isDarkMode ? colors.text : '#FFFFFF',
-                        },
-                      ]}
-                    >
-                      {t('Fast & Reliable')}
-                    </Animated.Text>
-                  </Animated.View>
-                </View>
-              </Animated.View>
-            </View>
+              </View>
+            </Animated.View>
           </Animated.View>
         )}
 
-        {/* Right Side - Login Form (Takes full width if no branding panel) */}
+        {/* Right Side - Login Form Card */}
         <Animated.View
           style={[
             styles.desktopRightPanel,
-            { backgroundColor: colors.cardBackground },
+            { 
+              backgroundColor: isDarkMode ? colors.background : figmaColors.background,
+              paddingHorizontal: 40,
+              paddingVertical: 40,
+            },
             !IS_LARGE_WEB && styles.desktopRightPanelFullWidth,
             {
               opacity: fadeAnim,
@@ -561,33 +525,59 @@ export default function LoginScreen({
           ]}
         >
           <ScrollView 
-            contentContainerStyle={styles.desktopFormContainer}
+            contentContainerStyle={[styles.desktopFormContainer, { justifyContent: 'center' }]}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
             bounces={false}
             style={styles.desktopScrollView}
           >
+            {/* White Card Container */}
             <Animated.View
               style={[
                 styles.desktopForm,
                 {
                   opacity: fadeAnim,
                   transform: [{ scale: scaleAnim }],
+                  backgroundColor: isDarkMode ? colors.cardBackground : figmaColors.cardBackground,
+                  padding: 32,
+                  borderRadius: 8,
+                  maxWidth: 557,
+                  width: '100%',
+                  alignSelf: 'center',
+                  ...Platform.select({
+                    web: {
+                      boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)' as any,
+                    },
+                  }),
                 },
               ]}
             >
-               {/* Logo on Desktop */}
-               <Image
-                 source={require('../../assets/bonyad-logo.svg')}
-                 style={styles.desktopFormLogo as any}
-                 contentFit="contain"
-               />
+              {/* Welcome Header */}
+              <View style={{ alignItems: 'center', marginBottom: 24, gap: 8 }}>
+                <Text style={[styles.desktopFormTitle, { 
+                  color: isDarkMode ? colors.text : figmaColors.titleBlue, 
+                  fontSize: 28, 
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  marginBottom: 0,
+                  fontFamily: FontFamily.heading,
+                }]}>
+                  {t('Welcome Back')}
+                </Text>
+                <Text style={[styles.desktopFormSubtitle, { 
+                  color: isDarkMode ? colors.textSecondary : figmaColors.textDark, 
+                  fontSize: 18,
+                  fontWeight: '400',
+                  textAlign: 'center',
+                  marginBottom: 0,
+                  fontFamily: FontFamily.body,
+                }]}>
+                  {t('Manage your properties and services.')}
+                </Text>
+              </View>
 
-              <Text style={[styles.desktopFormTitle, { color: colors.text }]}>{t('Welcome back')}</Text>
-              <Text style={[styles.desktopFormSubtitle, { color: colors.textSecondary }]}>{t('Log in to your account')}</Text>
-
-              {/* Role Toggle - Enhanced with Animation */}
-              <View style={styles.desktopRoleToggleWrapper}>
+              {/* Role Toggle - Enhanced with Figma Amber Colors */}
+              <View style={[styles.desktopRoleToggleWrapper, { marginBottom: 24 }]}>
                 <AnimatedRoleToggle
                   selectedRole={selectedRole}
                   onRoleChange={setSelectedRole}
@@ -596,7 +586,7 @@ export default function LoginScreen({
 
               {/* Form Fields */}
               <PhoneInput
-                label={t('Mobile number')}
+                label={t('Mobile Number')}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder={t('auth.placeholders.phone')}
@@ -618,41 +608,76 @@ export default function LoginScreen({
                 mode="text"
                 onPress={onNavigateToForgotPassword}
                 style={styles.desktopForgotPassword}
-                labelStyle={[styles.desktopForgotPasswordText, { color: colors.primary }]}
+                labelStyle={[styles.desktopForgotPasswordText, { color: isDarkMode ? colors.primary : figmaColors.primaryBlue }]}
               >
                 {t('Forgot Password?')}
               </Button>
 
-              {/* Login Button */}
+              {/* Login Button - Figma Blue */}
               <Button
                 mode="contained"
                 onPress={handleLogin}
                 disabled={isLoading}
-                style={[styles.desktopLoginButton, { backgroundColor: colors.primary }]}
-                contentStyle={styles.desktopLoginButtonContent}
+                style={[styles.desktopLoginButton, { 
+                  backgroundColor: isDarkMode ? colors.primary : figmaColors.primaryBlue,
+                  borderRadius: 8,
+                }]}
+                contentStyle={[styles.desktopLoginButtonContent, { paddingVertical: 12 }]}
+                labelStyle={{ fontSize: UIFontSizes.buttonMedium, fontWeight: '600', color: '#FFFFFF', fontFamily: FontFamily.button }}
                 loading={isLoading}
               >
                 {t('Login')}
               </Button>
 
               {/* Sign Up Link */}
-              <View style={styles.desktopSignupLink}>
-                <Text style={[styles.desktopSignupText, { color: colors.textSecondary }]}>
-                  {t("Don't have an account?")}{' '}
+              <View style={[
+                styles.desktopSignupLink, 
+                { 
+                  marginTop: 8,
+                  flexDirection: i18n.language === 'ar' ? 'row-reverse' : 'row',
+                  gap: 8, // Add gap between text and link
+                }
+              ]}>
+                <Text style={[styles.desktopSignupText, { 
+                  color: isDarkMode ? colors.textSecondary : figmaColors.textNavy, 
+                  fontSize: 22,
+                  fontWeight: '300',
+                  fontFamily: FontFamily.body,
+                }]}>
+                  {t("Don't have an account?")}
                 </Text>
                 <TouchableOpacity onPress={onNavigateToSignup}>
-                  <Text style={[styles.desktopSignupLinkText, { color: colors.primary }]}>
-                    {t('Sign Up')}
+                  <Text style={[styles.desktopSignupLinkText, { 
+                    color: isDarkMode ? colors.primary : figmaColors.textNavy,
+                    fontSize: 22,
+                    fontWeight: '600',
+                    textDecorationLine: 'underline',
+                    fontFamily: FontFamily.body,
+                  }]}>
+                    {t('Create an account')}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Theme Toggle */}
-              <ThemeToggle />
+              <View style={{ marginTop: 16 }}>
+                <ThemeToggle />
+              </View>
             </Animated.View>
           </ScrollView>
         </Animated.View>
       </View>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        countdown={alertState.countdown}
+        onClose={hideAlert}
+      />
     </View>
   );
 }
@@ -701,7 +726,7 @@ const styles = StyleSheet.create({
   contentWrapper: {
     width: '100%',
     maxWidth: 480,
-    paddingHorizontal: 24,
+    // paddingHorizontal: 24,
     paddingVertical: 32,
     borderRadius: 20,
     ...Platform.select({
@@ -728,6 +753,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: FontFamily.heading,
     ...Platform.select({
       web: {
         fontSize: 28,
@@ -740,6 +766,7 @@ const styles = StyleSheet.create({
   welcomeSubtitle: {
     textAlign: 'center',
     lineHeight: 24,
+    fontFamily: FontFamily.body,
     ...Platform.select({
       web: {
         fontSize: 16,
@@ -821,6 +848,7 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 16,
     marginLeft: 8,
+    fontFamily: FontFamily.primary,
   },
   eyeIcon: {
     fontSize: 20,
@@ -838,8 +866,9 @@ const styles = StyleSheet.create({
     }),
   },
   forgotPasswordText: {
-    fontSize: 14,
+    fontSize: UIFontSizes.link,
     fontWeight: '600',
+    fontFamily: FontFamily.primary,
   },
   loginButtonContent: {
     ...Platform.select({
@@ -873,13 +902,15 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: '#FFFFFF',
+    fontFamily: FontFamily.button,
   },
   signupText: {
     textAlign: 'center',
     lineHeight: 22,
+    fontFamily: FontFamily.body,
     ...Platform.select({
       web: {
         fontSize: 15,
@@ -892,6 +923,7 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     fontWeight: '600',
+    fontFamily: FontFamily.body,
   },
   languageToggleTop: {
     flexDirection: 'row',
@@ -917,19 +949,110 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6F2FF',
   },
   langText: {
-    fontSize: 16,
+    fontSize: UIFontSizes.langToggle, // Centralized: 18px
     fontWeight: '600',
+    fontFamily: FontFamily.primary,
   },
   langTextActive: {
     fontWeight: 'bold',
+    fontFamily: FontFamily.primary,
   },
   langSeparator: {
     fontSize: 16,
     marginHorizontal: 4,
+    fontFamily: FontFamily.primary,
   },
   roleToggleWrapper: {
     marginBottom: 24,
     marginTop: 0, // No extra margin from top
+  },
+  // Mobile Figma Design Styles
+  mobileLogoSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  mobileLogoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mobileCubeLogo: {
+    width: 53,
+    height: 64,
+  } as any,
+  mobileLogoTextContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+  },
+  mobileLogoText: {
+    fontSize: UIFontSizes.logoText, // Centralized: 30px
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    // Logo uses system font, not SakkalMajalla
+  },
+  mobileLogoArabic: {
+    fontSize: UIFontSizes.logoArabic, // Centralized: 24px
+    fontWeight: '600',
+    letterSpacing: 2,
+    // Logo uses system font, not SakkalMajalla
+  },
+  mobileWelcomeSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  mobileWelcomeTitle: {
+    fontSize: UIFontSizes.welcomeTitle, // Centralized: 32px
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: FontFamily.heading,
+  },
+  mobileWelcomeSubtitle: {
+    fontSize: UIFontSizes.welcomeSubtitle, // Centralized: 20px
+    fontWeight: '400',
+    textAlign: 'center',
+    fontFamily: FontFamily.body,
+  },
+  mobileFormSection: {
+    width: '100%',
+    paddingHorizontal: 6,
+    gap: 24,
+  },
+  mobileLoginButton: {
+    width: '100%',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  mobileLoginButtonText: {
+    color: '#FFFFFF',
+    fontSize: UIFontSizes.buttonMedium, // Centralized: 18px
+    fontWeight: '400',
+    textAlign: 'center',
+    fontFamily: FontFamily.button,
+  },
+  mobileCreateAccountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  mobileCreateAccountText: {
+    fontSize: UIFontSizes.link, // Centralized: 16px
+    fontWeight: '300',
+    fontFamily: FontFamily.body,
+  },
+  mobileCreateAccountLink: {
+    fontSize: UIFontSizes.link, // Centralized: 16px
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    fontFamily: FontFamily.body,
   },
   // Desktop Layout Styles
   desktopContainer: {
@@ -968,7 +1091,9 @@ const styles = StyleSheet.create({
     flex: 0.45,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 60,
+    paddingVertical: 60,
+    paddingLeft: 200, // Push content more to the right
+    paddingRight: 40,
     position: 'relative',
     overflow: 'hidden' as any,
   },
@@ -1014,6 +1139,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -1,
     position: 'relative',
+    fontFamily: FontFamily.heading,
     ...Platform.select({
       web: {
         zIndex: 10,
@@ -1023,6 +1149,10 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  desktopBrandingLogo: {
+    width: 221,
+    height: 265,
+  } as any,
   desktopBrandSubtitle: {
     fontSize: 20,
     color: '#FFFFFF',
@@ -1033,6 +1163,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: 0.5,
     position: 'relative',
+    fontFamily: FontFamily.body,
     ...Platform.select({
       web: {
         zIndex: 10,
@@ -1075,6 +1206,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
     letterSpacing: 0.3,
+    fontFamily: FontFamily.body,
     ...Platform.select({
       web: {
         textShadow: '0 2px 8px rgba(0,0,0,0.2)' as any,
@@ -1119,14 +1251,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   } as any,
   desktopFormTitle: {
-    fontSize: 36,
+    fontSize: UIFontSizes.desktop.formTitle, // Centralized: 44px
     fontWeight: '700',
     marginBottom: 12,
+    fontFamily: FontFamily.heading,
   },
   desktopFormSubtitle: {
-    fontSize: 18,
+    fontSize: UIFontSizes.desktop.formSubtitle, // Centralized: 22px
     marginBottom: 40,
-    lineHeight: 26,
+    lineHeight: 30,
+    fontFamily: FontFamily.body,
   },
   desktopRoleToggle: {
     flexDirection: 'row',
@@ -1164,8 +1298,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   desktopForgotPasswordText: {
-    fontSize: 15,
+    fontSize: UIFontSizes.linkSmall,
     fontWeight: '600',
+    fontFamily: FontFamily.body,
   },
   desktopLoginButton: {
     borderRadius: 12,
@@ -1195,11 +1330,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   desktopSignupText: {
-    fontSize: 16,
+    fontSize: UIFontSizes.desktop.linkText, // Centralized: 24px
+    fontFamily: FontFamily.body,
   },
   desktopSignupLinkText: {
-    fontSize: 16,
+    fontSize: UIFontSizes.desktop.linkText, // Centralized: 24px
     fontWeight: '600',
+    fontFamily: FontFamily.body,
   },
 });
 

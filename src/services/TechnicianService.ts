@@ -1,5 +1,5 @@
 import { storage } from '../utils/storage';
-import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
+import { API_ENDPOINTS, buildApiUrlWithParams, API_BASE_URL } from '../config/api';
 
 /**
  * Technician Profile Interface
@@ -61,10 +61,14 @@ export interface PortfolioProject {
   id: number;
   title: string;
   description: string;
+  startDate?: string;
+  endDate?: string;
   location?: string;
   projectValue?: number;
+  clientName?: string;
   photos?: string[];
   files?: string[]; // Alternative field name for photos (used in owner-edit endpoint)
+  isPublic?: boolean;
 }
 
 /**
@@ -81,7 +85,7 @@ export const getTechnicianProfile = async (technicianId: number): Promise<Techni
     }
     
     // Use the user profile endpoint with technician ID
-    const url = `https://bonyad-hub.com/api/users/${technicianId}/profile`;
+    const url = buildApiUrlWithParams(API_ENDPOINTS.USER.PROFILE_BY_ID, { id: technicianId });
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('🔍 [TechnicianService] Fetching technician profile...');
@@ -142,7 +146,7 @@ export const getTechnicianPortfolio = async (technicianId: number): Promise<Tech
       throw new Error('No authentication token found');
     }
     
-    const url = `https://bonyad-hub.com/api/portfolios/user/${technicianId}`;
+    const url = buildApiUrlWithParams(API_ENDPOINTS.PORTFOLIO.BY_USER, { userId: technicianId });
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('📤 [TechnicianService] Fetching technician portfolio...');
@@ -202,10 +206,14 @@ export const getTechnicianPortfolio = async (technicianId: number): Promise<Tech
  */
 export const createPortfolioProject = async (projectData: {
   title: string;
-  description?: string;
+  description: string;
+  startDate: string;
+  endDate: string;
   location?: string;
   projectValue?: number;
+  clientName?: string;
   photos?: string[];
+  isPublic?: boolean;
 }): Promise<PortfolioProject> => {
   try {
     const token = await storage.getAuthToken();
@@ -214,7 +222,7 @@ export const createPortfolioProject = async (projectData: {
       throw new Error('No authentication token found');
     }
     
-    const url = `https://bonyad-hub.com/api/portfolios`;
+    const url = `${API_BASE_URL}${API_ENDPOINTS.PORTFOLIO.ADD_PROJECT}`;
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('📤 [TechnicianService] Creating portfolio project...');
@@ -222,40 +230,13 @@ export const createPortfolioProject = async (projectData: {
     console.log('📤 [TechnicianService] Title:', projectData.title);
     console.log('═══════════════════════════════════════════════════════════');
     
-    const formData = new FormData();
-    formData.append('title', projectData.title);
-    if (projectData.description) {
-      formData.append('description', projectData.description);
-    }
-    if (projectData.location) {
-      formData.append('location', projectData.location);
-    }
-    if (projectData.projectValue) {
-      formData.append('projectValue', projectData.projectValue.toString());
-    }
-    
-    // Add photos
-    if (projectData.photos && projectData.photos.length > 0) {
-      projectData.photos.forEach((photoUri, index) => {
-        const filename = photoUri.split('/').pop() || `photo_${index}.jpg`;
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formData.append('photos', {
-          uri: photoUri,
-          name: filename,
-          type,
-        } as any);
-      });
-    }
-    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify(projectData),
     });
     
     const status = response.status;
@@ -296,9 +277,13 @@ export const updatePortfolioProject = async (
   projectData: {
     title?: string;
     description?: string;
+    startDate?: string;
+    endDate?: string;
     location?: string;
     projectValue?: number;
+    clientName?: string;
     photos?: string[];
+    isPublic?: boolean;
   }
 ): Promise<PortfolioProject> => {
   try {
@@ -308,7 +293,7 @@ export const updatePortfolioProject = async (
       throw new Error('No authentication token found');
     }
     
-    const url = `https://bonyad-hub.com/api/portfolios/${projectId}`;
+    const url = buildApiUrlWithParams(API_ENDPOINTS.PORTFOLIO.UPDATE_PROJECT, { projectId });
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('📤 [TechnicianService] Updating portfolio project...');
@@ -316,42 +301,13 @@ export const updatePortfolioProject = async (
     console.log('📤 [TechnicianService] Project ID:', projectId);
     console.log('═══════════════════════════════════════════════════════════');
     
-    const formData = new FormData();
-    if (projectData.title) {
-      formData.append('title', projectData.title);
-    }
-    if (projectData.description !== undefined) {
-      formData.append('description', projectData.description);
-    }
-    if (projectData.location !== undefined) {
-      formData.append('location', projectData.location || '');
-    }
-    if (projectData.projectValue !== undefined) {
-      formData.append('projectValue', projectData.projectValue.toString());
-    }
-    
-    // Add photos if provided
-    if (projectData.photos && projectData.photos.length > 0) {
-      projectData.photos.forEach((photoUri, index) => {
-        const filename = photoUri.split('/').pop() || `photo_${index}.jpg`;
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formData.append('photos', {
-          uri: photoUri,
-          name: filename,
-          type,
-        } as any);
-      });
-    }
-    
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify(projectData),
     });
     
     const status = response.status;
@@ -394,7 +350,7 @@ export const deletePortfolioProject = async (projectId: number): Promise<void> =
       throw new Error('No authentication token found');
     }
     
-    const url = `https://bonyad-hub.com/api/portfolios/${projectId}`;
+    const url = buildApiUrlWithParams(API_ENDPOINTS.PORTFOLIO.DELETE_PROJECT, { projectId });
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('🗑️ [TechnicianService] Deleting portfolio project...');
@@ -447,7 +403,7 @@ export const getTechniciansByService = async (serviceId: number): Promise<any[]>
       throw new Error('No authentication token found');
     }
     
-    const url = `https://bonyad-hub.com/api/users?role=TECHNICIAN&serviceId=${serviceId}`;
+    const url = `${API_BASE_URL}/users?role=TECHNICIAN&serviceId=${serviceId}`;
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('🔍 [TechnicianService] Fetching technicians for service:', serviceId);
@@ -505,7 +461,7 @@ export const getAllTechnicians = async (): Promise<any[]> => {
       throw new Error('No authentication token found');
     }
     
-    const url = 'https://bonyad-hub.com/api/users?role=TECHNICIAN';
+    const url = `${API_BASE_URL}/users?role=TECHNICIAN`;
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('🔍 [TechnicianService] Fetching all technicians...');

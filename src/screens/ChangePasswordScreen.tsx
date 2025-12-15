@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,24 +7,51 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { storage } from '../utils/storage';
+import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { changePassword } from '../services/ProfileService';
-import { showAlert, showError } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+
+// Figma Design Colors
+const FIGMA_COLORS = {
+  primary: '#005DAC',
+  primaryDark: '#003867',
+  primaryLight: '#E6EFF7',
+  inputBorder: '#80AED6',
+  inputBackground: '#F0F0F0',
+  textHeader: '#003867',
+  textBody: '#2D2D2D',
+  textSecondary: '#6E6E6E',
+  white: '#FFFFFF',
+  divider: '#D9D9D9',
+};
 
 interface ChangePasswordScreenProps {
   onBack: () => void;
 }
 
+interface UserProfile {
+  name?: string;
+  avatar?: string;
+  profileImage?: string;
+}
+
 export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+  const isRTL = i18n.language === 'ar';
   
+  const { alertState, showAlert, showError, hideAlert } = useAlertPopup();
+  
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,6 +59,52 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const token = await storage.getAuthToken();
+      if (!token) {
+        setIsFetching(false);
+        return;
+      }
+
+      const response = await fetch(
+        buildApiUrl(API_ENDPOINTS.USER.PROFILE),
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Construct full URLs for images
+        if (data.profileImage || data.avatar) {
+          const imagePath = data.profileImage || data.avatar;
+          if (!imagePath.startsWith('http')) {
+            data.avatar = `${API_BASE_URL.replace('/api', '')}${imagePath}`;
+          } else {
+            data.avatar = imagePath;
+          }
+        }
+        
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setIsFetching(false);
+    }
+  };
 
   const handleChangePassword = async () => {
     // Validation
@@ -60,7 +133,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
     try {
       const result = await changePassword(oldPassword, newPassword);
       
-      showAlert(t('Success'), result.message, [
+      showAlert(t('Success'), result.message, 'success', [
         {
           text: t('OK'),
           onPress: () => {
@@ -82,107 +155,170 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
     }
   };
 
+  // Theme-aware colors
+  const bgColor = isDarkMode ? colors.background : FIGMA_COLORS.white;
+  const textColor = isDarkMode ? colors.text : FIGMA_COLORS.textBody;
+  const headerTextColor = isDarkMode ? colors.text : FIGMA_COLORS.primaryDark;
+  const inputBgColor = isDarkMode ? colors.cardBackground : FIGMA_COLORS.inputBackground;
+  const inputBorderColor = isDarkMode ? colors.border : FIGMA_COLORS.inputBorder;
+  const inputTextColor = isDarkMode ? colors.text : FIGMA_COLORS.primaryDark;
+  const primaryColor = isDarkMode ? colors.primary : FIGMA_COLORS.primary;
+  const dividerColor = isDarkMode ? colors.border : FIGMA_COLORS.divider;
+  const avatarBgColor = isDarkMode ? colors.surface : FIGMA_COLORS.primaryLight;
+
+  if (isFetching) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: bgColor, paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={primaryColor} />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: bgColor, paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.cardBackground }]}>
+      <View style={[styles.headerRow, isRTL && styles.rowRTL]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons
+            name={isRTL ? 'chevron-forward' : 'chevron-back'}
+            size={24}
+            color={headerTextColor}
+          />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('Change Password')}</Text>
-        <View style={{ width: 40 }} />
+        <Text style={[styles.headerTitle, { color: headerTextColor }]}>
+          {t('Change Password')}
+        </Text>
+        <View style={styles.placeholder} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-        <View style={styles.content}>
-          {/* Old Password */}
-          <Card style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-            <Card.Content>
-              <Text style={[styles.label, { color: colors.text }]}>{t('Current Password')}</Text>
-              <View style={[styles.passwordInputContainer, { borderColor: colors.border }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom, 24) + 24 }
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* User Avatar Section */}
+        <View style={styles.userSection}>
+          <View style={[styles.avatarContainer, { backgroundColor: avatarBgColor }]}>
+            {userProfile?.avatar ? (
+              <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+            ) : (
+              <Ionicons name="person" size={50} color={primaryColor} />
+            )}
+          </View>
+          <Text style={[styles.userName, { color: headerTextColor }]}>
+            {userProfile?.name || t('profile.usernamePlaceholder')}
+          </Text>
+        </View>
+
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+
+        {/* Form Fields */}
+        <View style={styles.formSection}>
+          {/* Enter Current Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+              {t('Enter Current Password')}
+            </Text>
+            <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
                 <TextInput
-                  style={[styles.passwordInput, { color: colors.text }]}
+                style={[styles.input, { color: inputTextColor }, isRTL && styles.textRTL]}
                   value={oldPassword}
                   onChangeText={setOldPassword}
                   placeholder={t('Enter current password')}
-                  placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDarkMode ? '#888888' : '#999999'}
                   secureTextEntry={!showOldPassword}
                 />
-                <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)}>
+              <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)} style={styles.eyeIcon}>
                   <Ionicons
                     name={showOldPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color={colors.textSecondary}
+                  color={isDarkMode ? '#888888' : FIGMA_COLORS.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
-            </Card.Content>
-          </Card>
+          </View>
 
-          {/* New Password */}
-          <Card style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-            <Card.Content>
-              <Text style={[styles.label, { color: colors.text }]}>{t('New Password')}</Text>
-              <View style={[styles.passwordInputContainer, { borderColor: colors.border }]}>
+          {/* Enter New Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+              {t('Enter New Password')}
+            </Text>
+            <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
                 <TextInput
-                  style={[styles.passwordInput, { color: colors.text }]}
+                style={[styles.input, { color: inputTextColor }, isRTL && styles.textRTL]}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder={t('Enter new password')}
-                  placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDarkMode ? '#888888' : '#999999'}
                   secureTextEntry={!showNewPassword}
                 />
-                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+              <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeIcon}>
                   <Ionicons
                     name={showNewPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color={colors.textSecondary}
+                  color={isDarkMode ? '#888888' : FIGMA_COLORS.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
-              <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-                {t('At least 6 characters')}
-              </Text>
-            </Card.Content>
-          </Card>
+          </View>
 
-          {/* Confirm Password */}
-          <Card style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-            <Card.Content>
-              <Text style={[styles.label, { color: colors.text }]}>{t('Confirm Password')}</Text>
-              <View style={[styles.passwordInputContainer, { borderColor: colors.border }]}>
+          {/* Re-Enter New Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+              {t('Re-Enter New Password')}
+              </Text>
+            <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
                 <TextInput
-                  style={[styles.passwordInput, { color: colors.text }]}
+                style={[styles.input, { color: inputTextColor }, isRTL && styles.textRTL]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder={t('Confirm new password')}
-                  placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDarkMode ? '#888888' : '#999999'}
                   secureTextEntry={!showConfirmPassword}
                 />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off' : 'eye'}
                     size={20}
-                    color={colors.textSecondary}
+                  color={isDarkMode ? '#888888' : FIGMA_COLORS.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
-            </Card.Content>
-          </Card>
+          </View>
+        </View>
 
+        {/* Save Button */}
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.primary }]}
+          style={[
+            styles.saveButton,
+            { backgroundColor: primaryColor },
+            isLoading && styles.buttonDisabled,
+          ]}
             onPress={handleChangePassword}
             disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>{t('Change Password')}</Text>
+            <Text style={styles.saveButtonText}>{t('Save')}</Text>
             )}
           </TouchableOpacity>
-        </View>
       </ScrollView>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </View>
   );
 }
@@ -191,69 +327,116 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
+    fontSize: 20,
+    fontWeight: '400',
     textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 16,
+    gap: 32,
   },
-  card: {
-    marginBottom: 16,
-    borderRadius: 12,
+  userSection: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 24,
+  },
+  avatarContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  divider: {
+    height: 0.5,
+    width: '100%',
+  },
+  formSection: {
+    gap: 12,
+  },
+  fieldGroup: {
+    width: '100%',
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '400',
+    marginBottom: 0,
+    height: 32,
+    lineHeight: 32,
   },
-  passwordInputContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderRadius: 8,
-    paddingHorizontal: 12,
+    height: 43,
+    paddingHorizontal: 8,
   },
-  passwordInput: {
+  input: {
     flex: 1,
-    padding: 12,
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '300',
+    paddingVertical: 0,
   },
-  helpText: {
-    fontSize: 12,
-    marginTop: 6,
-    fontStyle: 'italic',
+  eyeIcon: {
+    padding: 4,
   },
-  button: {
-    padding: 16,
+  saveButton: {
+    paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    width: '100%',
   },
-  buttonText: {
-    color: '#fff',
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
+  },
+  rowRTL: {
+    flexDirection: 'row-reverse',
+  },
+  textRTL: {
+    textAlign: 'right',
   },
 });
-

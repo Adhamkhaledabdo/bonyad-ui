@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   Alert,
-  Platform,
+  SectionList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -70,7 +69,7 @@ export default function NotificationsScreen({
       if (!token) {
         console.error('❌ No auth token found');
         Alert.alert('Error', 'Not authenticated');
-        onBack();
+        onBack?.();
         return;
       }
 
@@ -120,7 +119,7 @@ export default function NotificationsScreen({
         onUnreadCountChange?.(unreadCount);
       } else if (response.status === 401) {
         Alert.alert('Error', 'Session expired');
-        onBack();
+        onBack?.();
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to fetch notifications. Status:', response.status);
@@ -317,6 +316,41 @@ export default function NotificationsScreen({
     }
   };
 
+  // Group notifications by time period
+  const groupNotificationsByTime = (notifs: Notification[]) => {
+    const now = new Date();
+    const groups: { [key: string]: Notification[] } = {
+      Today: [],
+      Yesterday: [],
+      '1 Week Ago': [],
+      '1 Month Ago': [],
+    };
+
+    notifs.forEach((notif) => {
+      const createdDate = new Date(notif.createdAt);
+      const diffMs = now.getTime() - createdDate.getTime();
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffDays === 0) {
+        groups['Today'].push(notif);
+      } else if (diffDays === 1) {
+        groups['Yesterday'].push(notif);
+      } else if (diffDays <= 7) {
+        groups['1 Week Ago'].push(notif);
+      } else {
+        groups['1 Month Ago'].push(notif);
+      }
+    });
+
+    // Convert to sections array
+    return Object.keys(groups)
+      .filter(key => groups[key].length > 0)
+      .map(key => ({
+        title: key,
+        data: groups[key],
+      }));
+  };
+
   const renderNotificationCard = ({ item }: { item: Notification }) => (
     <NotificationCard
       notification={item}
@@ -327,50 +361,43 @@ export default function NotificationsScreen({
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const filteredNotifications = getFilteredNotifications();
+  const sections = useMemo(() => groupNotificationsByTime(filteredNotifications), [filteredNotifications]);
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
+        <ActivityIndicator size="large" color="#005DAC" />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { backgroundColor: '#FFFFFF' }]}>
         {onBack && (
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            <Ionicons name="chevron-back" size={24} color="#003867" />
           </TouchableOpacity>
         )}
-        <Text style={[styles.title, { color: colors.text, marginLeft: onBack ? 0 : 16 }]}>
+        <Text style={[styles.title, { color: '#003867', marginLeft: onBack ? 0 : 16 }]}>
           {t('Notifications')}
         </Text>
-        {notifications.length > 0 && (
-          <TouchableOpacity onPress={markAllAsRead}>
-            <Text style={[styles.markAllRead, { color: colors.primary }]}>
-              {t('Mark All Read')}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Filter Tabs */}
-      <View style={[styles.filterTabs, { backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
+      <View style={[styles.filterTabs, { backgroundColor: '#FFFFFF' }]}>
         <TouchableOpacity
           onPress={() => setSelectedFilter('all')}
           style={[
             styles.tab,
-            selectedFilter === 'all' && [styles.activeTab, { backgroundColor: colors.primary }],
+            selectedFilter === 'all' && styles.activeTab,
           ]}
         >
           <Text
             style={[
               styles.tabText,
-              selectedFilter === 'all' && { color: '#FFFFFF' },
-              { color: colors.textSecondary },
+              selectedFilter === 'all' ? styles.activeTabText : styles.inactiveTabText,
             ]}
           >
             {t('All')} ({notifications.length})
@@ -381,14 +408,13 @@ export default function NotificationsScreen({
           onPress={() => setSelectedFilter('unread')}
           style={[
             styles.tab,
-            selectedFilter === 'unread' && [styles.activeTab, { backgroundColor: colors.primary }],
+            selectedFilter === 'unread' && styles.activeTab,
           ]}
         >
           <Text
             style={[
               styles.tabText,
-              selectedFilter === 'unread' && { color: '#FFFFFF' },
-              { color: colors.textSecondary },
+              selectedFilter === 'unread' ? styles.activeTabText : styles.inactiveTabText,
             ]}
           >
             {t('Unread')} ({unreadCount})
@@ -399,14 +425,13 @@ export default function NotificationsScreen({
           onPress={() => setSelectedFilter('read')}
           style={[
             styles.tab,
-            selectedFilter === 'read' && [styles.activeTab, { backgroundColor: colors.primary }],
+            selectedFilter === 'read' && styles.activeTab,
           ]}
         >
           <Text
             style={[
               styles.tabText,
-              selectedFilter === 'read' && { color: '#FFFFFF' },
-              { color: colors.textSecondary },
+              selectedFilter === 'read' ? styles.activeTabText : styles.inactiveTabText,
             ]}
           >
             {t('Read')} ({notifications.length - unreadCount})
@@ -415,16 +440,21 @@ export default function NotificationsScreen({
       </View>
 
       {/* Notifications List */}
-      <FlatList
-        data={filteredNotifications}
+      <SectionList
+        sections={sections}
         renderItem={renderNotificationCard}
+        renderSectionHeader={({ section: { title } }) => (
+          <Text style={styles.sectionHeader}>{title}</Text>
+        )}
+        renderSectionFooter={() => <View style={styles.sectionDivider} />}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
+        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor="#005DAC"
           />
         }
         ListEmptyComponent={
@@ -432,9 +462,9 @@ export default function NotificationsScreen({
             <Ionicons
               name="notifications-off-outline"
               size={64}
-              color={colors.textSecondary}
+              color="#A3A3A3"
             />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptyText, { color: '#A3A3A3' }]}>
               {selectedFilter === 'unread' ? t('No unread notifications') : t('No notifications')}
             </Text>
           </View>
@@ -452,50 +482,29 @@ interface NotificationCardProps {
 }
 
 function NotificationCard({ notification, onTap, onDelete }: NotificationCardProps) {
-  const { colors, theme } = useTheme();
   const { t } = useTranslation();
 
   const getIconName = (type: string): string => {
     switch (type) {
       case 'BID_RECEIVED':
-        return 'hand-left';
       case 'BID_ACCEPTED':
-        return 'checkmark-circle';
+        return 'cash-outline';
       case 'VISIT_REQUEST':
-        return 'home';
+        return 'home-outline';
       case 'PHASE_COMPLETED':
-        return 'checkmark-done-circle';
+      case 'PHASE_CREATED':
+      case 'PHASE_APPROVED':
+        return 'clipboard-outline';
       case 'PAYMENT_RECEIVED':
-        return 'cash';
+        return 'card-outline';
       case 'CONTRACT_SIGNED':
-        return 'document-text';
+        return 'document-text-outline';
       case 'FEEDBACK_RECEIVED':
-        return 'chatbubble';
+        return 'chatbubble-outline';
       case 'APPOINTMENT_CONFIRMED':
-        return 'calendar';
+        return 'calendar-outline';
       default:
-        return 'notifications';
-    }
-  };
-
-  const getIconColor = (type: string): string => {
-    switch (type) {
-      case 'BID_RECEIVED':
-        return '#0080FF';
-      case 'BID_ACCEPTED':
-        return '#00AA00';
-      case 'VISIT_REQUEST':
-        return '#FFA500';
-      case 'PHASE_COMPLETED':
-        return '#00AA00';
-      case 'PAYMENT_RECEIVED':
-        return '#00AA00';
-      case 'CONTRACT_SIGNED':
-        return '#9933FF';
-      case 'FEEDBACK_RECEIVED':
-        return '#0080FF';
-      default:
-        return '#999999';
+        return 'notifications-outline';
     }
   };
 
@@ -505,17 +514,20 @@ function NotificationCard({ notification, onTap, onDelete }: NotificationCardPro
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} mins ago`;
     if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-
+    
     return date.toLocaleDateString();
   };
 
+  // All icons are blue, unread has blue border
+  const iconColor = '#005DAC';
+  const titleColor = notification.read ? '#383838' : '#003867';
+
   return (
+    <>
     <TouchableOpacity
       onPress={onTap}
       onLongPress={() => {
@@ -527,56 +539,31 @@ function NotificationCard({ notification, onTap, onDelete }: NotificationCardPro
       style={[
         styles.card,
         !notification.read && styles.unreadCard,
-        { 
-          backgroundColor: notification.read 
-            ? colors.cardBackground 
-            : theme === 'dark' 
-              ? colors.surface 
-              : 'rgba(51, 163, 255, 0.08)', // Light blue tint for light mode unread notifications
-        },
-        !notification.read && { borderColor: colors.primary + '30' }, // 30 = 20% opacity in hex
       ]}
     >
-      <View style={styles.cardContent}>
-        {/* Icon */}
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: getIconColor(notification.notificationType) },
-          ]}
-        >
-          <Ionicons name={getIconName(notification.notificationType) as any} size={20} color="#FFFFFF" />
-        </View>
-
-        {/* Content */}
-        <View style={styles.textContainer}>
-          {/* Title with unread dot */}
-          <View style={styles.titleRow}>
-            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-              {notification.title}
-            </Text>
-            {!notification.read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
-          </View>
-
-          {/* Message */}
-          <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
-            {notification.message}
+      {/* Top row: Icon + Title on left, Clock + Time on right */}
+      <View style={styles.cardTopRow}>
+        <View style={styles.cardLeft}>
+          <Ionicons name={getIconName(notification.notificationType) as any} size={16} color={iconColor} />
+          <Text style={[styles.cardTitle, { color: titleColor }]} numberOfLines={1}>
+            {notification.title}
           </Text>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={[styles.timestamp, { color: colors.textSecondary }]}>
-              {formatTime(notification.createdAt)}
-            </Text>
-            {notification.fromUserName && (
-              <Text style={[styles.sender, { color: colors.primary }]}>
-                {notification.fromUserName}
-              </Text>
-            )}
-          </View>
+        </View>
+        <View style={styles.cardRight}>
+          <Ionicons name="time-outline" size={16} color="#A3A3A3" />
+          <Text style={styles.timestamp}>
+            {formatTime(notification.createdAt)}
+          </Text>
         </View>
       </View>
+
+      {/* Message */}
+      <Text style={styles.message}>
+        {notification.message}
+      </Text>
     </TouchableOpacity>
+    <View style={{ height: 20 }} />
+    </>
   );
 }
 
@@ -587,42 +574,61 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 8,
   },
   backButton: {
-    marginRight: 12,
+    marginRight: 0,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '400',
     flex: 1,
-  },
-  markAllRead: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   filterTabs: {
     flexDirection: 'row',
-    padding: 8,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 16,
   },
   tab: {
     flex: 1,
     paddingVertical: 8,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    borderRadius: 8,
-    marginHorizontal: 4,
+    borderRadius: 6,
+    backgroundColor: '#F0F0F0',
   },
   activeTab: {
-    paddingVertical: 8,
+    backgroundColor: '#005DAC',
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+  },
+  inactiveTabText: {
+    color: '#A3A3A3',
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#003867',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#D9D9D9',
+    marginVertical: 10,
   },
   emptyState: {
     alignItems: 'center',
@@ -635,64 +641,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    paddingVertical: 16,
+    gap: 16,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginVertical: 4,
   },
   unreadCard: {
     borderWidth: 1,
+    borderColor: '#005DAC',
+    backgroundColor: 'rgba(0, 93, 172, 0.05)',
   },
-  cardContent: {
+  cardTopRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'space-between',
+    gap: 6,
   },
-  textContainer: {
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     flex: 1,
   },
-  titleRow: {
+  cardRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 6,
+    justifyContent: 'flex-end',
+    width: 154,
   },
   cardTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     flex: 1,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
   message: {
-    fontSize: 12,
-    marginBottom: 6,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#383838',
+    lineHeight: 20,
   },
   timestamp: {
-    fontSize: 10,
-  },
-  sender: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#A3A3A3',
   },
 });
 

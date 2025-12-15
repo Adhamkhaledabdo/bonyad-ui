@@ -1,3 +1,10 @@
+/**
+ * VisitRequestModal
+ * 
+ * Popup modal for technicians to request a site visit for a project.
+ * Styled to match the app's Figma design system.
+ */
+
 import React, { useState } from 'react';
 import {
   View,
@@ -10,6 +17,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  TouchableWithoutFeedback,
+  ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +27,37 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
-import { showAlert, showError, showSuccess } from '../utils/alert';
+import { showError, showSuccess } from '../utils/alert';
+
+// ===== DESIGN TOKENS FROM FIGMA =====
+const COLORS = {
+  // Primary Blues
+  primary100: '#003867',
+  primary80: '#004A8A',
+  primary70: '#00549B',
+  primary60: '#005DAC',
+  primary50: '#1A6DB4',
+  primary10: '#E6EFF7',
+  // Greens
+  green90: '#007B36',
+  green80: '#008B3E',
+  green60: '#00AC4F',
+  green10: '#E6F5EC',
+  // Purple
+  purple100: '#3C076D',
+  purple10: '#EFE6F5',
+  // Amber
+  amber60: '#FFB703',
+  // Text
+  textHeader: '#003867',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  textDividers: '#D9D9D9',
+  textWhite: '#FFFFFF',
+  // Backgrounds
+  bgWhite: '#FFFFFF',
+  bgOverlay: 'rgba(0, 56, 103, 0.5)',
+};
 
 interface VisitRequestModalProps {
   visible: boolean;
@@ -32,6 +72,14 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
   const insets = useSafeAreaInsets();
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const IS_WEB = Platform.OS === 'web';
+  const IS_MOBILE = Platform.OS === 'ios' || Platform.OS === 'android';
+  
+  // Larger modal dimensions
+  const modalWidth = IS_WEB ? Math.min(520, screenWidth - 32) : screenWidth - 32;
+  const modalMaxHeight = IS_MOBILE ? screenHeight - 100 : screenHeight * 0.85;
 
   const handleSubmit = async () => {
     if (!project || !project.id) {
@@ -66,7 +114,7 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
         body: JSON.stringify({
           projectId: project.id,
           technicianId: userId,
-          requestedDate: new Date().toISOString(), // Use current date as default
+          requestedDate: new Date().toISOString(),
           notes: notes.trim() || undefined,
         }),
       });
@@ -83,201 +131,328 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to create visit request:', errorText);
-        showError('Failed to send visit request');
+        showError(t('Failed to send visit request'));
       }
     } catch (error) {
       console.error('❌ Error sending visit request:', error);
-      showError('Error sending visit request');
+      showError(t('Error sending visit request'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setNotes('');
+      onClose();
+    }
+  };
+
+  const formatBudget = (budget: number) => {
+    return new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-SA' : 'en-US', {
+      style: 'currency',
+      currency: 'SAR',
+      minimumFractionDigits: 0,
+    }).format(budget);
+  };
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 10) }]}>
-            <TouchableOpacity onPress={onClose} disabled={isSubmitting}>
-              <Text style={styles.cancelText}>{t('Cancel')}</Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {t('Request Visit')}
-            </Text>
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              style={[
-                styles.submitButton,
-                isSubmitting && { opacity: 0.6 }
-              ]}
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardView}
             >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="send" size={18} color="#FFFFFF" />
-                  <Text style={styles.submitText}>{t('Send')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+              <View style={[styles.modalContainer, { width: modalWidth, maxHeight: modalMaxHeight }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                  <View style={styles.headerIconContainer}>
+                    <Ionicons name="home" size={28} color={COLORS.green80} />
+                  </View>
+                  <Text style={styles.headerTitle}>{t('Request Visit')}</Text>
+                  <TouchableOpacity 
+                    onPress={handleClose} 
+                    style={styles.closeButton}
+                    disabled={isSubmitting}
+                  >
+                    <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                </View>
 
-          <View style={styles.content}>
-            {/* Icon */}
-            <View style={styles.iconContainer}>
-              <Ionicons name="home" size={50} color="#10B981" />
-            </View>
+                {/* Content */}
+                <ScrollView 
+                  style={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.scrollContentContainer}
+                >
+                  <Text style={styles.subtitle}>
+                    {t('Request a site visit to better understand the project requirements')}
+                  </Text>
 
-            <Text style={[styles.title, { color: colors.text }]}>
-              {t('Request Visit')}
-            </Text>
+                  {/* Project Info Card */}
+                  <View style={styles.projectCard}>
+                    <View style={styles.projectCardHeader}>
+                      <Ionicons name="briefcase-outline" size={16} color={COLORS.primary80} />
+                      <Text style={styles.projectCardLabel}>{t('Project')}</Text>
+                    </View>
+                    <Text style={styles.projectDescription} numberOfLines={3}>
+                      {project?.description || t('No description')}
+                    </Text>
+                    {project?.budget && (
+                      <View style={styles.budgetRow}>
+                        <Ionicons name="cash-outline" size={16} color={COLORS.green80} />
+                        <Text style={styles.budgetText}>{formatBudget(project.budget)}</Text>
+                      </View>
+                    )}
+                  </View>
 
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {t('Request a site visit to better understand the project requirements')}
-            </Text>
+                  {/* Notes Input */}
+                  <View style={styles.inputSection}>
+                    <View style={styles.inputHeader}>
+                      <Ionicons name="document-text-outline" size={16} color={COLORS.primary80} />
+                      <Text style={styles.inputLabel}>{t('Additional Notes')}</Text>
+                      <Text style={styles.optionalText}>({t('Optional')})</Text>
+                    </View>
+                    <TextInput
+                      style={styles.textArea}
+                      placeholder={t('Add any notes about the visit request...')}
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={notes}
+                      onChangeText={setNotes}
+                      multiline
+                      numberOfLines={4}
+                      maxLength={200}
+                      editable={!isSubmitting}
+                    />
+                    <Text style={styles.charCount}>
+                      {notes.length}/200
+                    </Text>
+                  </View>
+                </ScrollView>
 
-            {/* Project Info */}
-            <View style={styles.projectInfoCard}>
-              <Text style={[styles.projectInfoLabel, { color: colors.text }]}>
-                {t('Project Information')}
-              </Text>
-              <Text style={[styles.projectTitle, { color: colors.textSecondary }]} numberOfLines={2}>
-                {project?.description}
-              </Text>
-            </View>
-
-            {/* Notes */}
-            <View style={styles.notesSection}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                {t('Additional Notes')}
-              </Text>
-              <TextInput
-                style={[
-                  styles.textArea,
-                  { color: colors.text, borderColor: colors.border }
-                ]}
-                placeholder={t('Any additional information...')}
-                placeholderTextColor={colors.textSecondary}
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-                numberOfLines={4}
-                maxLength={200}
-              />
-              <Text style={[styles.charCount, { color: colors.textSecondary }]}>
-                {notes.length}/200
-              </Text>
-            </View>
-          </View>
+                {/* Action Buttons - Fixed at bottom */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleClose}
+                    disabled={isSubmitting}
+                  >
+                    <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                    onPress={handleSubmit}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator size="small" color={COLORS.textWhite} />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={18} color={COLORS.textWhite} />
+                        <Text style={styles.submitButtonText}>{t('Send Request')}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
         </View>
-      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardView: {
+  overlay: {
     flex: 1,
+    backgroundColor: COLORS.bgOverlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
-  container: {
-    flex: 1,
+  keyboardView: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 4px 24px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    padding: 20,
+    paddingBottom: 16,
+    gap: 14,
     borderBottomWidth: 1,
+    borderBottomColor: COLORS.textDividers,
   },
-  cancelText: {
-    fontSize: 16,
-    color: '#FF4444',
-    fontWeight: '500',
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.green10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  content: {
     flex: 1,
-    padding: 20,
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textHeader,
   },
-  iconContainer: {
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary10,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
+  scrollContent: {
+    flexGrow: 0,
+  },
+  scrollContentContainer: {
+    padding: 20,
+    gap: 20,
   },
   subtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    fontSize: 15,
+    fontWeight: '400',
+    color: COLORS.textBody,
+    lineHeight: 22,
   },
-  projectInfoCard: {
-    backgroundColor: '#F3F4F6',
-    padding: 16,
+  projectCard: {
+    backgroundColor: COLORS.primary10,
     borderRadius: 12,
-    marginBottom: 24,
+    padding: 16,
+    gap: 12,
   },
-  projectInfoLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
+  projectCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  projectTitle: {
+  projectCardLabel: {
     fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary80,
+  },
+  projectDescription: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: COLORS.textBody,
     lineHeight: 20,
   },
-  fieldLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
+  budgetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
   },
-  notesSection: {
-    marginBottom: 24,
+  budgetText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.green80,
+  },
+  inputSection: {
+    gap: 10,
+  },
+  inputHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary80,
+  },
+  optionalText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: COLORS.textSecondary,
   },
   textArea: {
-    fontSize: 16,
-    padding: 16,
-    borderRadius: 12,
+    fontSize: 15,
+    padding: 14,
+    borderRadius: 10,
     borderWidth: 1,
+    borderColor: COLORS.textDividers,
+    backgroundColor: COLORS.bgWhite,
     textAlignVertical: 'top',
-    minHeight: 100,
+    minHeight: 120,
+    color: COLORS.textBody,
   },
   charCount: {
     fontSize: 12,
+    color: COLORS.textSecondary,
     textAlign: 'right',
-    marginTop: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.textDividers,
+    backgroundColor: COLORS.bgWhite,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.purple10,
+    borderWidth: 1.5,
+    borderColor: COLORS.purple100,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.purple100,
+  },
+  submitButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.green80,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textWhite,
   },
 });
-

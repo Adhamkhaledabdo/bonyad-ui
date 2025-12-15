@@ -18,6 +18,33 @@ import { API_ENDPOINTS, buildApiUrlWithParams, buildApiUrl } from '../config/api
 import { storage } from '../utils/storage';
 import { showAlert, showError, showSuccess } from '../utils/alert';
 
+// ===== DESIGN TOKENS (match Approved/Phase Planning screens) =====
+const COLORS = {
+  // Primary Blues
+  primary100: '#003867',
+  primary80: '#004A8A',
+  primary70: '#00549B',
+  primary60: '#005DAC',
+  primary20: '#B3CEE6',
+  primary10: '#E6EFF7',
+  // Greens
+  green80: '#008B3E',
+  green60: '#00AC4F',
+  green10: '#E6F5EC',
+  // Amber
+  amber70: '#DA9C02',
+  amber60: '#FFB703',
+  amber10: '#FFF2CF',
+  // Text
+  textHeader: '#003867',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  textDividers: '#D9D9D9',
+  textWhite: '#FFFFFF',
+  // Backgrounds
+  bgWhite: '#FFFFFF',
+};
+
 interface PhaseApprovalModalProps {
   visible: boolean;
   projectId: number;
@@ -289,7 +316,7 @@ export default function PhaseApprovalModal({
     console.log('═══════════════════════════════════════════════════════════');
     
     const executeApproval = async () => {
-      console.log('✅ [PhaseApprovalModal] User confirmed - Starting API call...');
+      console.log('✅ [PhaseApprovalModal] User confirmed - Starting approval and signature flow...');
       setShowConfirmModal(false);
       setIsApproving(true);
       try {
@@ -300,18 +327,110 @@ export default function PhaseApprovalModal({
           return;
         }
 
-        const url = buildApiUrlWithParams(API_ENDPOINTS.PHASES.APPROVE_ALL, {
+        // ===== STEP 1: Fetch User Email =====
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🟢 [PhaseApprovalModal] STEP 1: Fetching user email');
+        console.log('🟢 [PhaseApprovalModal] Endpoint: GET /users/profile');
+        console.log('═══════════════════════════════════════════════════════════');
+
+        const userProfileUrl = buildApiUrl(API_ENDPOINTS.USER.PROFILE);
+        const userProfileResponse = await fetch(userProfileUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        let userEmail = '';
+        if (userProfileResponse.ok) {
+          const userProfile = await userProfileResponse.json();
+          userEmail = userProfile?.email || '';
+          console.log('✅ [PhaseApprovalModal] User email fetched:', userEmail);
+        } else {
+          console.warn('⚠️ [PhaseApprovalModal] Failed to fetch user profile');
+        }
+
+        // ===== STEP 2: Fetch Project Details to Get Technician ID =====
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🟢 [PhaseApprovalModal] STEP 2: Fetching project details for technician ID');
+        console.log('═══════════════════════════════════════════════════════════');
+
+        const projectUrl = buildApiUrlWithParams(API_ENDPOINTS.PROJECTS.DETAILS, {
+          id: projectId,
+        });
+
+        const projectResponse = await fetch(projectUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        let technicianId: number | null = null;
+        if (projectResponse.ok) {
+          const projectData = await projectResponse.json();
+          const project = projectData?.project ?? projectData;
+          console.log('✅ [PhaseApprovalModal] Project details fetched');
+
+          // Extract technician ID from project
+          technicianId = 
+            project?.technicianId || 
+            project?.assignedTechnicianId || 
+            project?.assignedTechnician?.id || 
+            project?.technician?.id || 
+            project?.acceptedBid?.technicianId || 
+            null;
+
+          console.log('🔧 [PhaseApprovalModal] Technician ID:', technicianId);
+        } else {
+          console.warn('⚠️ [PhaseApprovalModal] Failed to fetch project details');
+        }
+
+        // ===== STEP 3: Fetch Technician Email from Profile =====
+        let technicianEmail = '';
+        if (technicianId) {
+          console.log('═══════════════════════════════════════════════════════════');
+          console.log('🟢 [PhaseApprovalModal] STEP 3: Fetching technician email');
+          console.log('🟢 [PhaseApprovalModal] Endpoint: GET /users/{userId}/profile');
+          console.log('🟢 [PhaseApprovalModal] Technician ID:', technicianId);
+          console.log('═══════════════════════════════════════════════════════════');
+
+          const technicianProfileUrl = buildApiUrlWithParams(API_ENDPOINTS.USER.PROFILE_BY_ID, {
+            id: technicianId,
+          });
+
+          const technicianProfileResponse = await fetch(technicianProfileUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          });
+
+          if (technicianProfileResponse.ok) {
+            const technicianProfile = await technicianProfileResponse.json();
+            technicianEmail = technicianProfile?.email || '';
+            console.log('✅ [PhaseApprovalModal] Technician email fetched:', technicianEmail);
+          } else {
+            console.warn('⚠️ [PhaseApprovalModal] Failed to fetch technician profile');
+          }
+        }
+
+        // ===== STEP 4: Approve All Phases =====
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🟢 [PhaseApprovalModal] STEP 4: Approve All Phases');
+        console.log('🟢 [PhaseApprovalModal] Endpoint: POST /phases/project/{projectId}/approve-all');
+        console.log('🟢 [PhaseApprovalModal] Project ID:', projectId);
+        console.log('═══════════════════════════════════════════════════════════');
+
+        const approveUrl = buildApiUrlWithParams(API_ENDPOINTS.PHASES.APPROVE_ALL, {
           projectId,
         });
 
-        console.log('═══════════════════════════════════════════════════════════');
-        console.log('🟢 [PhaseApprovalModal] Approve All Phases');
-        console.log('🟢 [PhaseApprovalModal] Endpoint: POST /phases/project/{projectId}/approve-all');
-        console.log('🟢 [PhaseApprovalModal] Project ID:', projectId);
-        console.log('🟢 [PhaseApprovalModal] URL:', url);
-        console.log('═══════════════════════════════════════════════════════════');
-
-        const response = await fetch(url, {
+        const approveResponse = await fetch(approveUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -319,22 +438,92 @@ export default function PhaseApprovalModal({
           },
         });
 
-        console.log('📥 [PhaseApprovalModal] Approve All Response Status:', response.status);
+        console.log('📥 [PhaseApprovalModal] Approve All Response Status:', approveResponse.status);
 
-        if (response.ok) {
-          const responseData = await response.json().catch(() => null);
-          console.log('✅ [PhaseApprovalModal] Approve All Response Data:', responseData);
+        if (!approveResponse.ok) {
+          const errorText = await approveResponse.text();
+          console.error('❌ [PhaseApprovalModal] Failed to approve phases:', errorText);
+          console.error('❌ [PhaseApprovalModal] Status:', approveResponse.status);
+          showError(t('Failed to approve phases'));
+          return;
+        }
+
+        const approveData = await approveResponse.json().catch(() => null);
+        console.log('✅ [PhaseApprovalModal] Phases approved successfully:', approveData);
+        console.log('✅ [PhaseApprovalModal] Project status changed to CONTRACT_SIGNING');
+
+        // Log email status
+        console.log('📧 [PhaseApprovalModal] User Email:', userEmail);
+        console.log('📧 [PhaseApprovalModal] Technician Email:', technicianEmail);
+        console.log('🔧 [PhaseApprovalModal] Technician ID:', technicianId);
+
+        // Check if we have the required data for signature
+        if (!technicianId || !userEmail || !technicianEmail) {
+          console.warn('⚠️ [PhaseApprovalModal] Missing email or technician info for signature');
+          console.warn('⚠️ [PhaseApprovalModal] technicianId:', technicianId);
+          console.warn('⚠️ [PhaseApprovalModal] userEmail:', userEmail);
+          console.warn('⚠️ [PhaseApprovalModal] technicianEmail:', technicianEmail);
           showSuccess(t('All phases approved successfully'));
-          loadPhases(); // Reload to show updated status
+          loadPhases();
+          onSuccess?.();
+          return;
+        }
+
+        // ===== STEP 5: Create Signature Request =====
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🟢 [PhaseApprovalModal] STEP 5: Creating signature request');
+        console.log('🟢 [PhaseApprovalModal] Endpoint: POST /signatures');
+        console.log('═══════════════════════════════════════════════════════════');
+
+        const signatureUrl = buildApiUrl(API_ENDPOINTS.CONTRACTS.CREATE);
+
+        // Get phase IDs
+        const phaseIds = phases.length > 0 ? phases.map(p => p.id).join(',') : '';
+
+        // Build form-encoded body (as per API documentation)
+        const formBody = new URLSearchParams({
+          projectId: projectId.toString(),
+          technicianId: technicianId.toString(),
+          userEmail: userEmail.trim(),
+          technicianEmail: technicianEmail.trim(),
+          phaseIds: phaseIds,
+          language: i18n.language === 'ar' ? 'AR' : 'EN',
+        }).toString();
+
+        console.log('📤 [PhaseApprovalModal] Sending signature request...');
+        console.log('📤 [PhaseApprovalModal] Form body:', formBody);
+
+        const signatureResponse = await fetch(signatureUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept-Language': i18n.language,
+          },
+          body: formBody,
+        });
+
+        console.log('📥 [PhaseApprovalModal] Signature Response Status:', signatureResponse.status);
+
+        if (signatureResponse.ok || signatureResponse.status === 201) {
+          const signatureData = await signatureResponse.json();
+          console.log('✅ [PhaseApprovalModal] Signature request created successfully!');
+          console.log('✅ [PhaseApprovalModal] Signature ID:', signatureData.id);
+          console.log('✅ [PhaseApprovalModal] SignIt Reference:', signatureData.thirdPartyReferenceId);
+          
+          showSuccess(t('All phases approved! Signature requests sent to both parties via email.'));
+          loadPhases();
           onSuccess?.();
         } else {
-          const errorText = await response.text();
-          console.error('❌ [PhaseApprovalModal] Failed to approve phases:', errorText);
-          console.error('❌ [PhaseApprovalModal] Status:', response.status);
-          showError(t('Failed to approve phases'));
+          const errorText = await signatureResponse.text();
+          console.error('❌ [PhaseApprovalModal] Failed to create signature:', errorText);
+          // Still show success for phase approval even if signature fails
+          showSuccess(t('All phases approved successfully'));
+          loadPhases();
+          onSuccess?.();
         }
       } catch (error: any) {
-        console.error('❌ [PhaseApprovalModal] Error approving phases:', error);
+        console.error('❌ [PhaseApprovalModal] Error:', error);
         showError(error.message || t('Failed to approve phases'));
       } finally {
         setIsApproving(false);
@@ -667,23 +856,28 @@ export default function PhaseApprovalModal({
   };
 
   const getPaymentStatusColor = (status: string, completed: boolean) => {
-    if (status === 'PAID') return '#10B981';
-    if (completed && status === 'UNPAID') return '#F59E0B';
-    return colors.textSecondary;
+    if (status === 'PAID') return COLORS.green60;
+    if (completed && status === 'UNPAID') return COLORS.amber60;
+    return COLORS.textSecondary;
   };
 
   const formatBudget = (budget: number) => {
     return new Intl.NumberFormat('en-US').format(budget);
   };
 
-  const renderPhase = (phase: Phase) => (
+  const renderPhase = (phase: Phase) => {
+    const isApproved = !!phase.approved;
+    const borderColor = isApproved ? COLORS.green60 : COLORS.primary10;
+    const borderWidth = isApproved ? 0.5 : 1;
+
+    return (
     <View
       key={phase.id}
-      style={[styles.phaseCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
+      style={[styles.phaseCard, { borderColor, borderWidth }]}
     >
       {/* Phase Header */}
       <View style={styles.phaseHeader}>
-        <Text style={[styles.phaseNumber, { color: colors.text }]}>
+        <Text style={styles.phaseNumber}>
           {t('Phase {{number}}', { number: phase.phaseNumber })}
         </Text>
         <View
@@ -704,19 +898,19 @@ export default function PhaseApprovalModal({
       </View>
 
       {/* Description */}
-      <Text style={[styles.description, { color: colors.textSecondary }]}>{phase.description}</Text>
+      <Text style={styles.description}>{phase.description}</Text>
 
       {/* Phase Details */}
       <View style={styles.detailsRow}>
         <View style={styles.detailItem}>
-          <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
-          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-            {phase.timeSpentDays} {t('days')}
+          <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
+          <Text style={styles.detailText}>
+            {phase.timeSpentDays} {t('day_unit')}
           </Text>
         </View>
         <View style={styles.detailItem}>
-          <Ionicons name="cash-outline" size={18} color={colors.textSecondary} />
-          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+          <Ionicons name="cash-outline" size={16} color={COLORS.textSecondary} />
+          <Text style={styles.detailText}>
             {formatBudget(phase.moneySpent)} {t('SAR')}
           </Text>
         </View>
@@ -726,16 +920,16 @@ export default function PhaseApprovalModal({
       <View style={styles.statusIndicators}>
         {phase.approved && (
           <View style={styles.statusIndicator}>
-            <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
-            <Text style={[styles.statusIndicatorText, { color: '#3B82F6' }]}>
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.green60} />
+            <Text style={[styles.statusIndicatorText, { color: COLORS.green80 }]}>
               {t('Approved')}
             </Text>
           </View>
         )}
         {phase.completed && (
           <View style={styles.statusIndicator}>
-            <Ionicons name="checkmark-done-circle" size={20} color="#10B981" />
-            <Text style={[styles.statusIndicatorText, { color: '#10B981' }]}>
+            <Ionicons name="checkmark-done-circle" size={18} color={COLORS.green60} />
+            <Text style={[styles.statusIndicatorText, { color: COLORS.green80 }]}>
               {t('Completed')}
             </Text>
           </View>
@@ -761,11 +955,11 @@ export default function PhaseApprovalModal({
           {/* Edit Button - Only if not approved yet */}
           {!phase.approved && (
             <TouchableOpacity
-              style={[styles.editButton, { borderColor: colors.primary }]}
+              style={styles.editButton}
               onPress={() => startEditingPhase(phase)}
             >
-              <Ionicons name="create-outline" size={18} color={colors.primary} />
-              <Text style={[styles.editButtonText, { color: colors.primary }]}>
+              <Ionicons name="create-outline" size={18} color={COLORS.primary60} />
+              <Text style={styles.editButtonText}>
                 {t('Edit')}
               </Text>
             </TouchableOpacity>
@@ -786,42 +980,48 @@ export default function PhaseApprovalModal({
         </View>
       )}
     </View>
-  );
+    );
+  };
 
   const canApproveAll = phases.length > 0 && phases.every(p => !p.approved);
 
   return (
     <>
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          activeOpacity={1}
+          style={StyleSheet.absoluteFillObject}
+          onPress={onClose}
+        />
+        <View style={styles.modalContainer}>
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>
               {t('Review Phases')}
             </Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={28} color={colors.text} />
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={18} color={COLORS.textBody} />
             </TouchableOpacity>
           </View>
 
           {/* Content */}
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              <ActivityIndicator size="large" color={COLORS.primary60} />
+              <Text style={styles.loadingText}>
                 {t('Loading phases...')}
               </Text>
             </View>
           ) : phases.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="folder-outline" size={80} color={colors.border} />
-              <Text style={[styles.emptyText, { color: colors.text }]}>
+              <Ionicons name="folder-outline" size={64} color={COLORS.textDividers} />
+              <Text style={styles.emptyText}>
                 {isTechnician ? t('No phases found. Create your first phase to start.') : t('No phases found')}
               </Text>
               {isTechnician && (
                 <TouchableOpacity
-                  style={[styles.createPhaseButton, { backgroundColor: colors.primary }]}
+                  style={styles.createPhaseButton}
                   onPress={() => {
                     console.log('🟡 [PhaseApprovalModal] "Create First Phase" button clicked');
                     console.log('🟡 [PhaseApprovalModal] Opening create phase form for technician');
@@ -840,11 +1040,11 @@ export default function PhaseApprovalModal({
               {phases.map(renderPhase)}
 
               {/* Total Summary */}
-              <View style={[styles.summaryCard, { backgroundColor: colors.cardBackground }]}>
-                <Text style={[styles.summaryTitle, { color: colors.text }]}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTitle}>
                   {t('Project Total')}
                 </Text>
-                <Text style={[styles.summaryAmount, { color: colors.primary }]}>
+                <Text style={styles.summaryAmount}>
                   {formatBudget(phases.reduce((sum, p) => sum + p.moneySpent, 0))} {t('SAR')}
                 </Text>
               </View>
@@ -852,7 +1052,7 @@ export default function PhaseApprovalModal({
               {/* View Contract Button */}
               {!canApproveAll && phases.some(p => p.approved) && (
                 <TouchableOpacity
-                  style={[styles.contractButton, { backgroundColor: colors.primary }]}
+                  style={styles.contractButton}
                   onPress={() => {
                     onOpenContract?.();
                   }}
@@ -1384,24 +1584,49 @@ export default function PhaseApprovalModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'center',
+    padding: 16,
   },
   modalContainer: {
-    flex: 0.9,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: COLORS.bgWhite,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primary10,
+    width: '100%',
+    maxWidth: 820,
+    maxHeight: '90%',
+    alignSelf: 'center',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.12)',
+      } as any,
+      default: {
+        elevation: 4,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
     borderBottomWidth: 1,
+    borderBottomColor: COLORS.textDividers,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textHeader,
+  },
+  closeButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: COLORS.primary10,
   },
   loadingContainer: {
     flex: 1,
@@ -1411,15 +1636,19 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
+    color: COLORS.textSecondary,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
+    padding: 16,
   },
   emptyText: {
     fontSize: 16,
+    color: COLORS.textBody,
+    textAlign: 'center',
   },
   scrollContent: {
     flex: 1,
@@ -1427,9 +1656,9 @@ const styles = StyleSheet.create({
   },
   phaseCard: {
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: COLORS.bgWhite,
   },
   phaseHeader: {
     flexDirection: 'row',
@@ -1438,26 +1667,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   phaseNumber: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: '600',
+    color: COLORS.textBody,
   },
   statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 18,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
     marginBottom: 12,
+    color: COLORS.textBody,
   },
   detailsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     marginBottom: 12,
   },
   detailItem: {
@@ -1466,7 +1697,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   detailText: {
-    fontSize: 14,
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
   statusIndicators: {
     flexDirection: 'row',
@@ -1487,7 +1719,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.green60,
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 12,
@@ -1502,7 +1734,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
+    backgroundColor: COLORS.green60,
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 12,
@@ -1521,6 +1753,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
     gap: 8,
+    backgroundColor: COLORS.primary60,
   },
   contractButtonText: {
     color: '#fff',
@@ -1529,39 +1762,50 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: COLORS.primary10,
+    borderWidth: 0.5,
+    borderColor: COLORS.primary80,
   },
   summaryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '400',
+    color: COLORS.textBody,
   },
   summaryAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.green60,
   },
   feedbackCard: {
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
+    backgroundColor: COLORS.bgWhite,
+    borderWidth: 1,
+    borderColor: COLORS.primary10,
   },
   feedbackTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
+    color: COLORS.textHeader,
   },
   feedbackInput: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: COLORS.textDividers,
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 12,
+    backgroundColor: COLORS.bgWhite,
+    color: COLORS.textBody,
   },
   feedbackButtons: {
     flexDirection: 'row',
@@ -1574,10 +1818,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORS.primary10,
   },
   submitButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: COLORS.primary60,
   },
   feedbackButtonText: {
     color: '#fff',
@@ -1681,16 +1925,19 @@ const styles = StyleSheet.create({
   },
   confirmModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   confirmModalContent: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 24,
     width: '100%',
     maxWidth: 400,
+    backgroundColor: COLORS.bgWhite,
+    borderWidth: 1,
+    borderColor: COLORS.primary10,
     ...Platform.select({
       web: {
         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
@@ -1701,14 +1948,16 @@ const styles = StyleSheet.create({
     }),
   },
   confirmModalTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 12,
+    color: COLORS.textHeader,
   },
   confirmModalMessage: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 21,
     marginBottom: 24,
+    color: COLORS.textBody,
   },
   confirmModalButtons: {
     flexDirection: 'row',
@@ -1737,6 +1986,7 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderTopWidth: 1,
+    borderTopColor: COLORS.textDividers,
   },
   approveAllButton: {
     flex: 1,
@@ -1765,11 +2015,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
+    borderColor: COLORS.primary60,
     gap: 6,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
+    color: COLORS.primary60,
   },
   inputLabel: {
     fontSize: 14,
@@ -1786,6 +2038,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 16,
     gap: 8,
+    backgroundColor: COLORS.primary60,
   },
   createPhaseButtonText: {
     color: '#fff',

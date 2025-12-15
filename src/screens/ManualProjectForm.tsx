@@ -10,16 +10,17 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { storage } from '../utils/storage';
 import { useTheme } from '../context/ThemeContext';
 import LocationPicker from '../components/LocationPicker';
+import ProjectCreationFlow from '../components/ProjectCreationFlow';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 
 interface ManualProjectFormProps {
@@ -36,14 +37,40 @@ interface ServiceCategory {
   imageUrl: string;
 }
 
+// Design system colors from Figma
+const FIGMA_COLORS = {
+  bluePrimary100: '#003867',
+  bluePrimary80: '#004A8A',
+  bluePrimary70: '#00549B',
+  bluePrimary60: '#005DAC',
+  bluePrimary10: '#E6EFF7',
+  bluePrimary20: '#B3CEE6',
+  greenPrimary: '#008B3E',
+  greenLight: '#E6F5EC',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  textDividers: '#D9D9D9',
+  white: '#FFFFFF',
+  purple100: '#3C076D',
+  purple10: '#EFE6F5',
+};
+
 export default function ManualProjectForm({
   technician,
   onBack,
   onSuccess,
 }: ManualProjectFormProps) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
+  const { colors, theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isRTL = i18n.language === 'ar';
+  
+  // Responsive breakpoints
+  const isWeb = Platform.OS === 'web';
+  const isLargeWeb = isWeb && width >= 1024;
+  const isMediumWeb = isWeb && width >= 768 && width < 1024;
+  const isSmallScreen = width < 768;
 
   // Form state
   const [description, setDescription] = useState('');
@@ -152,7 +179,6 @@ export default function ManualProjectForm({
     if (Platform.OS === 'android') {
       setShowDatePicker(true);
     } else {
-      // For iOS/web, use a combined picker or modal
       setShowDatePicker(true);
     }
   };
@@ -259,19 +285,30 @@ export default function ManualProjectForm({
       const data = await response.json();
 
       if (response.ok && data.id) {
-        Alert.alert(
-          'Success',
-          technician ? 'Deal sent successfully!' : 'Project submitted successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onSuccess?.();
-                onBack();
+        const successMessage = technician ? 'Deal sent successfully!' : 'Project submitted successfully!';
+        
+        if (Platform.OS === 'web') {
+          // On web, Alert.alert callbacks don't work reliably
+          // Show alert and navigate immediately
+          window.alert(successMessage);
+          onSuccess?.();
+          onBack();
+        } else {
+          // On native, use Alert with callback
+          Alert.alert(
+            'Success',
+            successMessage,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  onSuccess?.();
+                  onBack();
+                },
               },
-            },
-          ]
-        );
+            ]
+          );
+        }
       } else {
         throw new Error(data.message || 'Failed to submit project');
       }
@@ -283,149 +320,328 @@ export default function ManualProjectForm({
     }
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.cardBackground, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="close" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t('Manual Project Form')}
-        </Text>
-        <View style={styles.backButton} />
-      </View>
+  const isDark = theme === 'dark';
+  const primaryBlue = isDark ? colors.primary : FIGMA_COLORS.bluePrimary60;
+  const cardBg = isDark ? colors.cardBackground : FIGMA_COLORS.white;
+  const textPrimary = isDark ? colors.text : FIGMA_COLORS.bluePrimary100;
+  const textBody = isDark ? colors.text : FIGMA_COLORS.textBody;
+  const textSecondary = isDark ? colors.textSecondary : FIGMA_COLORS.textSecondary;
+  const lightBlueBg = isDark ? colors.surface : FIGMA_COLORS.bluePrimary10;
+  const borderColor = isDark ? colors.border : FIGMA_COLORS.textDividers;
 
+  return (
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : FIGMA_COLORS.white, paddingTop: isLargeWeb ? 0 : insets.top }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { 
+            paddingBottom: insets.bottom + 32,
+            width: '100%',
+          },
+          isLargeWeb && styles.scrollContentLargeWeb,
+        ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Breadcrumb Navigation - Hidden on large web */}
+        {!isLargeWeb && (
+        <View style={[styles.breadcrumbContainer, { borderBottomColor: borderColor }]}>
+          <TouchableOpacity 
+            onPress={onBack} 
+            style={[styles.breadcrumbBack, isRTL && { transform: [{ scaleX: -1 }] }, isLargeWeb && styles.breadcrumbBackLargeWeb]}
+          >
+            <Ionicons name="chevron-back" size={isLargeWeb ? 40 : 20} color={textPrimary} />
+          </TouchableOpacity>
+          <View style={[styles.breadcrumbTextContainer, isLargeWeb && styles.breadcrumbTextContainerLargeWeb]}>
+            <Text style={[styles.breadcrumbTitle, { color: textPrimary }, isLargeWeb && styles.breadcrumbTitleLargeWeb]}>
+              {t('Project Creation')}
+            </Text>
+            <Text style={[styles.breadcrumbSubtitle, { color: textSecondary }, isLargeWeb && styles.breadcrumbSubtitleLargeWeb]}>
+              {t('Manual Project Form')}
+            </Text>
+          </View>
+        </View>
+        )}
+
+        {/* Title Section - Large Web */}
+        {isLargeWeb && (
+          <View style={styles.titleSectionLargeWeb}>
+            <TouchableOpacity onPress={onBack} style={styles.titleBackButton}>
+              <Ionicons 
+                name={isRTL ? "chevron-forward" : "chevron-back"} 
+                size={24} 
+                color={textPrimary} 
+              />
+            </TouchableOpacity>
+            <View style={styles.titleContainer}>
+              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }]}>
+                {t('Project Creation')}
+              </Text>
+              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }]}>
+                {t('Manual Project Form')}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Project Creation Flow */}
+        <View style={[styles.flowContainer, isLargeWeb && styles.flowContainerLargeWeb]}>
+          <ProjectCreationFlow currentStep="CREATING" />
+        </View>
+
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: borderColor }, isLargeWeb && styles.dividerLargeWeb]} />
+
+        {/* Form Header */}
+        <View style={styles.formHeader}>
+          <Text style={[styles.formTitle, { color: textPrimary }]}>
+            {t('Project Details')}
+          </Text>
+          <Text style={[styles.formSubtitle, { color: textBody }]}>
+            {t('Fill in the details below to create your project. Service providers will send bids once submitted.')}
+          </Text>
+        </View>
+
+        {/* Service Category Selection - Dropdown */}
+        <View style={[styles.section, { zIndex: 100 }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="grid-outline" size={14} color={FIGMA_COLORS.bluePrimary80} />
+            <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.bluePrimary80 }]}>
+              {t('Service Category')} *
+            </Text>
+          </View>
+          <View style={styles.dropdownContainer}>
+            <TouchableOpacity
+              style={[
+                styles.selectButton,
+                styles.editableInput,
+                { 
+                  backgroundColor: cardBg, 
+                  borderColor: showCategoryPicker ? primaryBlue : borderColor,
+                  borderWidth: showCategoryPicker ? 1.5 : 1,
+                }
+              ]}
+              onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+            >
+              <Text 
+                style={[
+                  styles.selectButtonText, 
+                  { color: category ? textBody : textSecondary }
+                ]}
+              >
+                {category || t('Select category')}
+              </Text>
+              <Ionicons 
+                name={showCategoryPicker ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color={showCategoryPicker ? primaryBlue : textSecondary} 
+              />
+            </TouchableOpacity>
+            
+            {/* Dropdown Options */}
+            {showCategoryPicker && (
+              <View style={[styles.dropdownList, { backgroundColor: cardBg, borderColor: borderColor }]}>
+                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                  {serviceCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.dropdownOption,
+                        { borderBottomColor: borderColor },
+                        selectedServiceId === cat.id && { backgroundColor: lightBlueBg },
+                      ]}
+                      onPress={() => {
+                        setSelectedServiceId(cat.id);
+                        setCategory(isRTL ? cat.nameAr : cat.nameEn);
+                        setShowCategoryPicker(false);
+                      }}
+                    >
+                      <Text style={[styles.dropdownOptionText, { color: textBody }]}>
+                        {isRTL ? cat.nameAr : cat.nameEn}
+                      </Text>
+                      {selectedServiceId === cat.id && (
+                        <Ionicons name="checkmark" size={18} color={primaryBlue} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        </View>
+
         {/* Description */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t('Project Description')} *
-          </Text>
-          <TextInput
-            style={[styles.textArea, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-            multiline
-            numberOfLines={6}
-            value={description}
-            onChangeText={setDescription}
-            placeholder={t('Describe your project needs...')}
-            placeholderTextColor={colors.textTertiary}
-            textAlignVertical="top"
-          />
+          <View style={styles.sectionHeader}>
+            <Ionicons name="document-text-outline" size={14} color={FIGMA_COLORS.bluePrimary80} />
+            <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.bluePrimary80 }]}>
+              {t('Project Description')} *
+            </Text>
+          </View>
+          <View style={[styles.inputContainer, styles.editableInput, { backgroundColor: cardBg, borderColor: borderColor }]}>
+            <TextInput
+              style={[styles.textArea, { color: textBody, backgroundColor: cardBg }]}
+              multiline
+              numberOfLines={6}
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t('Describe your project needs in detail...')}
+              placeholderTextColor={textSecondary}
+              textAlignVertical="top"
+            />
+          </View>
         </View>
 
-        {/* Category */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t('Service Category')} *
-          </Text>
-          <TouchableOpacity
-            style={[styles.pickerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => setShowCategoryPicker(true)}
-          >
-            <Text style={[styles.pickerText, { color: category ? colors.text : colors.textTertiary }]}>
-              {category || t('Select category')}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Budget */}
-        <View style={styles.section}>
-          <View style={styles.budgetHeader}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              {t('Budget')} ({t('Optional')})
-            </Text>
+        {/* Budget & Duration Row */}
+        <View style={[styles.cardsRow, !isSmallScreen && styles.cardsRowWeb]}>
+          {/* Budget Card */}
+          <View style={[
+            styles.statCard, 
+            { 
+              backgroundColor: cardBg, 
+              borderColor: borderColor,
+              flex: isSmallScreen ? 1 : undefined,
+              width: isSmallScreen ? undefined : '48%',
+            }
+          ]}>
+            <View style={styles.statCardHeader}>
+              <Ionicons name="cash-outline" size={14} color={FIGMA_COLORS.bluePrimary80} />
+              <Text style={[styles.statCardLabel, { color: FIGMA_COLORS.bluePrimary80 }]}>
+                {t('Budget')} (SAR)
+              </Text>
+            </View>
+            {budgetUnspecified ? (
+              <Text style={[styles.statCardValue, { color: textSecondary }]}>
+                {t('Unspecified')}
+              </Text>
+            ) : (
+              <View style={[styles.budgetInputWrapper, { backgroundColor: lightBlueBg, borderColor: borderColor }]}>
+                <TextInput
+                  style={[styles.budgetInput, { color: textBody }]}
+                  value={budget}
+                  onChangeText={setBudget}
+                  placeholder="0"
+                  placeholderTextColor={textSecondary}
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
             <TouchableOpacity
               onPress={() => setBudgetUnspecified(!budgetUnspecified)}
-              style={styles.checkboxRow}
+              style={styles.checkboxContainer}
             >
               <Ionicons
                 name={budgetUnspecified ? 'checkbox' : 'checkbox-outline'}
-                size={20}
-                color={budgetUnspecified ? colors.primary : colors.textSecondary}
+                size={16}
+                color={budgetUnspecified ? primaryBlue : textSecondary}
               />
-              <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>
+              <Text style={[styles.checkboxText, { color: textSecondary }]}>
                 {t('Unspecified')}
               </Text>
             </TouchableOpacity>
           </View>
-          {!budgetUnspecified && (
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-              value={budget}
-              onChangeText={setBudget}
-              placeholder={t('Enter budget amount (SAR)')}
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="numeric"
-            />
-          )}
-        </View>
 
-        {/* Bid Deadline */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t('Bid Deadline')} ({t('Optional')})
-          </Text>
-          {bidsCloseAt ? (
-            <View style={styles.dateDisplayContainer}>
-              <Text style={[styles.dateDisplayText, { color: colors.text }]}>
-                {formatDateForDisplay(bidsCloseAt)}
+          {/* Bid Deadline Card */}
+          <View style={[
+            styles.statCard, 
+            { 
+              backgroundColor: cardBg, 
+              borderColor: borderColor,
+              flex: isSmallScreen ? 1 : undefined,
+              width: isSmallScreen ? undefined : '48%',
+            }
+          ]}>
+            <View style={styles.statCardHeader}>
+              <Ionicons name="time-outline" size={14} color={FIGMA_COLORS.greenPrimary} />
+              <Text style={[styles.statCardLabel, { color: FIGMA_COLORS.greenPrimary }]}>
+                {t('Bid Deadline')}
               </Text>
-              <TouchableOpacity onPress={clearBidDeadline} style={styles.clearButton}>
-                <Ionicons name="close-circle" size={20} color={colors.error} />
-              </TouchableOpacity>
             </View>
-          ) : (
-            <View style={styles.datePickerButtons}>
-              <TouchableOpacity
-                style={[styles.datePickerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={handlePickDate}
-              >
-                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                <Text style={[styles.datePickerButtonText, { color: colors.text }]}>
-                  {t('Pick Date')}
+            {bidsCloseAt ? (
+              <View style={styles.dateValueContainer}>
+                <Text style={[styles.statCardValue, { color: textBody, flex: 1 }]} numberOfLines={1}>
+                  {formatDateForDisplay(bidsCloseAt)}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.datePickerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={handlePickTime}
-              >
-                <Ionicons name="time-outline" size={20} color={colors.primary} />
-                <Text style={[styles.datePickerButtonText, { color: colors.text }]}>
-                  {t('Pick Time')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                <TouchableOpacity onPress={clearBidDeadline}>
+                  <Ionicons name="close-circle" size={18} color={colors.error || '#F44336'} />
+                </TouchableOpacity>
+              </View>
+            ) : isWeb ? (
+              // Web-specific date/time inputs
+              <View style={styles.webDatePickerContainer}>
+                <input
+                  type="datetime-local"
+                  style={{
+                    flex: 1,
+                    padding: 10,
+                    fontSize: 14,
+                    borderRadius: 6,
+                    border: `1px solid ${borderColor}`,
+                    backgroundColor: lightBlueBg,
+                    color: textBody,
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                  min={new Date().toISOString().slice(0, 16)}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const date = new Date(e.target.value);
+                      setBidClosedDate(date);
+                      setBidsCloseAt(formatDateForAPI(date));
+                    }
+                  }}
+                />
+              </View>
+            ) : (
+              <View style={styles.datePickerRow}>
+                <TouchableOpacity style={[styles.miniDateButton, { backgroundColor: FIGMA_COLORS.greenLight }]} onPress={handlePickDate}>
+                  <Ionicons name="calendar-outline" size={14} color={FIGMA_COLORS.greenPrimary} />
+                  <Text style={[styles.miniDateText, { color: FIGMA_COLORS.greenPrimary }]}>
+                    {t('Date')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniDateButton, { backgroundColor: FIGMA_COLORS.greenLight }]} onPress={handlePickTime}>
+                  <Ionicons name="time-outline" size={14} color={FIGMA_COLORS.greenPrimary} />
+                  <Text style={[styles.miniDateText, { color: FIGMA_COLORS.greenPrimary }]}>
+                    {t('Time')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Address */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t('Project Address')} ({t('Optional')})
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="location-outline" size={14} color={FIGMA_COLORS.bluePrimary80} />
+            <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.bluePrimary80 }]}>
+              {t('Project Address')} ({t('Optional')})
+            </Text>
+          </View>
           <TouchableOpacity
-            style={[styles.addressButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[styles.addressButton, styles.editableInput, { backgroundColor: cardBg, borderColor: borderColor }]}
             onPress={() => setShowMapPicker(true)}
           >
-            <Ionicons name="location" size={20} color={colors.primary} />
-            <Text style={[styles.addressText, { color: address ? colors.text : colors.textTertiary }]}>
-              {address || t('Select location')}
+            <Ionicons name="location" size={18} color={primaryBlue} />
+            <Text 
+              style={[styles.addressText, { color: address ? textBody : textSecondary }]} 
+              numberOfLines={1}
+            >
+              {address || t('Select location on map')}
             </Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={18} color={textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* Photos */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t('Photos')} ({photos.length}/5) ({t('Optional')})
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="images-outline" size={14} color={FIGMA_COLORS.bluePrimary80} />
+            <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.bluePrimary80 }]}>
+              {t('Photos')} ({photos.length}/5) ({t('Optional')})
+            </Text>
+          </View>
           <View style={styles.photosContainer}>
             {photos.map((uri, index) => (
               <View key={index} style={styles.photoWrapper}>
@@ -434,76 +650,51 @@ export default function ManualProjectForm({
                   style={styles.removePhoto}
                   onPress={() => removePhoto(index)}
                 >
-                  <Ionicons name="close-circle" size={24} color="#fff" />
+                  <Ionicons name="close-circle" size={22} color={FIGMA_COLORS.white} />
                 </TouchableOpacity>
               </View>
             ))}
             {photos.length < 5 && (
               <TouchableOpacity
-                style={[styles.addPhotoButton, { borderColor: colors.primary }]}
+                style={[styles.addPhotoButton, { borderColor: primaryBlue, backgroundColor: lightBlueBg }]}
                 onPress={pickImages}
               >
-                <Ionicons name="add" size={32} color={colors.primary} />
+                <Ionicons name="add" size={28} color={primaryBlue} />
+                <Text style={[styles.addPhotoText, { color: primaryBlue }]}>{t('Add')}</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         {/* Submit Button */}
-        <Button
-          mode="contained"
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            { backgroundColor: primaryBlue },
+            (isSubmitting || !description.trim() || !selectedServiceId) && styles.submitButtonDisabled
+          ]}
           onPress={submitProject}
-          loading={isSubmitting}
           disabled={isSubmitting || !description.trim() || !selectedServiceId}
-          style={[styles.submitButton, { backgroundColor: colors.primary }]}
-          contentStyle={styles.submitButtonContent}
         >
-          {technician ? t('Send Deal') : t('Submit Project')}
-        </Button>
-      </ScrollView>
+          {isSubmitting ? (
+            <ActivityIndicator color={FIGMA_COLORS.white} size="small" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {technician ? t('Send Deal') : t('Submit Project')}
+            </Text>
+          )}
+        </TouchableOpacity>
 
-      {/* Category Picker Modal */}
-      {showCategoryPicker && (
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {t('Select Category')}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowCategoryPicker(false)}
-                style={styles.modalCloseButton}
-              >
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScrollView}>
-              {serviceCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryOption,
-                    { borderBottomColor: colors.border },
-                    selectedServiceId === cat.id && { backgroundColor: colors.surface },
-                  ]}
-                  onPress={() => {
-                    setSelectedServiceId(cat.id);
-                    setCategory(cat.nameEn);
-                    setShowCategoryPicker(false);
-                  }}
-                >
-                  <Text style={[styles.categoryText, { color: colors.text }]}>
-                    {cat.nameEn}
-                  </Text>
-                  {selectedServiceId === cat.id && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      )}
+        {/* Cancel Button */}
+        <TouchableOpacity
+          style={[styles.cancelButton, { backgroundColor: FIGMA_COLORS.purple10, borderColor: FIGMA_COLORS.purple100 }]}
+          onPress={onBack}
+        >
+          <Text style={[styles.cancelButtonText, { color: FIGMA_COLORS.purple100 }]}>
+            {t('Cancel')}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* Location Picker */}
       {showMapPicker && (
@@ -558,14 +749,15 @@ export default function ManualProjectForm({
       {/* Loading Overlay */}
       {isSubmitting && (
         <View style={styles.loadingOverlay}>
-          <View style={[styles.loadingCard, { backgroundColor: colors.cardBackground }]}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.text }]}>
+          <View style={[styles.loadingCard, { backgroundColor: cardBg }]}>
+            <ActivityIndicator size="large" color={primaryBlue} />
+            <Text style={[styles.loadingText, { color: textBody }]}>
               {t('Submitting project...')}
             </Text>
           </View>
         </View>
       )}
+      <View style={{ height: 40 }} />
     </View>
   );
 }
@@ -574,91 +766,258 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32,
   },
-  section: {
-    marginBottom: 24,
+  scrollContentLargeWeb: {
+    padding: 48,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  textArea: {
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 120,
-    borderWidth: 1,
-    textAlignVertical: 'top',
-  },
-  input: {
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  pickerButton: {
+  breadcrumbContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
+    paddingVertical: 16,
+    borderBottomWidth: 0.5,
+    gap: 12,
   },
-  pickerText: {
-    fontSize: 16,
+  breadcrumbContainerLargeWeb: {
+    paddingVertical: 32,
+    gap: 56,
+  },
+  breadcrumbBack: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  breadcrumbBackLargeWeb: {
+    width: 40,
+    height: 40,
+  },
+  breadcrumbTextContainer: {
     flex: 1,
   },
-  budgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+  breadcrumbTextContainerLargeWeb: {
+    gap: 8,
   },
-  checkboxRow: {
+  breadcrumbTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  breadcrumbTitleLargeWeb: {
+    fontSize: 34,
+    fontWeight: '400',
+  },
+  breadcrumbSubtitle: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  breadcrumbSubtitleLargeWeb: {
+    fontSize: 16,
+    marginTop: 0,
+  },
+  flowContainer: {
+    paddingVertical: 12,
+  },
+  flowContainerLargeWeb: {
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  divider: {
+    height: 0.5,
+    marginVertical: 8,
+  },
+  dividerLargeWeb: {
+    marginVertical: 0,
+    marginTop: 0,
+    marginBottom: 24,
+  },
+  formHeader: {
+    paddingVertical: 16,
+  },
+  formTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  formSubtitle: {
+    fontSize: 14,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 10,
   },
-  checkboxLabel: {
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  editableInput: {
+    borderWidth: 1,
+    ...Platform.select({
+      web: {
+        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+      },
+      default: {},
+    }),
+  },
+  dropdownContainer: {
+    position: 'relative',
+    zIndex: 100,
+  },
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    padding: 14,
+    borderWidth: 1,
+  },
+  selectButtonText: {
     fontSize: 14,
+    flex: 1,
+  },
+  dropdownList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    maxHeight: 200,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 8,
+      },
+    }),
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderBottomWidth: 0.5,
+  },
+  dropdownOptionText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  inputContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  textArea: {
+    padding: 16,
+    fontSize: 14,
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  cardsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  cardsRowWeb: {
+    flexDirection: 'row',
+  },
+  statCard: {
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 0.5,
+    minHeight: 100,
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  statCardLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statCardValue: {
+    fontSize: 14,
+  },
+  statCardInput: {
+    fontSize: 16,
+    fontWeight: '600',
+    paddingVertical: 4,
+  },
+  budgetInputWrapper: {
+    borderRadius: 6,
+    borderWidth: 1,
+    marginVertical: 4,
+  },
+  budgetInput: {
+    fontSize: 16,
+    fontWeight: '600',
+    padding: 10,
+  },
+  webDatePickerContainer: {
+    marginTop: 8,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  checkboxText: {
+    fontSize: 11,
+  },
+  dateValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  miniDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 139, 62, 0.1)',
+  },
+  miniDateText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   addressButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
+    gap: 10,
+    borderRadius: 8,
+    padding: 14,
+    borderWidth: 0.5,
   },
   addressText: {
-    fontSize: 16,
+    fontSize: 14,
     flex: 1,
   },
   photosContainer: {
@@ -667,8 +1026,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   photoWrapper: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
@@ -679,69 +1038,50 @@ const styles = StyleSheet.create({
   },
   removePhoto: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 11,
   },
   addPhotoButton: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  addPhotoText: {
+    fontSize: 10,
+    marginTop: 2,
+  },
   submitButton: {
-    marginTop: 8,
-    borderRadius: 12,
-  },
-  submitButtonContent: {
-    paddingVertical: 8,
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 12,
   },
-  modalContent: {
-    width: '90%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    borderRadius: 16,
-    overflow: 'hidden',
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
+  submitButtonText: {
+    color: FIGMA_COLORS.white,
+    fontSize: 16,
     fontWeight: '600',
   },
-  modalCloseButton: {
-    padding: 4,
-  },
-  modalScrollView: {
-    maxHeight: 400,
-  },
-  categoryOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  cancelButton: {
+    borderRadius: 8,
+    paddingVertical: 16,
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    justifyContent: 'center',
+    marginTop: 12,
+    borderWidth: 1,
   },
-  categoryText: {
+  cancelButtonText: {
     fontSize: 16,
+    fontWeight: '500',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -754,46 +1094,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingCard: {
-    padding: 24,
+    padding: 28,
     borderRadius: 12,
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 15,
   },
-  dateDisplayContainer: {
+  // Title Section - Large Web (Figma Design)
+  titleSectionLargeWeb: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    gap: 16,
+    paddingHorizontal: 48,
+    paddingTop: 24,
+    paddingBottom: 0,
   },
-  dateDisplayText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  clearButton: {
-    padding: 4,
-  },
-  datePickerButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  datePickerButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  titleBackButton: {
+    width: 24,
+    height: 24,
     justifyContent: 'center',
-    gap: 8,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
+    alignItems: 'center',
   },
-  datePickerButtonText: {
-    fontSize: 16,
+  titleContainer: {
+    flex: 1,
+    gap: 8,
+  },
+  titleMainText: {
+    fontSize: 42,
+    fontWeight: '700',
+    color: FIGMA_COLORS.bluePrimary100,
+    lineHeight: 42,
+  },
+  titleSubtext: {
+    fontSize: 20,
+    fontWeight: '300',
+    color: FIGMA_COLORS.textSecondary,
+    lineHeight: 20,
   },
 });

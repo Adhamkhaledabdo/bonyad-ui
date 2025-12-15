@@ -1,138 +1,126 @@
 /**
- * Theme Toggle Component
+ * Theme Toggle Component - Apple Style
  * 
- * A professional theme toggle for switching between light and dark mode
+ * A beautiful sun/moon toggle for switching between light and dark mode
+ * with smooth transition animations like Apple's design
  */
 
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { useTranslation } from 'react-i18next';
+import { FontFamily, UIFontSizes } from '../constants/Fonts';
 
 export default function ThemeToggle() {
-  const { t } = useTranslation();
   const { theme, toggleTheme, colors } = useTheme();
   const isDark = theme === 'dark';
-
-  // Calculate icon container background color based on theme
-  // Extract RGB values from primary color and apply opacity
-  const getPrimaryRgba = (color: string, opacity: number) => {
-    // Handle hex colors like #0080E0 or #33A3FF
-    const hex = color.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-  };
   
-  const iconContainerBg = isDark 
-    ? getPrimaryRgba(colors.primary, 0.15)
-    : getPrimaryRgba(colors.primary, 0.1);
+  // Animation values
+  const rotateAnim = useRef(new Animated.Value(isDark ? 1 : 0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    // Rotate and scale animation when theme changes
+    Animated.parallel([
+      Animated.timing(rotateAnim, {
+        toValue: isDark ? 1 : 0,
+        duration: 400,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.8,
+          duration: 150,
+          easing: Easing.ease,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.elastic(1.2),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [isDark]);
 
-  // Use surface color for better theme adaptation
-  const containerBg = colors.surface || colors.cardBackground || (isDark ? '#1E1E1E' : '#FFFFFF');
-  const containerBorder = colors.border || (isDark ? '#3A3A3A' : '#DDDDDD');
+  // Interpolate rotation
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Colors based on theme
+  const bgColor = isDark ? '#1C1C1E' : '#F2F2F7';
+  const iconColor = isDark ? '#FFD60A' : '#FF9500';
+  const borderColor = isDark ? '#38383A' : '#E5E5EA';
 
   return (
-    <View 
+    <TouchableOpacity
+      onPress={toggleTheme}
+      activeOpacity={0.8}
       style={[
-        styles.container, 
-        { 
-          backgroundColor: containerBg,
-          borderColor: containerBorder,
-        }
+        styles.container,
+        {
+          backgroundColor: bgColor,
+          borderColor: borderColor,
+        },
       ]}
     >
-      <View style={styles.content}>
-        <View style={[styles.iconContainer, { backgroundColor: iconContainerBg }]}>
-          <Ionicons
-            name={isDark ? 'moon' : 'sunny'}
-            size={20}
-            color={colors.primary}
-          />
-        </View>
-        <Text style={[styles.label, { color: colors.text }]}>
-          {isDark ? t('Dark Mode') : t('Light Mode')}
-        </Text>
-      </View>
-      <TouchableOpacity
-        onPress={toggleTheme}
+      <Animated.View
         style={[
-          styles.toggleButton,
+          styles.iconWrapper,
           {
-            backgroundColor: isDark ? colors.primary : colors.border,
-          }
+            transform: [
+              { rotate: rotation },
+              { scale: scaleAnim },
+            ],
+          },
         ]}
-        activeOpacity={0.7}
       >
-        <View
-          style={[
-            styles.toggleCircle,
-            {
-              backgroundColor: colors.white,
-              transform: [{ translateX: isDark ? 20 : 0 }],
-            }
-          ]}
-        />
-      </TouchableOpacity>
-    </View>
+        {isDark ? (
+          <Ionicons
+            name="moon"
+            size={UIFontSizes.langToggle}
+            color={iconColor}
+            style={{ fontSize: UIFontSizes.langToggle }}
+            fontFamily={FontFamily.primary}
+          />
+        ) : (
+          <Ionicons
+            name="sunny"
+            size={UIFontSizes.langToggle}
+            color={iconColor}
+            style={{ fontSize: UIFontSizes.langToggle }}
+            fontFamily={FontFamily.primary}
+          />
+        )}
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 24,
-    marginBottom: Platform.OS === 'web' ? 24 : 16,
-    // No backgroundColor here - it's set dynamically via inline style
-    ...Platform.select({
-      web: {
-        maxWidth: 400,
-        alignSelf: 'center',
-      } as any,
-    }),
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  toggleButton: {
     width: 48,
-    height: 28,
-    borderRadius: 14,
-    padding: 2,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  toggleCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    alignSelf: 'center',
+    marginTop: 16,
     ...Platform.select({
       web: {
-        transition: 'transform 0.3s ease',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease, border-color 0.3s ease',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       } as any,
-      default: {},
     }),
+  },
+  iconWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
-

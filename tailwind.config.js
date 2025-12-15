@@ -63,7 +63,11 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['System'],
+        sans: ['SakkalMajalla', 'System', 'sans-serif'],
+        sakkal: ['SakkalMajalla', 'System', 'sans-serif'],
+        heading: ['SakkalMajalla-Bold', 'SakkalMajalla', 'System', 'sans-serif'],
+        body: ['SakkalMajalla', 'System', 'sans-serif'],
+        mono: ['SF Mono', 'Monaco', 'Inconsolata', 'monospace'],
       },
     },
   },

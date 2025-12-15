@@ -20,6 +20,7 @@ import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import * as ImagePicker from 'expo-image-picker';
 import { showAlert, showError, showSuccess } from '../utils/alert';
+import { uploadPortfolioPhoto, addPortfolioProject } from '../services/PortfolioService';
 
 interface PortfolioScreenProps {
   userId: string | number;
@@ -43,7 +44,7 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
@@ -111,8 +112,7 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
       });
 
       if (!result.canceled && result.assets) {
-        const imageUris = result.assets.map(asset => asset.uri);
-        setSelectedImages([...selectedImages, ...imageUris]);
+        setSelectedImages([...selectedImages, ...result.assets]);
       }
     } catch (error) {
       console.error('Error selecting images:', error);
@@ -127,53 +127,46 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
 
     setIsAdding(true);
     try {
-      const token = await storage.getAuthToken();
-
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', description);
+      // Step 1: Upload all photos first and get their URLs
+      console.log('📤 [PortfolioScreen] Uploading photos...');
+      const photoUrls: string[] = [];
       
-      // Add all images
-      selectedImages.forEach((uri, index) => {
-        const filename = uri.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename || '');
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formData.append('images', {
-          uri,
-          name: `image_${index}.${match?.[1] || 'jpg'}`,
-          type,
-        } as any);
+      for (const imageAsset of selectedImages) {
+        try {
+          const photoUrl = await uploadPortfolioPhoto(imageAsset);
+          photoUrls.push(photoUrl);
+          console.log('✅ [PortfolioScreen] Photo uploaded:', photoUrl);
+        } catch (uploadError) {
+          console.error('❌ [PortfolioScreen] Failed to upload photo:', uploadError);
+          throw new Error('Failed to upload one or more photos');
+        }
+      }
+      
+      // Step 2: Create the project with the photo URLs
+      console.log('📤 [PortfolioScreen] Creating project with photos:', photoUrls.length);
+      
+      const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      
+      await addPortfolioProject({
+        title: title.trim(),
+        description: description.trim() || title.trim(), // Use title as description if empty
+        startDate: today,
+        endDate: today,
+        photos: photoUrls,
+        isPublic: true,
       });
 
-      const response = await fetch(
-        buildApiUrl(API_ENDPOINTS.PORTFOLIO.LIST),
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-          body: formData,
-        }
-      );
-
-      if (response.ok) {
-        showSuccess('Portfolio item added successfully');
-        setTimeout(() => {
-          setShowAddModal(false);
-          setTitle('');
-          setDescription('');
-          setSelectedImages([]);
-          fetchPortfolio();
-        }, 1000);
-      } else {
-        throw new Error('Failed to add portfolio item');
-      }
-    } catch (error) {
+      showSuccess('Portfolio item added successfully');
+      setTimeout(() => {
+        setShowAddModal(false);
+        setTitle('');
+        setDescription('');
+        setSelectedImages([]);
+        fetchPortfolio();
+      }, 1000);
+    } catch (error: any) {
       console.error('Error adding portfolio item:', error);
-      showError('Failed to add portfolio item');
+      showError(error.message || 'Failed to add portfolio item');
     } finally {
       setIsAdding(false);
     }
@@ -298,9 +291,9 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
 
               {selectedImages.length > 0 && (
                 <View style={styles.selectedImagesContainer}>
-                  {selectedImages.map((uri, index) => (
+                  {selectedImages.map((imageAsset, index) => (
                     <View key={index} style={styles.imagePreviewContainer}>
-                      <Image source={{ uri }} style={styles.imagePreview} />
+                      <Image source={{ uri: imageAsset.uri }} style={styles.imagePreview} />
                       <TouchableOpacity
                         style={styles.removeImageButton}
                         onPress={() => handleDeleteImage(index)}
