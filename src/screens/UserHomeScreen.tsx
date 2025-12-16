@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   Dimensions,
   Platform,
   TextInput,
@@ -1510,24 +1509,6 @@ export default function UserHomeScreen({
               { color: activeTab === 'home' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
             ]}>
               {t('Home')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Payments */}
-          <TouchableOpacity 
-            style={styles.figmaTabItem}
-            onPress={() => setActiveTab('new')}
-          >
-            <Ionicons 
-              name={activeTab === 'new' ? "card" : "card-outline"} 
-              size={24} 
-              color={activeTab === 'new' ? colors.primary : (isDarkMode ? colors.textSecondary : "#6E6E6E")} 
-            />
-            <Text style={[
-              styles.figmaTabLabel, 
-              { color: activeTab === 'new' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
-            ]}>
-              {t('Payments')}
             </Text>
           </TouchableOpacity>
 

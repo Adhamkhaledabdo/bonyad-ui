@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Platform, TouchableOpacity, ScrollView, Alert, AppState, Dimensions, Image } from 'react-native';
+import { StyleSheet, Text, View, Platform, TouchableOpacity, ScrollView, AppState, Dimensions, Image } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -19,6 +19,8 @@ import WebSocketNotificationService from './src/services/WebSocketNotificationSe
 import NotificationPopup from './src/components/NotificationPopup';
 import { getOnboardingStatus } from './src/services/onboardingApi';
 import onboardingStorage from './src/services/onboardingStorage';
+import GlobalAlertProvider from './src/components/GlobalAlertProvider';
+import { globalAlertManager } from './src/utils/globalAlertManager';
 // import * as Notifications from 'expo-notifications';
 // import { registerForPushNotificationsAsync } from './src/utils/useFCMToken';
 
@@ -580,11 +582,12 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <AppContent 
-        currentScreen={currentScreen}
-        setCurrentScreen={setCurrentScreen}
-        router={router}
+      <GlobalAlertProvider>
+        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+          <AppContent 
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          router={router}
         showProfile={showProfile}
         setShowProfile={setShowProfile}
         userRole={userRole}
@@ -627,6 +630,7 @@ export default function App() {
         setForgotPasswordOTP={setForgotPasswordOTP}
         />
       </View>
+      </GlobalAlertProvider>
     </ThemeProvider>
   );
 }
@@ -1102,7 +1106,7 @@ function AppContent({
             onBack={() => navigate('newProject')}
             onSuccess={() => {
               navigate('home');
-              Alert.alert('Success', 'Project submitted successfully!');
+              globalAlertManager.showSuccess('Project submitted successfully!', 'Success');
             }}
           />
         )}
@@ -1112,7 +1116,7 @@ function AppContent({
             onBack={() => navigate('newProject')}
             onSuccess={() => {
               navigate('home');
-              Alert.alert('Success', 'Project generated and submitted successfully!');
+              globalAlertManager.showSuccess('Project generated and submitted successfully!', 'Success');
             }}
           />
         )}

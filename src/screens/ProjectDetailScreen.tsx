@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Dimensions,
   Platform,
   Image,
@@ -18,6 +17,8 @@ import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProjectCreationFlow from '../components/ProjectCreationFlow';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 
 // ===== DESIGN TOKENS FROM FIGMA =====
 const COLORS = {
@@ -493,6 +494,10 @@ export default function ProjectDetailScreen({
   const IS_WEB = Platform.OS === 'web';
   const IS_LARGE_WEB = IS_WEB && screenWidth >= 1024;
   
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  const { confirmState, showDeleteConfirmation, showConfirmation, hideConfirmation } = useConfirmationPopup();
+  
   const status = project?.status?.toUpperCase() || 'PENDING';
   const serviceName = i18n.language === 'ar' ? project?.serviceNameAr : project?.serviceNameEn;
 
@@ -617,15 +622,15 @@ export default function ProjectDetailScreen({
         });
         
         if (response.ok) {
-          Alert.alert(t('Success'), t('Bid accepted successfully'));
+          showSuccess(t('Bid accepted successfully'), t('Success'));
           loadBids();
           onSuccess?.();
         } else {
-          Alert.alert(t('Error'), t('Failed to accept bid'));
+          showError(t('Failed to accept bid'), t('Error'));
         }
       } catch (error) {
         console.error('Error accepting bid:', error);
-        Alert.alert(t('Error'), t('Failed to accept bid'));
+        showError(t('Failed to accept bid'), t('Error'));
       }
     }
   };
@@ -634,81 +639,71 @@ export default function ProjectDetailScreen({
     if (onDeclineBid) {
       onDeclineBid(bidId);
     } else {
-      Alert.alert(
+      showConfirmation(
         t('Decline Bid'),
         t('Are you sure you want to decline this bid?'),
-        [
-          { text: t('Cancel'), style: 'cancel' },
-          {
-            text: t('Decline'),
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const token = await storage.getAuthToken();
-                const url = buildApiUrl(API_ENDPOINTS.BIDS.DELETE.replace(':id', bidId.toString()));
-                
-                const response = await fetch(url, {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  },
-                });
-                
-                if (response.ok) {
-                  Alert.alert(t('Success'), t('Bid declined'));
-                  loadBids();
-                }
-              } catch (error) {
-                console.error('Error declining bid:', error);
-              }
-            },
-          },
-        ]
+        async () => {
+          try {
+            const token = await storage.getAuthToken();
+            const url = buildApiUrl(API_ENDPOINTS.BIDS.DELETE.replace(':id', bidId.toString()));
+            
+            const response = await fetch(url, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (response.ok) {
+              showSuccess(t('Bid declined'), t('Success'));
+              loadBids();
+            }
+          } catch (error) {
+            console.error('Error declining bid:', error);
+          }
+        },
+        {
+          confirmText: t('Decline'),
+          confirmStyle: 'destructive',
+        }
       );
     }
   };
 
   const handleDeleteProject = () => {
-    Alert.alert(
+    showDeleteConfirmation(
       t('Delete Project'),
       t('Are you sure you want to delete this project? This action cannot be undone.'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Delete'),
-          style: 'destructive',
-          onPress: async () => {
-            if (onDeleteProject) {
-              onDeleteProject();
+      async () => {
+        if (onDeleteProject) {
+          onDeleteProject();
+        } else {
+          try {
+            const token = await storage.getAuthToken();
+            const url = buildApiUrl(API_ENDPOINTS.PROJECTS.DELETE.replace(':id', project.id.toString()));
+            
+            const response = await fetch(url, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (response.ok) {
+              showSuccess(t('Project deleted successfully'), t('Success'));
+              onSuccess?.();
+              onBack();
             } else {
-              try {
-                const token = await storage.getAuthToken();
-                const url = buildApiUrl(API_ENDPOINTS.PROJECTS.DELETE.replace(':id', project.id.toString()));
-                
-                const response = await fetch(url, {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  },
-                });
-                
-                if (response.ok) {
-                  Alert.alert(t('Success'), t('Project deleted successfully'));
-                  onSuccess?.();
-                  onBack();
-                } else {
-                  Alert.alert(t('Error'), t('Failed to delete project'));
-                }
-              } catch (error) {
-                console.error('Error deleting project:', error);
-                Alert.alert(t('Error'), t('Failed to delete project'));
-              }
+              showError(t('Failed to delete project'), t('Error'));
             }
-          },
-        },
-      ]
+          } catch (error) {
+            console.error('Error deleting project:', error);
+            showError(t('Failed to delete project'), t('Error'));
+          }
+        }
+      }
     );
   };
 
@@ -936,6 +931,30 @@ export default function ProjectDetailScreen({
         {/* Bottom Padding */}
         <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
   );
 }

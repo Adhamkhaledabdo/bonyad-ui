@@ -1,70 +1,38 @@
-import { Alert, Platform } from 'react-native';
-
-interface AlertButton {
-  text: string;
-  onPress?: () => void;
-  style?: 'default' | 'cancel' | 'destructive';
-}
+import { AlertButton } from '../components/AlertPopup';
+import { globalAlertManager } from './globalAlertManager';
 
 /**
  * Cross-platform alert utility
- * Uses window.alert/window.confirm on web, Alert.alert on mobile
+ * Uses AlertPopup component via global alert manager
  */
 export const showAlert = (
   title: string,
   message?: string,
   buttons?: AlertButton[]
 ): void => {
-  if (Platform.OS === 'web') {
-    // Web implementation
-    if (buttons && buttons.length > 1) {
-      // Two-button alert - use confirm
-      const confirmButton = buttons.find(btn => btn.style !== 'cancel');
-      const cancelButton = buttons.find(btn => btn.style === 'cancel');
-      
-      if (confirmButton) {
-        const confirmed = window.confirm(`${title}\n\n${message || ''}`);
-        if (confirmed && confirmButton.onPress) {
-          confirmButton.onPress();
-        } else if (!confirmed && cancelButton && cancelButton.onPress) {
-          cancelButton.onPress();
-        }
-      } else {
-        // Just show message with OK
-        window.alert(`${title}\n\n${message || ''}`);
-        if (buttons[0]?.onPress) {
-          buttons[0].onPress();
-        }
-      }
-    } else {
-      // Single button alert - use alert
-      window.alert(`${title}\n\n${message || ''}`);
-      if (buttons && buttons[0]?.onPress) {
-        buttons[0].onPress();
-      }
-    }
-  } else {
-    // Mobile implementation - use React Native Alert
-    if (buttons && buttons.length > 0) {
-      Alert.alert(title, message, buttons);
-    } else {
-      Alert.alert(title, message, [{ text: 'OK' }]);
-    }
+  // Determine alert type based on buttons or default to 'info'
+  let type: 'error' | 'success' | 'warning' | 'info' = 'info';
+  
+  // If there's a destructive button, use 'error' type
+  if (buttons?.some(btn => btn.style === 'destructive')) {
+    type = 'error';
   }
+  
+  globalAlertManager.showAlert(title, message, type, buttons);
 };
 
 /**
  * Convenience function for error alerts
  */
 export const showError = (message: string, title: string = 'Error'): void => {
-  showAlert(title, message);
+  globalAlertManager.showError(message, title);
 };
 
 /**
  * Convenience function for success alerts
  */
 export const showSuccess = (message: string, title: string = 'Success', onPress?: () => void): void => {
-  showAlert(title, message, onPress ? [{ text: 'OK', onPress }] : undefined);
+  globalAlertManager.showSuccess(message, title, onPress);
 };
 
 /**
@@ -76,20 +44,5 @@ export const showConfirm = (
   onConfirm: () => void,
   onCancel?: () => void
 ): void => {
-  showAlert(
-    title,
-    message,
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-        onPress: onCancel,
-      },
-      {
-        text: 'OK',
-        style: 'default',
-        onPress: onConfirm,
-      },
-    ]
-  );
+  globalAlertManager.showConfirm(title, message, onConfirm, onCancel);
 };

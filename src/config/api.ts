@@ -177,12 +177,17 @@ export const API_ENDPOINTS = {
     MY_REQUESTS: '/time-requests/my-requests',
     FOR_ME: '/time-requests/for-me',
     MY_BOOKINGS: '/time-requests/my-bookings',
+    UPCOMING: '/time-requests/upcoming-appointments',
+    COMPLETED: '/time-requests/completed-appointments',
     ACCEPT: '/time-requests/:id/accept',
     REJECT: '/time-requests/:id/reject',
     COMPLETE: '/time-requests/appointments/:id/complete',
     DELETE: '/time-requests/:id',
     CREATE: '/time-requests',
   },
+  
+  // Technician Availability (Public)
+  TECHNICIAN_AVAILABILITY: '/technicians/:id/availability',
 
   SUBSCRIPTIONS: {
     CATEGORIES: '/subscriptions/categories',

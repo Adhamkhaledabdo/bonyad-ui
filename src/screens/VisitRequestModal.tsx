@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
@@ -27,7 +26,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
-import { showError, showSuccess } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 // ===== DESIGN TOKENS FROM FIGMA =====
 const COLORS = {
@@ -77,25 +76,28 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
   const IS_WEB = Platform.OS === 'web';
   const IS_MOBILE = Platform.OS === 'ios' || Platform.OS === 'android';
   
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  
   // Larger modal dimensions
   const modalWidth = IS_WEB ? Math.min(520, screenWidth - 32) : screenWidth - 32;
   const modalMaxHeight = IS_MOBILE ? screenHeight - 100 : screenHeight * 0.85;
 
   const handleSubmit = async () => {
     if (!project || !project.id) {
-      Alert.alert(t('Error'), 'Invalid project ID');
+      showError(t('Invalid project ID'), t('Error'));
       return;
     }
 
     const token = await storage.getAuthToken();
     if (!token) {
-      Alert.alert(t('Error'), 'No auth token found');
+      showError(t('No auth token found'), t('Error'));
       return;
     }
 
     const userId = await storage.getUserId();
     if (!userId) {
-      Alert.alert(t('Error'), 'No user ID found');
+      showError(t('No user ID found'), t('Error'));
       return;
     }
 
@@ -122,7 +124,7 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
       console.log('📥 Create Visit Request Response:', response.status);
 
       if (response.ok) {
-        showSuccess(t('Visit request sent successfully'));
+        showSuccess(t('Visit request sent successfully'), t('Success'));
         setTimeout(() => {
           setNotes('');
           onClose();
@@ -131,11 +133,11 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to create visit request:', errorText);
-        showError(t('Failed to send visit request'));
+        showError(t('Failed to send visit request'), t('Error'));
       }
     } catch (error) {
       console.error('❌ Error sending visit request:', error);
-      showError(t('Error sending visit request'));
+      showError(t('Error sending visit request'), t('Error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -266,6 +268,16 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </Modal>
   );
 }

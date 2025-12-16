@@ -138,7 +138,7 @@ export default function MyDataScreen({
       style={[
         styles.menuOption,
         { 
-          borderColor: borderColor,
+          borderColor: FIGMA_COLORS.borderLight,
           backgroundColor: cardBgColor,
         },
         isRTL && styles.rowRTL,
@@ -172,7 +172,9 @@ export default function MyDataScreen({
             color={textColor}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>{t('User Profile')}</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>
+          {isTechnician ? t('Service Provider Profile') : t('User Profile')}
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -184,13 +186,13 @@ export default function MyDataScreen({
           { paddingBottom: Math.max(insets.bottom, 120) }
         ]}
       >
-        {/* User Avatar Section */}
+        {/* User Avatar Section - Centered */}
         <View style={styles.userSection}>
           <View style={[styles.avatarContainer, { backgroundColor: avatarBgColor }]}>
             {userProfile?.avatar ? (
               <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
             ) : (
-              <Ionicons name="person" size={50} color={primaryColor} />
+              <Ionicons name="person" size={60} color={primaryColor} />
             )}
           </View>
           <Text style={[styles.userName, { color: textColor }]}>
@@ -201,11 +203,11 @@ export default function MyDataScreen({
         {/* Divider */}
         <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-        {/* Menu Options */}
+        {/* Menu Options - Matching Figma Design Order */}
         <View style={styles.menuSection}>
           <MenuOption
             icon="person-outline"
-            title={t('Edit Profile Information')}
+            title={t('Edit Profile Info')}
             onPress={onEditProfile}
           />
 
@@ -221,7 +223,7 @@ export default function MyDataScreen({
             onPress={onChangePassword}
           />
 
-          {/* Technician-specific options */}
+          {/* Technician-specific options - Services, Availability, Subscription */}
           {isTechnician && (
             <>
               <MenuOption
@@ -236,11 +238,6 @@ export default function MyDataScreen({
                 onPress={() => onNavigateToAvailability?.()}
               />
 
-              <MenuOption
-                icon="star-outline"
-                title={t('Subscription')}
-                onPress={() => onNavigateToSubscription?.()}
-              />
             </>
           )}
         </View>
@@ -293,11 +290,13 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 32,
+    paddingTop: 8,
+    gap: 24,
   },
   userSection: {
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
+    paddingVertical: 24,
     gap: 24,
   },
   avatarContainer: {
@@ -317,6 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
+    color: FIGMA_COLORS.primaryDark,
   },
   divider: {
     height: 0.5,
@@ -328,6 +328,7 @@ const styles = StyleSheet.create({
   menuOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     borderRadius: 6,
     borderWidth: 1,
@@ -346,6 +347,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: FIGMA_COLORS.textBody,
   },
   saveButton: {
     paddingVertical: 16,

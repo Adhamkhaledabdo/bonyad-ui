@@ -14,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { submitTechnicianReview, updateReview } from '../services/ReviewService';
+import AlertPopup, { useAlertPopup } from './AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from './ConfirmationPopup';
 
 interface ReviewTechnicianModalProps {
   visible: boolean;
@@ -46,11 +48,9 @@ export default function ReviewTechnicianModal({
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Custom confirmation modal state
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmTitle, setConfirmTitle] = useState('');
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [confirmOnConfirm, setConfirmOnConfirm] = useState<(() => void) | null>(null);
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  const { confirmState, showConfirmation, hideConfirmation } = useConfirmationPopup();
 
   useEffect(() => {
     if (visible) {
@@ -66,28 +66,22 @@ export default function ReviewTechnicianModal({
 
   const handleSubmit = () => {
     if (rating === 0) {
-      // Show custom alert
-      setConfirmTitle(t('Error'));
-      setConfirmMessage(t('Please select a rating'));
-      setConfirmOnConfirm(() => () => setShowConfirmModal(false));
-      setShowConfirmModal(true);
+      showError(t('Please select a rating'), t('Error'));
       return;
     }
     
     // Show confirmation modal
     const isEdit = mode === 'edit' && existingReview?.id;
-    setConfirmTitle(isEdit ? t('Update Review') : t('Submit Review'));
-    setConfirmMessage(
+    showConfirmation(
+      isEdit ? t('Update Review') : t('Submit Review'),
       t('Rate {{name}} {{rating}} stars?', {
         name: technicianName || t('this technician'),
         rating: rating,
-      })
+      }),
+      async () => {
+        await executeSubmit();
+      }
     );
-    setConfirmOnConfirm(() => async () => {
-      setShowConfirmModal(false);
-      await executeSubmit();
-    });
-    setShowConfirmModal(true);
   };
 
   const executeSubmit = async () => {
@@ -106,29 +100,26 @@ export default function ReviewTechnicianModal({
       console.log('✅ [ReviewTechnicianModal] Result:', result);
       
       // Show success message
-      setConfirmTitle(t('Success'));
-      setConfirmMessage(isEdit ? t('Review updated successfully') : t('Thank you for your review!')); 
-      setConfirmOnConfirm(() => () => {
-        setShowConfirmModal(false);
-        // Reset form
-        setRating(0);
-        setComment('');
-        
-        // Notify parent
-        if (onReviewSubmitted) {
-          onReviewSubmitted();
+      showSuccess(
+        isEdit ? t('Review updated successfully') : t('Thank you for your review!'),
+        t('Success'),
+        () => {
+          // Reset form
+          setRating(0);
+          setComment('');
+          
+          // Notify parent
+          if (onReviewSubmitted) {
+            onReviewSubmitted();
+          }
+          
+          // Close modal
+          onClose();
         }
-        
-        // Close modal
-        onClose();
-      });
-      setShowConfirmModal(true);
+      );
     } catch (error: any) {
       console.error('❌ [ReviewTechnicianModal] Error submitting review:', error);
-      setConfirmTitle(t('Error'));
-      setConfirmMessage(error.message || t('Failed to submit review'));
-      setConfirmOnConfirm(() => () => setShowConfirmModal(false));
-      setShowConfirmModal(true);
+      showError(error.message || t('Failed to submit review'), t('Error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -267,58 +258,29 @@ export default function ReviewTechnicianModal({
         </View>
       </Modal>
 
-      {/* Custom Confirmation Modal */}
-      <Modal
-        visible={showConfirmModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowConfirmModal(false)}
-      >
-        <View style={styles.confirmModalOverlay}>
-          <View style={[styles.confirmModalContent, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.confirmModalTitle, { color: colors.text }]}>
-              {confirmTitle}
-            </Text>
-            <Text style={[styles.confirmModalMessage, { color: colors.textSecondary }]}>
-              {confirmMessage}
-            </Text>
-            <View style={styles.confirmModalButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmModalButton,
-                  styles.confirmModalCancelButton,
-                  { borderColor: colors.border },
-                ]}
-                onPress={() => {
-                  setShowConfirmModal(false);
-                }}
-              >
-                <Text style={[styles.confirmModalButtonText, { color: colors.text }]}>
-                  {confirmTitle.includes('Success') ? t('OK') : t('Cancel')}
-                </Text>
-              </TouchableOpacity>
-              {!confirmTitle.includes('Success') && !confirmTitle.includes('Error') && (
-                <TouchableOpacity
-                  style={[
-                    styles.confirmModalButton,
-                    styles.confirmModalConfirmButton,
-                    { backgroundColor: colors.primary },
-                  ]}
-                  onPress={() => {
-                    if (confirmOnConfirm) {
-                      confirmOnConfirm();
-                    }
-                  }}
-                >
-                  <Text style={[styles.confirmModalButtonText, { color: '#fff' }]}> 
-                    {confirmTitle === t('Update Review') ? t('Update Review') : t('Submit')}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </>
   );
 }
@@ -438,60 +400,6 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Custom Confirmation Modal Styles
-  confirmModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  confirmModalContent: {
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
-      } as any,
-      default: {
-        elevation: 5,
-      },
-    }),
-  },
-  confirmModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  confirmModalMessage: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  confirmModalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  confirmModalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmModalCancelButton: {
-    borderWidth: 1,
-  },
-  confirmModalConfirmButton: {
-    // backgroundColor set inline
-  },
-  confirmModalButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

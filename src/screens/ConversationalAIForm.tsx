@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +28,28 @@ import { storage } from '../utils/storage';
 import LocationPicker from '../components/LocationPicker';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { useRouter } from '../utils/useRouter';
+import ProjectCreationFlow from '../components/ProjectCreationFlow';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
+import { globalAlertManager } from '../utils/globalAlertManager';
+
+// Design tokens from Figma
+const FIGMA_COLORS = {
+  primary100: '#003867',
+  primary80: '#004A8A',
+  primary70: '#00549B',
+  primary60: '#005DAC',
+  primary10: '#E6EFF7',
+  green90: '#007B36',
+  green80: '#008B3E',
+  green10: '#E6F5EC',
+  textBody: '#383838',
+  textSecondary: '#A3A3A3',
+  textDividers: '#D9D9D9',
+  white: '#FFFFFF',
+  purple100: '#3C076D',
+  purple10: '#EFE6F5',
+};
 
 interface ConversationalAIFormProps {
   technician?: any;
@@ -65,6 +86,8 @@ export default function ConversationalAIForm({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter('aiForm', () => {});
+  const { alertState, showError, showWarning, showAlert, hideAlert } = useAlertPopup();
+  const { confirmState, showConfirmation, hideConfirmation } = useConfirmationPopup();
 
   // Form state - Step 1: Description
   const [description, setDescription] = useState('');
@@ -92,6 +115,7 @@ export default function ConversationalAIForm({
   const [editedPhases, setEditedPhases] = useState<ProjectPhase[]>([]);
   const [editingPhaseIndex, setEditingPhaseIndex] = useState<number | null>(null);
   const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
+  const [showPhaseEditModal, setShowPhaseEditModal] = useState(false);
 
   // UI state
   const [currentStep, setCurrentStep] = useState<'description' | 'questions' | 'review'>('description');
@@ -243,7 +267,7 @@ export default function ConversationalAIForm({
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(t('Permission Required'), t('Please grant camera roll permissions'));
+      showWarning(t('Please grant camera roll permissions'), t('Permission Required'));
       return;
     }
 
@@ -311,10 +335,7 @@ export default function ConversationalAIForm({
       // Request location permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          t('Permission Required'),
-          t('Location permission is required to use this feature')
-        );
+        showWarning(t('Location permission is required to use this feature'), t('Permission Required'));
         return;
       }
 
@@ -331,34 +352,26 @@ export default function ConversationalAIForm({
       if (Platform.OS === 'web') {
         window.open(googleMapsUrl, '_blank');
       } else {
-        Alert.alert(
+        showConfirmation(
           t('Select Location'),
           t('Please select your location from the map'),
-          [
-            { text: t('Cancel'), style: 'cancel' },
-            {
-              text: t('Use Location'),
-              onPress: () => {
-                // Store coordinates
-                if (editedProject) {
-                  setEditedProject({
-                    ...editedProject,
-                    latitude,
-                    longitude,
-                    address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-                  });
-                }
-              },
-            },
-          ]
+          () => {
+            // Store coordinates
+            if (editedProject) {
+              setEditedProject({
+                ...editedProject,
+                latitude,
+                longitude,
+                address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+              });
+            }
+          },
+          undefined,
         );
       }
     } catch (error) {
       console.error('Error picking location:', error);
-      Alert.alert(
-        t('Location Error'),
-        t('Could not get your location. Please manually enter your address.')
-      );
+      showError(t('Could not get your location. Please manually enter your address.'), t('Location Error'));
     }
   };
 
@@ -560,6 +573,7 @@ export default function ConversationalAIForm({
       const phase = phasesToUse[index];
       setEditingPhase({ ...phase });
       setEditingPhaseIndex(index);
+      setShowPhaseEditModal(true);
     }
   };
 
@@ -585,12 +599,14 @@ export default function ConversationalAIForm({
       
       setEditingPhaseIndex(null);
       setEditingPhase(null);
+      setShowPhaseEditModal(false);
     }
   };
 
   const handleCancelPhaseEdit = () => {
     setEditingPhaseIndex(null);
     setEditingPhase(null);
+    setShowPhaseEditModal(false);
   };
 
   const handleUpdatePhaseField = (field: keyof ProjectPhase, value: any) => {
@@ -600,15 +616,10 @@ export default function ConversationalAIForm({
   };
 
   const handleDeletePhase = (index: number) => {
-    Alert.alert(
+    showConfirmation(
       t('Delete Phase'),
       t('Are you sure you want to delete this phase?'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Delete'),
-          style: 'destructive',
-          onPress: () => {
+      () => {
             // Ensure editedPhases is initialized
             let phasesToUse = editedPhases;
             if (phasesToUse.length === 0 && finalProject?.phases) {
@@ -626,8 +637,12 @@ export default function ConversationalAIForm({
               setEditedProject({ ...editedProject, phases: newPhases });
             }
           },
-        },
-      ]
+      {
+        type: 'danger',
+        confirmStyle: 'destructive',
+        confirmText: t('Delete'),
+        cancelText: t('Cancel'),
+      }
     );
   };
 
@@ -644,9 +659,10 @@ export default function ConversationalAIForm({
   const submitProject = async (project: ProjectRequest) => {
     // Validate address before submitting
     if (!project.address || project.address.trim() === '') {
-      Alert.alert(
+      showAlert(
         t('Address Required'),
         t('Please add a project address. Address is important for technicians to locate your project.'),
+        'warning',
         [
           { text: t('OK'), onPress: () => {
             // If not in edit mode, enable edit mode to add address
@@ -669,7 +685,7 @@ export default function ConversationalAIForm({
       const userId = await storage.getUserId();
 
       if (!token || !userId) {
-        Alert.alert(t('Error'), t('Please login again'));
+        showError(t('Please login again'));
         setIsSubmitting(false);
         return;
       }
@@ -788,24 +804,34 @@ export default function ConversationalAIForm({
 
       setIsSubmitting(false);
       
-      // Show success modal
-      setShowSuccessModal(true);
+      // Show success message
+      const successMessage = technician ? t('Deal sent successfully!') : t('Project submitted successfully!');
       
-      // Auto-navigate to home after 2 seconds
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        onSuccess?.();
-        // Navigate to app/home using router
-        if (Platform.OS === 'web' && router) {
-          router.navigate('home');
-        } else {
+      if (Platform.OS === 'web') {
+        // On web, use alert popup
+        globalAlertManager.showSuccess(successMessage, t('Success'), () => {
+          onSuccess?.();
+          // Navigate to app/home using router
+          if (router) {
+            router.navigate('home');
+          } else {
+            onBack();
+          }
+        });
+      } else {
+        // On native, show success modal
+        setShowSuccessModal(true);
+        // Auto-navigate to home after 2 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          onSuccess?.();
           onBack();
-        }
-      }, 2000);
+        }, 2000);
+      }
     } catch (error: any) {
       console.error('❌ Error submitting project:', error);
       setIsSubmitting(false);
-      Alert.alert(t('Error'), error.message || t('Failed to submit project'));
+      showError(error.message || t('Failed to submit project'));
     }
   };
 
@@ -1037,465 +1063,490 @@ export default function ConversationalAIForm({
 
         {/* Step 3: Review & Edit Project */}
         {currentStep === 'review' && (
-          <View style={styles.summaryContainer}>
+          <View style={styles.reviewContainer}>
             {finalProject && (
-              <View>
-            <View style={styles.successIcon}>
-                  <Ionicons name="checkmark-circle" size={70} color={colors.success} />
-            </View>
-                <Text style={[styles.successTitle, { color: colors.success }]}>
-                  {t('Project Generated Successfully')}
-                </Text>
+              <>
+                {/* AI Generated Success Badge */}
+                <View style={styles.aiGeneratedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={FIGMA_COLORS.green80} />
+                  <Text style={styles.aiGeneratedBadgeText}>
+                    {t('Generated Successfully')}
+                  </Text>
+                </View>
 
-                <Card style={[styles.projectCard, { backgroundColor: colors.cardBackground }]}>
-              <Card.Content>
-                    {isEditing && editedProject ? (
-                      // Edit Mode
-                      <View>
-                        <Text style={[styles.label, { color: colors.text }]}>{t('Title')}</Text>
+                {/* Project Creation Flow */}
+                <View style={styles.flowContainer}>
+                  <ProjectCreationFlow currentStep="CREATING" />
+                </View>
+
+                {/* Divider */}
+                <View style={[styles.divider, { backgroundColor: FIGMA_COLORS.textDividers }]} />
+
+                {/* Form Header */}
+                <View style={styles.formHeader}>
+                  <Text style={[styles.formTitle, { color: FIGMA_COLORS.primary100 }]}>
+                    {t('Project Generated Successfully')}
+                  </Text>
+                  <Text style={[styles.formSubtitle, { color: FIGMA_COLORS.textBody }]}>
+                    {t('Review and edit your project details before submitting. Service providers will send bids once submitted.')}
+                  </Text>
+                </View>
+
+                {isEditing && editedProject ? (
+                  // Edit Mode
+                  <View>
+                    {/* Title Section */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="document-text-outline" size={14} color={FIGMA_COLORS.primary80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>
+                          {t('Title')}
+                        </Text>
+                      </View>
+                      <View style={[styles.inputContainer, styles.editableInput, { backgroundColor: FIGMA_COLORS.white, borderColor: FIGMA_COLORS.textDividers }]}>
                         <TextInput
-                          style={[styles.editInput, { backgroundColor: colors.surface, color: colors.text }]}
+                          style={[styles.textArea, { color: FIGMA_COLORS.textBody, backgroundColor: FIGMA_COLORS.white }]}
                           value={editedProject.title}
                           onChangeText={(text) => handleEditField('title', text)}
+                          placeholder={t('Enter project title')}
+                          placeholderTextColor={FIGMA_COLORS.textSecondary}
                         />
-                        
-                        <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>{t('Description')}</Text>
+                      </View>
+                    </View>
+
+                    {/* Description Section */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="document-text-outline" size={14} color={FIGMA_COLORS.primary80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>
+                          {t('Description')} *
+                        </Text>
+                      </View>
+                      <View style={[styles.inputContainer, styles.editableInput, { backgroundColor: FIGMA_COLORS.white, borderColor: FIGMA_COLORS.textDividers }]}>
                         <TextInput
-                          style={[styles.editInput, { backgroundColor: colors.surface, color: colors.text, minHeight: 100 }]}
+                          style={[styles.textArea, { color: FIGMA_COLORS.textBody, backgroundColor: FIGMA_COLORS.white, minHeight: 120 }]}
                           value={editedProject.description}
                           onChangeText={(text) => handleEditField('description', text)}
                           multiline
-                          numberOfLines={4}
+                          numberOfLines={6}
                           textAlignVertical="top"
+                          placeholder={t('Describe your project needs in detail...')}
+                          placeholderTextColor={FIGMA_COLORS.textSecondary}
                         />
+                      </View>
+                    </View>
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-                          <Text style={[styles.label, { color: colors.text, flex: 1 }]}>{t('Address')}</Text>
-                          <TouchableOpacity
-                            onPress={() => setShowMapPicker(true)}
-                            style={{
-                              padding: 8,
-                              backgroundColor: colors.primary,
-                              borderRadius: 8,
-                              marginLeft: 8,
-                            }}
+                    {/* Address Section */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="location-outline" size={14} color={FIGMA_COLORS.primary80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>
+                          {t('Project Address')} ({t('Optional')})
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TouchableOpacity
+                          style={[styles.addressButton, styles.editableInput, { backgroundColor: FIGMA_COLORS.white, borderColor: FIGMA_COLORS.textDividers, flex: 1 }]}
+                          onPress={() => setShowMapPicker(true)}
+                        >
+                          <Ionicons name="location" size={18} color={FIGMA_COLORS.primary60} />
+                          <Text 
+                            style={[styles.addressText, { color: editedProject.address ? FIGMA_COLORS.textBody : FIGMA_COLORS.textSecondary }]} 
+                            numberOfLines={1}
                           >
-                            <Ionicons name="map" size={20} color="#fff" />
-                          </TouchableOpacity>
-                        </View>
-                        <TextInput
-                          style={[styles.editInput, { backgroundColor: colors.surface, color: colors.text }]}
-                          value={editedProject.address || ''}
-                          onChangeText={(text) => handleEditField('address', text)}
-                          placeholder={t('Enter project address')}
-                          placeholderTextColor={colors.textTertiary}
-                        />
+                            {editedProject.address || t('Select location on map')}
+                          </Text>
+                          <Ionicons name="chevron-forward" size={18} color={FIGMA_COLORS.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setShowMapPicker(true)}
+                          style={[styles.mapButtonSmall, { backgroundColor: FIGMA_COLORS.primary60 }]}
+                        >
+                          <Ionicons name="map" size={20} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
 
-                        <View style={styles.toggleRow}>
-                          <Text style={[styles.label, { color: colors.text, marginTop: 16, marginBottom: 0 }]}>{t('Budget (SAR)')}</Text>
-                          <View style={styles.toggleRow}>
-                            <Text style={[styles.label, { color: colors.textSecondary, fontSize: 12, marginRight: 8, marginTop: 16 }]}>
-                              {t('No specific budget')}
-                            </Text>
-                            <Switch
-                              value={editedProject.budgetUnspecified || false}
-                              onValueChange={(value) => {
-                                handleEditField('budgetUnspecified', value);
-                                if (value) {
-                                  handleEditField('budget', null); // Clear budget when toggle is ON
-                                }
-                              }}
-                              color={colors.primary}
+                    {/* Budget & Duration Row */}
+                    <View style={styles.cardsRow}>
+                      {/* Budget Card */}
+                      <View style={[styles.statCard, { backgroundColor: FIGMA_COLORS.white, borderColor: FIGMA_COLORS.textDividers, flex: 1, minWidth: 0 }]}>
+                        <View style={styles.statCardHeader}>
+                          <Ionicons name="cash-outline" size={14} color={FIGMA_COLORS.primary80} />
+                          <Text style={[styles.statCardLabel, { color: FIGMA_COLORS.primary80 }]}>
+                            {t('Budget')} (SAR)
+                          </Text>
+                        </View>
+                        {editedProject.budgetUnspecified ? (
+                          <Text style={[styles.statCardValue, { color: FIGMA_COLORS.textSecondary }]}>
+                            {t('Unspecified')}
+                          </Text>
+                        ) : (
+                          <View style={[styles.budgetInputWrapper, { backgroundColor: FIGMA_COLORS.primary10, borderColor: FIGMA_COLORS.textDividers }]}>
+                            <TextInput
+                              style={[styles.budgetInput, { color: FIGMA_COLORS.textBody }]}
+                              value={editedProject.budget?.toString() || ''}
+                              onChangeText={(text) => handleEditField('budget', parseFloat(text) || 0)}
+                              placeholder="0"
+                              placeholderTextColor={FIGMA_COLORS.textSecondary}
+                              keyboardType="numeric"
                             />
                           </View>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => {
+                            const newValue = !editedProject.budgetUnspecified;
+                            handleEditField('budgetUnspecified', newValue);
+                            if (newValue) {
+                              handleEditField('budget', null);
+                            }
+                          }}
+                          style={styles.checkboxContainer}
+                        >
+                          <Ionicons
+                            name={editedProject.budgetUnspecified ? 'checkbox' : 'checkbox-outline'}
+                            size={16}
+                            color={editedProject.budgetUnspecified ? FIGMA_COLORS.primary60 : FIGMA_COLORS.textSecondary}
+                          />
+                          <Text style={[styles.checkboxText, { color: FIGMA_COLORS.textSecondary }]}>
+                            {t('Unspecified')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Duration Card */}
+                      <View style={[styles.statCard, { backgroundColor: FIGMA_COLORS.white, borderColor: FIGMA_COLORS.textDividers, flex: 1, minWidth: 0 }]}>
+                        <View style={styles.statCardHeader}>
+                          <Ionicons name="time-outline" size={14} color={FIGMA_COLORS.green80} />
+                          <Text style={[styles.statCardLabel, { color: FIGMA_COLORS.green80 }]}>
+                            {t('Duration')} ({t('weeks')})
+                          </Text>
                         </View>
-                        {!editedProject.budgetUnspecified && (
+                        <View style={[styles.budgetInputWrapper, { backgroundColor: FIGMA_COLORS.green10, borderColor: FIGMA_COLORS.textDividers }]}>
                           <TextInput
-                            style={[styles.editInput, { backgroundColor: colors.surface, color: colors.text, marginTop: 8 }]}
-                            value={editedProject.budget?.toString() || ''}
-                            onChangeText={(text) => handleEditField('budget', parseFloat(text) || 0)}
-                            placeholder={t('Enter budget')}
-                            placeholderTextColor={colors.textTertiary}
+                            style={[styles.budgetInput, { color: FIGMA_COLORS.textBody }]}
+                            value={editedProject.durationWeeks?.toString() || ''}
+                            onChangeText={(text) => handleEditField('durationWeeks', parseInt(text) || 1)}
+                            placeholder="0"
+                            placeholderTextColor={FIGMA_COLORS.textSecondary}
                             keyboardType="numeric"
                           />
-                        )}
-                        {editedProject.budgetUnspecified && (
-                          <Text style={[styles.hintText, { color: colors.textSecondary, marginTop: 8 }]}>
-                            {t('Budget will be shown as unspecified to technicians')}
-                          </Text>
-                        )}
-
-                        <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>{t('Duration (weeks)')}</Text>
-                        <TextInput
-                          style={[styles.editInput, { backgroundColor: colors.surface, color: colors.text }]}
-                          value={editedProject.durationWeeks?.toString() || ''}
-                          onChangeText={(text) => handleEditField('durationWeeks', parseInt(text) || 1)}
-                          placeholder={t('Enter duration')}
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                        />
-
-                        <View style={[styles.toggleRow, { marginTop: 16 }]}>
-                          <Text style={[styles.label, { color: colors.text, marginBottom: 0 }]}>
-                            {t('Needs House Visit')}
-                          </Text>
-                          <Switch
-                            value={editedProject.needsHouseVisit}
-                            onValueChange={(value) => handleEditField('needsHouseVisit', value)}
-                            color={colors.primary}
-                          />
-                        </View>
-
-                        <View style={styles.toggleRow}>
-                          <Text style={[styles.label, { color: colors.text, marginBottom: 0 }]}>
-                            {t('Needs Booking')}
-                          </Text>
-                          <Switch
-                            value={editedProject.needsBooking}
-                            onValueChange={(value) => handleEditField('needsBooking', value)}
-                            color={colors.primary}
-                          />
-                        </View>
-
-                        {/* Bid Deadline */}
-                        <View style={{ marginTop: 16 }}>
-                          <Text style={[styles.label, { color: colors.text, marginBottom: 8 }]}>
-                            {t('Bid Deadline')} ({t('Optional')})
-                          </Text>
-                          {editedProject.bidsCloseAt ? (
-                            <View style={[styles.dateDisplayContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                              <Text style={[styles.dateDisplayText, { color: colors.text }]}>
-                                {formatDateForDisplay(editedProject.bidsCloseAt)}
-                              </Text>
-                              <TouchableOpacity onPress={() => handleEditField('bidsCloseAt', '')} style={styles.clearButton}>
-                                <Ionicons name="close-circle" size={20} color={colors.error} />
-                              </TouchableOpacity>
-                            </View>
-                          ) : (
-                            <View style={styles.datePickerButtons}>
-                              <TouchableOpacity
-                                style={[styles.datePickerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                onPress={handlePickDate}
-                              >
-                                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                                <Text style={[styles.datePickerButtonText, { color: colors.text }]}>
-                                  {t('Pick Date')}
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.datePickerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                onPress={handlePickTime}
-                              >
-                                <Ionicons name="time-outline" size={20} color={colors.primary} />
-                                <Text style={[styles.datePickerButtonText, { color: colors.text }]}>
-                                  {t('Pick Time')}
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
-
-                        <View style={styles.editButtonsRow}>
-                          <Button
-                            mode="outlined"
-                            onPress={() => setIsEditing(false)}
-                            style={styles.cancelEditButton}
-                          >
-                            {t('Cancel')}
-                          </Button>
-                          <Button
-                            mode="contained"
-                            onPress={handleSaveEdits}
-                            style={[styles.saveEditButton, { backgroundColor: colors.primary }]}
-                          >
-                            {t('Save')}
-                          </Button>
                         </View>
                       </View>
-                    ) : (
-                      // View Mode
-                      <View>
-                        <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>{t('Title')}</Text>
-                        <Text style={[styles.cardValue, { color: colors.text }]}>{finalProject?.title || ''}</Text>
+                    </View>
 
-                        <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>{t('Description')}</Text>
-                        <Text style={[styles.cardValue, { color: colors.text }]}>{finalProject?.description || ''}</Text>
+                    {/* Bid Deadline */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="time-outline" size={14} color={FIGMA_COLORS.green80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.green80 }]}>
+                          {t('Bid Deadline')} ({t('Optional')})
+                        </Text>
+                      </View>
+                      {editedProject.bidsCloseAt ? (
+                        <View style={[styles.dateValueContainer, { backgroundColor: FIGMA_COLORS.green10, borderColor: FIGMA_COLORS.green80 }]}>
+                          <Text style={[styles.statCardValue, { color: FIGMA_COLORS.textBody, flex: 1 }]} numberOfLines={1}>
+                            {formatDateForDisplay(editedProject.bidsCloseAt)}
+                          </Text>
+                          <TouchableOpacity onPress={() => handleEditField('bidsCloseAt', '')}>
+                            <Ionicons name="close-circle" size={18} color={colors.error || '#F44336'} />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={styles.datePickerRow}>
+                          <TouchableOpacity style={[styles.miniDateButton, { backgroundColor: FIGMA_COLORS.green10 }]} onPress={handlePickDate}>
+                            <Ionicons name="calendar-outline" size={14} color={FIGMA_COLORS.green80} />
+                            <Text style={[styles.miniDateText, { color: FIGMA_COLORS.green80 }]}>
+                              {t('Date')}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.miniDateButton, { backgroundColor: FIGMA_COLORS.green10 }]} onPress={handlePickTime}>
+                            <Ionicons name="time-outline" size={14} color={FIGMA_COLORS.green80} />
+                            <Text style={[styles.miniDateText, { color: FIGMA_COLORS.green80 }]}>
+                              {t('Time')}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
 
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailItem}>
-                            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('Category')}</Text>
-                            <Text style={[styles.detailValue, { color: colors.text }]}>{finalProject?.category || ''}</Text>
-                  </View>
-                  <View style={styles.detailItem}>
-                            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('Budget')}</Text>
-                            <Text style={[styles.detailValue, { color: colors.text }]}>{finalProject?.budget || 0} {t('SAR')}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailItem}>
-                            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('Duration')}</Text>
-                            <Text style={[styles.detailValue, { color: colors.text }]}>{finalProject?.durationWeeks || 0} {t('weeks')}</Text>
-                  </View>
-                  <View style={styles.detailItem}>
-                            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('House Visit')}</Text>
-                            <Text style={[styles.detailValue, { color: colors.text }]}>
-                              {finalProject?.needsHouseVisit ? t('Yes') : t('No')}
-                    </Text>
-                  </View>
-                </View>
-
-                        <View style={styles.addressSection}>
-                          <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>{t('Address')}</Text>
-                          {finalProject?.address ? (
+                    {/* Photos Section */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="images-outline" size={14} color={FIGMA_COLORS.primary80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>
+                          {t('Photos')} ({photos.length}/5) ({t('Optional')})
+                        </Text>
+                      </View>
+                      <View style={styles.photosContainer}>
+                        {photos.map((uri, index) => (
+                          <View key={index} style={styles.photoWrapper}>
+                            <Image source={{ uri }} style={styles.photo} />
                             <TouchableOpacity
-                              style={[styles.addressRow, { backgroundColor: colors.surface, borderRadius: 8, padding: 12 }]}
-                              onPress={() => setShowMapPicker(true)}
-                              activeOpacity={0.7}
+                              style={styles.removePhoto}
+                              onPress={() => removePhoto(index)}
                             >
-                              <Ionicons name="location" size={20} color={colors.primary} />
-                              <Text style={[styles.addressText, { color: colors.text, flex: 1, marginLeft: 8 }]}>
-                                {finalProject.address}
-                              </Text>
-                              <Ionicons name="create-outline" size={18} color={colors.primary} />
+                              <Ionicons name="close-circle" size={22} color={FIGMA_COLORS.white} />
                             </TouchableOpacity>
-                          ) : (
-                            <TouchableOpacity
-                              style={[styles.addressRow, { backgroundColor: colors.surface, borderRadius: 8, padding: 16, borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed' }]}
-                              onPress={() => setShowMapPicker(true)}
-                              activeOpacity={0.7}
+                          </View>
+                        ))}
+                        {photos.length < 5 && (
+                          <TouchableOpacity
+                            style={[styles.addPhotoButton, { borderColor: FIGMA_COLORS.primary60, backgroundColor: FIGMA_COLORS.primary10 }]}
+                            onPress={pickImages}
+                          >
+                            <Ionicons name="add" size={28} color={FIGMA_COLORS.primary60} />
+                            <Text style={[styles.addPhotoText, { color: FIGMA_COLORS.primary60 }]}>{t('Add')}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Edit Buttons */}
+                    <View style={styles.editButtonsRow}>
+                      <TouchableOpacity
+                        style={[styles.cancelEditButton, { backgroundColor: FIGMA_COLORS.purple10, borderColor: FIGMA_COLORS.purple100 }]}
+                        onPress={() => setIsEditing(false)}
+                      >
+                        <Text style={[styles.cancelEditButtonText, { color: FIGMA_COLORS.purple100 }]}>
+                          {t('Cancel')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.saveEditButton, { backgroundColor: FIGMA_COLORS.primary60 }]}
+                        onPress={handleSaveEdits}
+                      >
+                        <Text style={styles.saveEditButtonText}>
+                          {t('Save')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  // View Mode
+                  <View>
+                    {/* Project Overview Section */}
+                    <View style={styles.section}>
+                      <Text style={[styles.sectionHeaderTitle, { color: FIGMA_COLORS.primary100 }]}>{t('Project Overview')}</Text>
+                      <Text style={[styles.sectionDescription, { color: FIGMA_COLORS.textBody }]}>
+                        {t('Review your project details below. Once submitted, service providers will start sending bids.')}
+                      </Text>
+                      
+                      {/* Budget and Duration Cards */}
+                      <View style={styles.statsRow}>
+                        <View style={[styles.statCard, styles.budgetCard, { flex: 1 }]}>
+                          <View style={styles.statHeader}>
+                            <Ionicons name="cash-outline" size={12} color={FIGMA_COLORS.primary80} />
+                            <Text style={[styles.statTitle, { color: FIGMA_COLORS.primary80 }]}>{t('Total Budget')}</Text>
+                          </View>
+                          <Text style={[styles.statValue, { color: FIGMA_COLORS.textSecondary }]}>
+                            {finalProject?.budgetUnspecified ? t('Unspecified') : `${finalProject?.budget || 0} ${t('SAR')}`}
+                          </Text>
+                        </View>
+                        <View style={[styles.statCard, styles.durationCard, { flex: 1 }]}>
+                          <View style={styles.statHeader}>
+                            <Ionicons name="time-outline" size={12} color={FIGMA_COLORS.green90} />
+                            <Text style={[styles.statTitle, { color: FIGMA_COLORS.green90 }]}>{t('Duration')}</Text>
+                          </View>
+                          <Text style={[styles.statValue, { color: FIGMA_COLORS.textSecondary }]}>
+                            {finalProject?.durationWeeks || 0} {t('weeks')}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    
+                    {/* Description Section */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="document-text-outline" size={12} color={FIGMA_COLORS.primary80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Description')}</Text>
+                      </View>
+                      <View style={styles.descriptionBox}>
+                        <Text style={[styles.descriptionText, { color: FIGMA_COLORS.textBody }]}>{finalProject?.description || ''}</Text>
+                      </View>
+                    </View>
+
+                    {/* Address Section */}
+                    <View style={styles.section}>
+                      <View style={styles.sectionHeader}>
+                        <Ionicons name="location-outline" size={12} color={FIGMA_COLORS.primary80} />
+                        <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Address')}</Text>
+                      </View>
+                      {finalProject?.address ? (
+                        <TouchableOpacity
+                          style={[styles.addressRow, { backgroundColor: FIGMA_COLORS.primary10, borderRadius: 6, padding: 12 }]}
+                          onPress={() => setShowMapPicker(true)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="location" size={20} color={FIGMA_COLORS.primary60} />
+                          <Text style={[styles.addressText, { color: FIGMA_COLORS.textBody, flex: 1, marginLeft: 8 }]}>
+                            {finalProject.address}
+                          </Text>
+                          <Ionicons name="create-outline" size={18} color={FIGMA_COLORS.primary60} />
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.addressRow, { backgroundColor: FIGMA_COLORS.primary10, borderRadius: 6, padding: 16, borderWidth: 2, borderColor: FIGMA_COLORS.primary60, borderStyle: 'dashed' }]}
+                          onPress={() => setShowMapPicker(true)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="map-outline" size={24} color={FIGMA_COLORS.primary60} />
+                          <Text style={[styles.addressText, { color: FIGMA_COLORS.primary60, flex: 1, marginLeft: 8, fontWeight: '600' }]}>
+                            {t('Tap to add project address')}
+                          </Text>
+                          <Ionicons name="chevron-forward" size={20} color={FIGMA_COLORS.primary60} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Photos Section */}
+                    {photos.length > 0 && (
+                      <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                          <Ionicons name="images-outline" size={12} color={FIGMA_COLORS.primary80} />
+                          <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>
+                            {t('Project Photos')} ({photos.length}/5)
+                          </Text>
+                        </View>
+                        <View style={styles.photosContainer}>
+                          {photos.map((uri, index) => (
+                            <View key={index} style={styles.photoWrapper}>
+                              <TouchableOpacity
+                                onPress={() => handleViewPhoto(index)}
+                                activeOpacity={0.8}
+                                style={{ flex: 1 }}
+                              >
+                                <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.removePhoto}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  removePhoto(index);
+                                }}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              >
+                                <Ionicons name="close-circle" size={28} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                          {photos.length < 5 && (
+                            <TouchableOpacity 
+                              style={[styles.addPhotoButton, { borderColor: FIGMA_COLORS.primary60, backgroundColor: FIGMA_COLORS.primary10 }]} 
+                              onPress={pickImages}
                             >
-                              <Ionicons name="map-outline" size={24} color={colors.primary} />
-                              <Text style={[styles.addressText, { color: colors.primary, flex: 1, marginLeft: 8, fontWeight: '600' }]}>
-                                {t('Tap to add project address')}
-                              </Text>
-                              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                              <Ionicons name="add" size={28} color={FIGMA_COLORS.primary60} />
+                              <Text style={[styles.addPhotoText, { color: FIGMA_COLORS.primary60 }]}>{t('Add')}</Text>
                             </TouchableOpacity>
                           )}
                         </View>
+                      </View>
+                    )}
 
-                        {/* Photos Section */}
-                        <View style={styles.photosSection}>
-                          <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
-                            {t('Project Photos')} ({photos.length}/5)
-                          </Text>
-                          <View style={styles.photosContainer}>
-                            {photos.map((uri, index) => (
-                              <View key={index} style={styles.photoWrapper}>
+                    {/* Work Phases Section */}
+                    {(finalProject?.phases || editedPhases).length > 0 && (
+                      <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                          <Ionicons name="document-text-outline" size={12} color={FIGMA_COLORS.primary80} />
+                          <Text style={[styles.sectionLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Work Phases')}</Text>
+                        </View>
+                        {(editedPhases.length > 0 ? editedPhases : (finalProject?.phases || [])).map((phase, index) => {
+                          const formatBudget = (amount: number) => {
+                            return new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-SA' : 'en-US', {
+                              style: 'currency',
+                              currency: 'SAR',
+                              minimumFractionDigits: 0,
+                            }).format(amount);
+                          };
+
+                          return (
+                            <View key={index} style={styles.unifiedPhaseCard}>
+                              <View style={styles.unifiedPhaseHeader}>
+                                <View style={styles.unifiedPhaseHeaderLeft}>
+                                  <View style={styles.unifiedPhaseNumberBadge}>
+                                    <Text style={styles.unifiedPhaseNumberText}>{index + 1}</Text>
+                                  </View>
+                                  <Text style={styles.unifiedPhaseTitle} numberOfLines={2}>
+                                    {phase.title}
+                                  </Text>
+                                </View>
+                                <Text style={styles.unifiedPhasePrice}>
+                                  {formatBudget(phase.amount)}
+                                </Text>
+                              </View>
+                              
+                              <Text style={styles.unifiedPhaseDescription}>
+                                {phase.description}
+                              </Text>
+                              
+                              <View style={styles.unifiedPhaseDurationRow}>
+                                <Ionicons name="time-outline" size={12} color={FIGMA_COLORS.textSecondary} />
+                                <Text style={styles.unifiedPhaseDurationText}>
+                                  {phase.durationWeeks} {t('Week')}
+                                </Text>
+                              </View>
+
+                              <View style={styles.unifiedPhaseActions}>
                                 <TouchableOpacity
-                                  onPress={() => handleViewPhoto(index)}
-                                  activeOpacity={0.8}
-                                  style={{ flex: 1 }}
+                                  style={[styles.unifiedPhaseActionButton, { backgroundColor: FIGMA_COLORS.primary60 }]}
+                                  onPress={() => {
+                                    if (!isEditing) {
+                                      if (editedPhases.length === 0 && finalProject?.phases) {
+                                        setEditedPhases([...finalProject.phases]);
+                                      }
+                                    }
+                                    handleEditPhase(index);
+                                  }}
                                 >
-                                  <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
+                                  <Ionicons name="pencil" size={16} color="#fff" />
+                                  <Text style={styles.unifiedPhaseActionText}>{t('Edit')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                  style={styles.removePhoto}
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    removePhoto(index);
+                                  style={[styles.unifiedPhaseActionButton, { backgroundColor: colors.error || '#F44336' }]}
+                                  onPress={() => {
+                                    if (!isEditing) {
+                                      if (editedPhases.length === 0 && finalProject?.phases) {
+                                        setEditedPhases([...finalProject.phases]);
+                                      }
+                                    }
+                                    handleDeletePhase(index);
                                   }}
-                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
-                                  <Ionicons name="close-circle" size={28} color="#fff" />
+                                  <Ionicons name="trash" size={16} color="#fff" />
+                                  <Text style={styles.unifiedPhaseActionText}>{t('Delete')}</Text>
                                 </TouchableOpacity>
                               </View>
-                            ))}
-                            {photos.length < 5 && (
-                              <TouchableOpacity 
-                                style={[styles.addPhotoButton, { borderColor: colors.primary }]} 
-                                onPress={pickImages}
-                              >
-                                <Ionicons name="add" size={40} color={colors.primary} />
-                              </TouchableOpacity>
-                            )}
-                  </View>
-                </View>
-
-                {/* Project Phases */}
-                        {(finalProject?.phases || editedPhases).length > 0 && (
-                  <View style={styles.phasesSection}>
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                              {t('Project Phases')}:
-                            </Text>
-                            {(editedPhases.length > 0 ? editedPhases : (finalProject?.phases || [])).map((phase, index) => {
-                              const isEditingPhase = editingPhaseIndex === index;
-
-                              return (
-                                <Card key={index} style={[styles.phaseCard, { backgroundColor: colors.surface }]}>
-                        <Card.Content>
-                                    {isEditingPhase && editingPhase ? (
-                                      // Edit Mode - Full editing with input fields
-                                      <View>
-                                        <Text style={[styles.cardLabel, { color: colors.textSecondary, marginBottom: 8 }]}>
-                                          {t('Phase')} {index + 1}
-                                        </Text>
-                                        
-                                        <Text style={[styles.label, { color: colors.text, marginTop: 8 }]}>{t('Title')}</Text>
-                                        <TextInput
-                                          style={[styles.editInput, { backgroundColor: colors.cardBackground, color: colors.text }]}
-                                          value={editingPhase.title}
-                                          onChangeText={(text) => handleUpdatePhaseField('title', text)}
-                                          placeholder={t('Phase title')}
-                                          placeholderTextColor={colors.textTertiary}
-                                        />
-
-                                        <Text style={[styles.label, { color: colors.text, marginTop: 12 }]}>{t('Description')}</Text>
-                                        <TextInput
-                                          style={[styles.editInput, { backgroundColor: colors.cardBackground, color: colors.text, minHeight: 80 }]}
-                                          value={editingPhase.description}
-                                          onChangeText={(text) => handleUpdatePhaseField('description', text)}
-                                          placeholder={t('Phase description')}
-                                          placeholderTextColor={colors.textTertiary}
-                                          multiline
-                                          numberOfLines={3}
-                                          textAlignVertical="top"
-                                        />
-
-                                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                                          <View style={{ flex: 1 }}>
-                                            <Text style={[styles.label, { color: colors.text }]}>{t('Duration (weeks)')}</Text>
-                                            <TextInput
-                                              style={[styles.editInput, { backgroundColor: colors.cardBackground, color: colors.text }]}
-                                              value={editingPhase.durationWeeks.toString()}
-                                              onChangeText={(text) => handleUpdatePhaseField('durationWeeks', parseInt(text) || 1)}
-                                              keyboardType="numeric"
-                                              placeholderTextColor={colors.textTertiary}
-                                            />
-                                          </View>
-                                          <View style={{ flex: 1 }}>
-                                            <Text style={[styles.label, { color: colors.text }]}>{t('Amount (SAR)')}</Text>
-                                            <TextInput
-                                              style={[styles.editInput, { backgroundColor: colors.cardBackground, color: colors.text }]}
-                                              value={editingPhase.amount.toString()}
-                                              onChangeText={(text) => handleUpdatePhaseField('amount', parseFloat(text) || 0)}
-                                              keyboardType="numeric"
-                                              placeholderTextColor={colors.textTertiary}
-                                            />
-                                          </View>
-                                          <View style={{ flex: 1 }}>
-                                            <Text style={[styles.label, { color: colors.text }]}>{t('Percentage')}</Text>
-                                            <TextInput
-                                              style={[styles.editInput, { backgroundColor: colors.cardBackground, color: colors.text }]}
-                                              value={editingPhase.percentage.toString()}
-                                              onChangeText={(text) => handleUpdatePhaseField('percentage', parseFloat(text) || 0)}
-                                              keyboardType="numeric"
-                                              placeholderTextColor={colors.textTertiary}
-                                            />
-                                          </View>
-                                        </View>
-
-                                        <View style={[styles.phaseEditActions, { marginTop: 16 }]}>
-                                          <TouchableOpacity
-                                            style={[styles.phaseActionButton, { backgroundColor: colors.textTertiary }]}
-                                            onPress={handleCancelPhaseEdit}
-                                          >
-                                            <Ionicons name="close" size={20} color="#fff" />
-                                            <Text style={styles.phaseActionText}>{t('Cancel')}</Text>
-                                          </TouchableOpacity>
-                                          <TouchableOpacity
-                                            style={[styles.phaseActionButton, { backgroundColor: colors.primary }]}
-                                            onPress={() => handleSavePhaseEdit(index)}
-                                          >
-                                            <Ionicons name="checkmark" size={20} color="#fff" />
-                                            <Text style={styles.phaseActionText}>{t('Save')}</Text>
-                                          </TouchableOpacity>
-                                        </View>
-                                      </View>
-                                    ) : (
-                                      // View Mode
-                                      <>
-                          <View style={styles.phaseHeader}>
-                                          <Text style={[styles.phaseTitle, { color: colors.text }]}>
-                                            {phase.title}
-                                          </Text>
-                                          <Text style={[styles.phasePercentage, { color: colors.primary }]}>
-                                            {phase.percentage}%
-                                          </Text>
-                          </View>
-                                        <Text style={[styles.phaseDescription, { color: colors.textSecondary }]}>
-                                          {phase.description}
-                                        </Text>
-                          <View style={styles.phaseDetails}>
-                                          <Text style={[styles.phaseDetail, { color: colors.textTertiary }]}>
-                              {phase.durationWeeks} {t('weeks')}
-                            </Text>
-                                          <Text style={[styles.phaseDetail, { color: colors.textTertiary }]}>
-                              {phase.amount} {t('SAR')}
-                            </Text>
-                          </View>
-                                        {!isEditingPhase && (
-                                          <View style={styles.phaseActions}>
-                                            <TouchableOpacity
-                                              style={[styles.phaseActionButton, { backgroundColor: colors.primary }]}
-                                              onPress={() => {
-                                                // Ensure we're using editedPhases when editing individual phases
-                                                if (!isEditing) {
-                                                  // If not in edit mode, initialize editedPhases with current phases
-                                                  if (editedPhases.length === 0 && finalProject?.phases) {
-                                                    setEditedPhases([...finalProject.phases]);
-                                                  }
-                                                }
-                                                handleEditPhase(index);
-                                              }}
-                                            >
-                                              <Ionicons name="pencil" size={18} color="#fff" />
-                                              <Text style={styles.phaseActionText}>{t('Edit')}</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                              style={[styles.phaseActionButton, { backgroundColor: colors.error }]}
-                                              onPress={() => {
-                                                // Ensure we're using editedPhases when deleting phases
-                                                if (!isEditing) {
-                                                  // If not in edit mode, initialize editedPhases with current phases
-                                                  if (editedPhases.length === 0 && finalProject?.phases) {
-                                                    setEditedPhases([...finalProject.phases]);
-                                                  }
-                                                }
-                                                handleDeletePhase(index);
-                                              }}
-                                            >
-                                              <Ionicons name="trash" size={18} color="#fff" />
-                                              <Text style={styles.phaseActionText}>{t('Delete')}</Text>
-                                            </TouchableOpacity>
-                                          </View>
-                                        )}
-                                      </>
-                                    )}
-                        </Card.Content>
-                      </Card>
-                              );
-                            })}
-                          </View>
-                        )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
                   </View>
                 )}
 
-                    {!isEditing && finalProject && (
-                      <>
-                        <Button
-                          mode="outlined"
-                          onPress={() => setIsEditing(true)}
-                          style={styles.editButton}
-                        >
-                          {t('Edit')}
-                        </Button>
-                <Button
-                  mode="contained"
-                  onPress={() => submitProject(finalProject)}
-                          style={[styles.submitButton, { backgroundColor: colors.primary }]}
-                  contentStyle={styles.submitButtonContent}
-                >
-                  {technician ? t('Send Deal') : t('Confirm & Submit')}
-                </Button>
-                      </>
-                    )}
-              </Card.Content>
-            </Card>
-              </View>
+                {/* Action Buttons */}
+                {!isEditing && finalProject && (
+                  <View style={styles.actionButtonsContainer}>
+                    <TouchableOpacity
+                      style={[styles.unifiedActionButton, styles.unifiedEditButton]}
+                      onPress={() => setIsEditing(true)}
+                    >
+                      <Text style={styles.unifiedActionButtonText}>{t('Edit')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.unifiedActionButton, styles.unifiedSubmitButton]}
+                      onPress={() => submitProject(finalProject)}
+                    >
+                      <Text style={[styles.unifiedActionButtonText, { color: FIGMA_COLORS.white }]}>
+                        {technician ? t('Send Deal') : t('Confirm & Submit')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
-              </View>
-            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Loading Overlay with Progress */}
@@ -1630,6 +1681,120 @@ export default function ConversationalAIForm({
         </View>
       </Modal>
       
+      {/* Phase Edit Modal */}
+      <Modal
+        visible={showPhaseEditModal && editingPhase !== null}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCancelPhaseEdit}
+      >
+        <View style={styles.phaseEditModalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.phaseEditModalContainer}
+          >
+            <View style={[styles.phaseEditModalContent, { backgroundColor: FIGMA_COLORS.white }]}>
+              {/* Modal Header */}
+              <View style={styles.phaseEditModalHeader}>
+                <Text style={[styles.phaseEditModalTitle, { color: FIGMA_COLORS.primary100 }]}>
+                  {t('Edit Phase')} {editingPhaseIndex !== null ? editingPhaseIndex + 1 : ''}
+                </Text>
+                <TouchableOpacity onPress={handleCancelPhaseEdit}>
+                  <Ionicons name="close" size={24} color={FIGMA_COLORS.textBody} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.phaseEditModalScroll} showsVerticalScrollIndicator={false}>
+                {editingPhase && (
+                  <View style={styles.phaseEditModalBody}>
+                    {/* Title */}
+                    <View style={styles.phaseEditModalSection}>
+                      <Text style={[styles.phaseEditModalLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Title')}</Text>
+                      <TextInput
+                        style={[styles.phaseEditModalInput, { backgroundColor: FIGMA_COLORS.primary10, color: FIGMA_COLORS.textBody, borderColor: FIGMA_COLORS.textDividers }]}
+                        value={editingPhase.title}
+                        onChangeText={(text) => handleUpdatePhaseField('title', text)}
+                        placeholder={t('Phase title')}
+                        placeholderTextColor={FIGMA_COLORS.textSecondary}
+                      />
+                    </View>
+
+                    {/* Description */}
+                    <View style={styles.phaseEditModalSection}>
+                      <Text style={[styles.phaseEditModalLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Description')}</Text>
+                      <TextInput
+                        style={[styles.phaseEditModalInput, { backgroundColor: FIGMA_COLORS.primary10, color: FIGMA_COLORS.textBody, borderColor: FIGMA_COLORS.textDividers, minHeight: 100 }]}
+                        value={editingPhase.description}
+                        onChangeText={(text) => handleUpdatePhaseField('description', text)}
+                        placeholder={t('Phase description')}
+                        placeholderTextColor={FIGMA_COLORS.textSecondary}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                      />
+                    </View>
+
+                    {/* Duration, Amount, Percentage Row */}
+                    <View style={styles.phaseEditModalRow}>
+                      <View style={[styles.phaseEditModalSection, { flex: 1 }]}>
+                        <Text style={[styles.phaseEditModalLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Duration (weeks)')}</Text>
+                        <TextInput
+                          style={[styles.phaseEditModalInput, { backgroundColor: FIGMA_COLORS.primary10, color: FIGMA_COLORS.textBody, borderColor: FIGMA_COLORS.textDividers }]}
+                          value={editingPhase.durationWeeks.toString()}
+                          onChangeText={(text) => handleUpdatePhaseField('durationWeeks', parseInt(text) || 1)}
+                          keyboardType="numeric"
+                          placeholderTextColor={FIGMA_COLORS.textSecondary}
+                        />
+                      </View>
+                      <View style={[styles.phaseEditModalSection, { flex: 1 }]}>
+                        <Text style={[styles.phaseEditModalLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Amount (SAR)')}</Text>
+                        <TextInput
+                          style={[styles.phaseEditModalInput, { backgroundColor: FIGMA_COLORS.primary10, color: FIGMA_COLORS.textBody, borderColor: FIGMA_COLORS.textDividers }]}
+                          value={editingPhase.amount.toString()}
+                          onChangeText={(text) => handleUpdatePhaseField('amount', parseFloat(text) || 0)}
+                          keyboardType="numeric"
+                          placeholderTextColor={FIGMA_COLORS.textSecondary}
+                        />
+                      </View>
+                      <View style={[styles.phaseEditModalSection, { flex: 1 }]}>
+                        <Text style={[styles.phaseEditModalLabel, { color: FIGMA_COLORS.primary80 }]}>{t('Percentage')}</Text>
+                        <TextInput
+                          style={[styles.phaseEditModalInput, { backgroundColor: FIGMA_COLORS.primary10, color: FIGMA_COLORS.textBody, borderColor: FIGMA_COLORS.textDividers }]}
+                          value={editingPhase.percentage.toString()}
+                          onChangeText={(text) => handleUpdatePhaseField('percentage', parseFloat(text) || 0)}
+                          keyboardType="numeric"
+                          placeholderTextColor={FIGMA_COLORS.textSecondary}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Modal Footer */}
+              <View style={styles.phaseEditModalFooter}>
+                <TouchableOpacity
+                  style={[styles.phaseEditModalButton, styles.phaseEditModalCancelButton]}
+                  onPress={handleCancelPhaseEdit}
+                >
+                  <Text style={[styles.phaseEditModalButtonText, { color: FIGMA_COLORS.purple100 }]}>
+                    {t('Cancel')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.phaseEditModalButton, styles.phaseEditModalSaveButton]}
+                  onPress={() => editingPhaseIndex !== null && handleSavePhaseEdit(editingPhaseIndex)}
+                >
+                  <Text style={[styles.phaseEditModalButtonText, { color: FIGMA_COLORS.white }]}>
+                    {t('Save')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
       {/* Photo Slideshow Modal */}
       <Modal
         visible={showPhotoSlideshow}
@@ -1752,6 +1917,26 @@ export default function ConversationalAIForm({
           )}
         </View>
       </Modal>
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -1940,6 +2125,14 @@ export default function ConversationalAIForm({
           <View style={styles.desktopFormContainer}>
             {finalProject && (
               <View>
+                {/* AI Generated Success Badge */}
+                <View style={styles.aiGeneratedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={FIGMA_COLORS.green80} />
+                  <Text style={styles.aiGeneratedBadgeText}>
+                    {t('Generated Successfully')}
+                  </Text>
+                </View>
+
                 <View style={styles.desktopSuccessIcon}>
                   <Ionicons name="checkmark-circle" size={90} color={colors.success} />
                 </View>
@@ -2612,6 +2805,26 @@ export default function ConversationalAIForm({
           </View>
         </View>
       </Modal>
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
   );
 }
@@ -2980,7 +3193,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   editButton: {
-    marginTop: 16,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0,
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   editInput: {
     borderRadius: 12,
@@ -2995,9 +3218,32 @@ const styles = StyleSheet.create({
   },
   cancelEditButton: {
     flex: 1,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  cancelEditButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   saveEditButton: {
     flex: 1,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveEditButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   addressSection: {
     marginTop: 12,
@@ -3009,6 +3255,34 @@ const styles = StyleSheet.create({
   addressText: {
     fontSize: 14,
     lineHeight: 20,
+    flex: 1,
+  },
+  addressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 8,
+    padding: 14,
+    borderWidth: 0.5,
+  },
+  cardsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  statCard: {
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 0.5,
+    minHeight: 100,
+    flex: 1,
+    minWidth: 0,
+  },
+  actionButtons: {
+    gap: 12,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   questionsHeader: {
     alignItems: 'center',
@@ -3113,13 +3387,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   addPhotoButton: {
-    width: 100,
-    height: 100,
-    borderWidth: 2,
+    width: 72,
+    height: 72,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderRadius: 12,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  addPhotoText: {
+    fontSize: 10,
+    marginTop: 2,
   },
   desktopPhotosContainer: {
     flexDirection: 'row',
@@ -4050,5 +4328,389 @@ const styles = StyleSheet.create({
   },
   figmaSendButtonDisabled: {
     opacity: 0.5,
+  },
+  // New Review Section Styles
+  reviewContainer: {
+    width: '100%',
+  },
+  flowContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  divider: {
+    height: 0.5,
+    marginVertical: 8,
+    marginHorizontal: 16,
+  },
+  formHeader: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  formTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  formSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  section: {
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sectionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    marginBottom: 12,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    fontWeight: '300',
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+  editableInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+      },
+      default: {},
+    }),
+  },
+  inputContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  mapButtonSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  budgetCard: {
+    backgroundColor: FIGMA_COLORS.primary10,
+    borderColor: FIGMA_COLORS.primary100,
+  },
+  durationCard: {
+    backgroundColor: FIGMA_COLORS.green10,
+    borderColor: FIGMA_COLORS.green80,
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  statCardLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statCardValue: {
+    fontSize: 14,
+  },
+  budgetInputWrapper: {
+    borderRadius: 6,
+    borderWidth: 1,
+    marginVertical: 4,
+  },
+  budgetInput: {
+    fontSize: 16,
+    fontWeight: '600',
+    padding: 10,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  checkboxText: {
+    fontSize: 11,
+  },
+  dateValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 6,
+    padding: 12,
+    borderWidth: 0.5,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  miniDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  miniDateText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  descriptionBox: {
+    borderWidth: 0.5,
+    borderColor: '#D9D9D9',
+    borderRadius: 6,
+    padding: 16,
+  },
+  descriptionText: {
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    width: '100%',
+  },
+  statHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statTitle: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  statValue: {
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 6,
+  },
+  // Unified Phase Card Styles
+  unifiedPhaseCard: {
+    borderWidth: 1,
+    borderColor: FIGMA_COLORS.primary10,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 10,
+    gap: 16,
+    backgroundColor: FIGMA_COLORS.white,
+  },
+  unifiedPhaseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  unifiedPhaseHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  unifiedPhaseNumberBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: FIGMA_COLORS.primary10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unifiedPhaseNumberText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: FIGMA_COLORS.primary80,
+  },
+  unifiedPhaseTitle: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: FIGMA_COLORS.textBody,
+    flex: 1,
+  },
+  unifiedPhasePrice: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: FIGMA_COLORS.green80,
+  },
+  unifiedPhaseDescription: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: FIGMA_COLORS.textBody,
+    lineHeight: 18,
+  },
+  unifiedPhaseDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  unifiedPhaseDurationText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: FIGMA_COLORS.textSecondary,
+  },
+  unifiedPhaseActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  unifiedPhaseActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  unifiedPhaseActionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Unified Action Buttons
+  actionButtonsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  unifiedActionButton: {
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  unifiedEditButton: {
+    backgroundColor: FIGMA_COLORS.purple10,
+    borderWidth: 1,
+    borderColor: FIGMA_COLORS.purple100,
+  },
+  unifiedSubmitButton: {
+    backgroundColor: FIGMA_COLORS.primary60,
+  },
+  unifiedActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: FIGMA_COLORS.purple100,
+  },
+  // Phase Edit Modal Styles
+  phaseEditModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  phaseEditModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  phaseEditModalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    ...Platform.select({
+      web: {
+        maxWidth: 600,
+        alignSelf: 'center',
+        borderRadius: 20,
+        marginBottom: '5vh',
+      } as any,
+    }),
+  },
+  phaseEditModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: FIGMA_COLORS.textDividers,
+  },
+  phaseEditModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  phaseEditModalScroll: {
+    flex: 1,
+  },
+  phaseEditModalBody: {
+    padding: 20,
+    gap: 20,
+  },
+  phaseEditModalSection: {
+    marginBottom: 16,
+  },
+  phaseEditModalLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  phaseEditModalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 48,
+  },
+  phaseEditModalRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  phaseEditModalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: FIGMA_COLORS.textDividers,
+  },
+  phaseEditModalButton: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  phaseEditModalCancelButton: {
+    backgroundColor: FIGMA_COLORS.purple10,
+    borderWidth: 1,
+    borderColor: FIGMA_COLORS.purple100,
+  },
+  phaseEditModalSaveButton: {
+    backgroundColor: FIGMA_COLORS.primary60,
+  },
+  phaseEditModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // AI Generated Success Badge
+  aiGeneratedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: FIGMA_COLORS.green10,
+    borderWidth: 0.5,
+    borderColor: FIGMA_COLORS.green80,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 6,
+  },
+  aiGeneratedBadgeText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: FIGMA_COLORS.green90,
   },
 });

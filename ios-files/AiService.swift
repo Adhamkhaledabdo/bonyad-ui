@@ -4,7 +4,7 @@ import Foundation
 // This service communicates with OpenAI's ChatGPT API to generate project details
 final class ChatGPTService {
     static let shared = ChatGPTService()  // 🔑 Singleton instance
-    private let apiKey = "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"  // 🔐 OpenAI API key
+    private let apiKey = ""  // 🔐 OpenAI API key
     
     // 🚀 MAIN FUNCTION: Generates a complete ProjectRequest from user description
     // This is the main entry point called by AIProjectForm

@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +15,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
+import { showError, showSuccess } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 interface AcceptBidModalProps {
   visible: boolean;
@@ -39,6 +40,7 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
   const insets = useSafeAreaInsets();
   const [acceptanceComment, setAcceptanceComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { alertState, hideAlert } = useAlertPopup();
 
   if (!bid) return null;
 
@@ -49,7 +51,7 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
   const handleAccept = async () => {
     // Validation
     if (acceptanceComment.length > MAX_COMMENT_LENGTH) {
-      Alert.alert(t('Error'), t('Comment exceeds maximum length'));
+      showError(t('Comment exceeds maximum length'), t('Error'));
       return;
     }
 
@@ -80,19 +82,14 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
 
       console.log('✅ Bid accepted successfully!');
       
-      Alert.alert(t('Success'), t('Bid accepted successfully'), [
-        {
-          text: t('OK'),
-          onPress: () => {
-            setAcceptanceComment('');
-            onSuccess?.();
-            onClose();
-          },
-        },
-      ]);
+      showSuccess(t('Bid accepted successfully'), t('Success'), () => {
+        setAcceptanceComment('');
+        onSuccess?.();
+        onClose();
+      });
     } catch (error: any) {
       console.error('❌ Failed to accept bid:', error);
-      Alert.alert(t('Error'), error.message || t('Failed to accept bid'));
+      showError(error.message || t('Failed to accept bid'), t('Error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -264,6 +261,16 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
           </TouchableOpacity>
         </View>
       </View>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </Modal>
   );
 }

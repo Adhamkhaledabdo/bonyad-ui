@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Platform,
   Image,
@@ -22,6 +21,8 @@ import { useTheme } from '../context/ThemeContext';
 import LocationPicker from '../components/LocationPicker';
 import ProjectCreationFlow from '../components/ProjectCreationFlow';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import { globalAlertManager } from '../utils/globalAlertManager';
 
 interface ManualProjectFormProps {
   technician?: any;
@@ -65,6 +66,7 @@ export default function ManualProjectForm({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isRTL = i18n.language === 'ar';
+  const { alertState, showError, showAlert, hideAlert } = useAlertPopup();
   
   // Responsive breakpoints
   const isWeb = Platform.OS === 'web';
@@ -117,7 +119,7 @@ export default function ManualProjectForm({
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera roll permissions');
+      showAlert('Permission Required', 'Please grant camera roll permissions', 'warning');
       return;
     }
 
@@ -201,12 +203,12 @@ export default function ManualProjectForm({
   // Submit project
   const submitProject = async () => {
     if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a project description');
+      showError('Please enter a project description');
       return;
     }
 
     if (!selectedServiceId) {
-      Alert.alert('Error', 'Please select a service category');
+      showError('Please select a service category');
       return;
     }
 
@@ -217,13 +219,13 @@ export default function ManualProjectForm({
       const userId = await storage.getUserId();
 
       if (!token || !userId) {
-        Alert.alert('Error', 'Please login again');
+        showError('Please login again');
         return;
       }
 
       // Validate budget if not unspecified
       if (!budgetUnspecified && (!budget || budget.trim() === '' || parseFloat(budget) <= 0)) {
-        Alert.alert(t('Error'), t('Please enter a valid budget amount or mark it as unspecified'));
+        showError(t('Please enter a valid budget amount or mark it as unspecified'));
         setIsSubmitting(false);
         return;
       }
@@ -287,34 +289,27 @@ export default function ManualProjectForm({
       if (response.ok && data.id) {
         const successMessage = technician ? 'Deal sent successfully!' : 'Project submitted successfully!';
         
-        if (Platform.OS === 'web') {
-          // On web, Alert.alert callbacks don't work reliably
-          // Show alert and navigate immediately
-          window.alert(successMessage);
-          onSuccess?.();
-          onBack();
-        } else {
-          // On native, use Alert with callback
-          Alert.alert(
-            'Success',
-            successMessage,
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  onSuccess?.();
-                  onBack();
-                },
+        // Use custom popup for all platforms
+        showAlert(
+          t('Success'),
+          successMessage,
+          'success',
+          [
+            {
+              text: t('OK'),
+              onPress: () => {
+                onSuccess?.();
+                onBack();
               },
-            ]
-          );
-        }
+            },
+          ]
+        );
       } else {
         throw new Error(data.message || 'Failed to submit project');
       }
     } catch (error: any) {
       console.error('Error submitting project:', error);
-      Alert.alert('Error', error.message || 'Failed to submit project');
+      showError(error.message || 'Failed to submit project', 'Error');
     } finally {
       setIsSubmitting(false);
     }

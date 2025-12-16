@@ -40,15 +40,18 @@ import {
 import ColorPicker from './ColorPicker';
 import AlertPopup, { useAlertPopup } from './AlertPopup';
 import ConfirmationPopup, { useConfirmationPopup } from './ConfirmationPopup';
+import { getUserProfile } from '../services/ProfileService';
 
 interface PortfolioManagementProps {
   technicianId: number;
   isOwnProfile?: boolean; // If true, user can edit their own portfolio
+  onBack?: () => void; // Optional back button handler
 }
 
 export default function PortfolioManagement({
   technicianId,
   isOwnProfile = false,
+  onBack,
 }: PortfolioManagementProps) {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
@@ -73,9 +76,9 @@ export default function PortfolioManagement({
   const [portfolio, setPortfolio] = useState<TechnicianPortfolio | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false); // Unified modal for add/edit
   const [editingProject, setEditingProject] = useState<PortfolioProject | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -137,8 +140,18 @@ export default function PortfolioManagement({
     loadPortfolio();
     if (isOwnProfile) {
       loadPDFInfo();
+      loadUserProfile();
     }
   }, [technicianId, isOwnProfile]);
+  
+  const loadUserProfile = async () => {
+    try {
+      const profile = await getUserProfile();
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('❌ [PortfolioManagement] Error loading user profile:', error);
+    }
+  };
   
   const loadPDFInfo = async () => {
     try {
@@ -218,7 +231,8 @@ export default function PortfolioManagement({
   
   const handleAddProject = () => {
     resetForm();
-    setShowAddModal(true);
+    setEditingProject(null);
+    setShowProjectModal(true);
   };
   
   const handleEditProject = (project: PortfolioProject) => {
@@ -240,7 +254,7 @@ export default function PortfolioManagement({
       ? project.files.map(file => normalizeImageUrl(file))
       : [];
     setSelectedPhotos(existingPhotos);
-    setShowEditModal(true);
+    setShowProjectModal(true);
   };
   
   const handleSaveProject = async () => {
@@ -328,8 +342,7 @@ export default function PortfolioManagement({
         await addPortfolioProject(projectData);
       }
       
-      setShowAddModal(false);
-      setShowEditModal(false);
+      setShowProjectModal(false);
       resetForm();
       loadPortfolio();
 
@@ -514,52 +527,92 @@ export default function PortfolioManagement({
   // Render mobile layout
   if (shouldRenderMobile) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+        {/* Header with Back Button and Title */}
+        <View style={styles.headerContainer}>
+          {onBack && (
+            <TouchableOpacity onPress={onBack} style={styles.figmaBackButton}>
+              <Ionicons name="chevron-back" size={24} color="#003867" />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.figmaHeaderTitle}>{t('My Portfolio')}</Text>
+          <View style={{ width: 24 }} /> {/* Spacer for centering */}
+        </View>
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Portfolio Card with Buttons Inside */}
-          <View style={[styles.portfolioCard, { backgroundColor: colors.cardBackground }]}>
-            {/* Header */}
-            <View style={styles.portfolioCardHeader}>
-              <Text style={[styles.portfolioCardTitle, { color: colors.text }]}>
+          {/* User Profile Card */}
+          {isOwnProfile && userProfile && (
+            <View style={[styles.userProfileCard, { backgroundColor: colors.cardBackground, borderColor: '#E6EFF7' }]}>
+              <Image
+                source={{ uri: userProfile.profileImage || userProfile.avatar || 'https://via.placeholder.com/32' }}
+                style={styles.userAvatar}
+              />
+              <View style={styles.userInfo}>
+                <Text style={[styles.userName, { color: '#003867' }]}>
+                  {userProfile.name || 'User'}
+                </Text>
+                <Text style={[styles.userSubtext, { color: '#A3A3A3' }]}>
+                  {t('Public Portfolio')}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={onBack} style={styles.editIconButton}>
+                <Ionicons name="create-outline" size={14} color="#003867" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Portfolio Section with Blue Left Border */}
+          {isOwnProfile && (
+            <View style={styles.figmaSectionHeader}>
+              <View style={[styles.figmaSectionIndicator, { backgroundColor: '#005DAC' }]} />
+              <Text style={[styles.figmaSectionTitleText, { color: '#003867' }]}>
                 {t('Portfolio')}
               </Text>
             </View>
+          )}
             
-            {/* Buttons Section - Inside the card */}
+          {/* PDF Section */}
             {isOwnProfile && (
-              <View style={styles.portfolioCardButtons}>
+            <View style={[styles.pdfCard, { backgroundColor: colors.cardBackground, borderColor: '#E6EFF7' }]}>
                 {pdfInfo ? (
-                  // PDF exists - show buttons in organized rows
-                  <>
-                    <View style={styles.buttonRow}>
+                <>
+                  <View style={styles.figmaPdfInfoRow}>
+                    <Ionicons name="document-text" size={24} color="#6A0DAD" />
+                    <View style={styles.figmaPdfInfoTextContainer}>
+                      <Text style={[styles.pdfTitle, { color: '#383838' }]}>
+                        {t('PDF Generated')}
+                      </Text>
+                      <Text style={[styles.pdfTimestamp, { color: '#A3A3A3' }]}>
+                        {t('Generated at')}: {pdfInfo.generatedAt ? new Date(pdfInfo.generatedAt).toLocaleString() : '-'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.pdfButtonsRow}>
                       <TouchableOpacity
-                        style={[styles.unifiedButton, styles.unifiedButtonFull, { backgroundColor: colors.primary }]}
-                        onPress={() => {
-                          showConfirmation(
-                            t('Regenerate PDF'),
-                            t('This will regenerate your PDF with current settings. Continue?'),
-                            () => handleGeneratePDF(true),
-                            {
-                              type: 'info',
-                              confirmText: t('Regenerate'),
-                              icon: 'refresh-outline',
-                            }
-                          );
-                        }}
+                      style={[styles.figmaPdfButton, styles.figmaPdfButtonPrimary, { backgroundColor: '#005DAC' }]}
+                      onPress={handleDownloadPDF}
+                    >
+                      <Ionicons name="download-outline" size={12} color="#EFE6F5" />
+                      <Text style={[styles.figmaPdfButtonText, { color: '#EFE6F5' }]}>
+                        {t('Download PDF')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.figmaPdfButton, styles.figmaPdfButtonSecondary, { backgroundColor: '#009C47' }]}
+                      onPress={() => setShowPDFModal(true)}
                       >
-                        <Ionicons name="refresh-outline" size={18} color="#fff" />
-                        <Text style={[styles.unifiedButtonText, { color: '#fff' }]}>
-                          {t('Regenerate PDF')}
+                      <Ionicons name="qr-code-outline" size={12} color="#fff" />
+                      <Text style={[styles.figmaPdfButtonText, { color: '#fff' }]}>
+                        {t('Show QR Code')}
                         </Text>
                       </TouchableOpacity>
                     </View>
-                    <View style={styles.buttonRow}>
                       <TouchableOpacity
-                        style={[styles.unifiedButton, styles.unifiedButtonHalf, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}
+                    style={[styles.regenerateButton, { backgroundColor: '#E6EFF7' }]}
                         onPress={() => {
                           setPdfOptions({
                             ...pdfOptions,
@@ -569,53 +622,27 @@ export default function PortfolioManagement({
                           setShowPDFOptionsModal(true);
                         }}
                       >
-                        <Ionicons name="settings-outline" size={18} color={colors.primary} />
-                        <Text style={[styles.unifiedButtonText, { color: colors.primary }]}>
+                    <Ionicons name="settings-outline" size={12} color="#003867" />
+                    <Text style={[styles.regenerateButtonText, { color: '#003867' }]}>
                           {t('Customize')}
                         </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.unifiedButton, styles.unifiedButtonHalf, { backgroundColor: colors.primary }]}
-                        onPress={() => setShowPDFModal(true)}
-                      >
-                        <Ionicons name="qr-code-outline" size={18} color="#fff" />
-                        <Text style={[styles.unifiedButtonText, { color: '#fff' }]}>
-                          {t('View QR')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
                   </>
                 ) : (
-                  // No PDF - show generate button
-                  <View style={styles.buttonRow}>
-                    <TouchableOpacity
-                      style={[styles.unifiedButton, styles.unifiedButtonFull, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}
-                      onPress={() => {
-                        setPdfOptions({ ...pdfOptions, regenerate: false });
-                        setShowPDFOptionsModal(true);
-                      }}
-                    >
-                      <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-                      <Text style={[styles.unifiedButtonText, { color: colors.primary }]}>
-                        {t('Generate PDF')}
+                <View style={styles.figmaPdfInfoRow}>
+                  <Ionicons name="document-text-outline" size={24} color="#6A0DAD" />
+                  <View style={styles.figmaPdfInfoTextContainer}>
+                    <Text style={[styles.pdfTitle, { color: '#383838' }]}>
+                      {t('No PDF Generated')}
                       </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[styles.unifiedButton, styles.unifiedButtonFull, { backgroundColor: colors.primary }]}
-                    onPress={handleAddProject}
-                  >
-                    <Ionicons name="add" size={18} color="#fff" />
-                    <Text style={[styles.unifiedButtonText, { color: '#fff' }]}>
-                      {t('Add Project')}
+                    <Text style={[styles.pdfTimestamp, { color: '#A3A3A3' }]}>
+                      {t('Generate your portfolio PDF')}
                     </Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             )}
           </View>
+          )}
         
         {/* Bio Section */}
         {portfolio?.bio && (
@@ -627,117 +654,100 @@ export default function PortfolioManagement({
           </View>
         )}
         
-        {/* Past Projects */}
-        {pastProjects.length > 0 ? (
-          <View style={styles.projectsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t('Past Projects')} ({pastProjects.length})
-            </Text>
-            
-            {pastProjects.map((project) => (
-              <View key={project.id} style={[styles.projectCard, { backgroundColor: colors.cardBackground }]}>
-                <View style={styles.projectHeader}>
-                  <View style={styles.projectHeaderLeft}>
-                    <Text style={[styles.projectTitle, { color: colors.text }]}>
-                      {project.title}
+          {/* Past Projects Section with Blue Left Border */}
+          <View style={styles.figmaSectionHeader}>
+            <View style={[styles.figmaSectionIndicator, { backgroundColor: '#005DAC' }]} />
+            <Text style={[styles.figmaSectionTitleText, { color: '#003867' }]}>
+              {t('Past Projects')}
                     </Text>
                     {isOwnProfile && (
-                      <View style={styles.projectActions}>
                         <TouchableOpacity
-                          style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
+                style={[styles.addProjectButton, { backgroundColor: '#005DAC' }]}
+                onPress={handleAddProject}
+                        >
+                <Ionicons name="add" size={12} color="#EFE6F5" />
+                <Text style={[styles.addProjectButtonText, { color: '#EFE6F5' }]}>
+                  {t('Add Project')}
+                </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+                
+          {/* Past Projects List */}
+          {pastProjects.length > 0 ? (
+            <View style={styles.projectsSection}>
+              {pastProjects.map((project) => {
+                const firstPhoto = (project.photos && project.photos.length > 0)
+                  ? normalizeImageUrl(project.photos[0])
+                  : (project.files && project.files.length > 0)
+                  ? normalizeImageUrl(project.files[0])
+                  : null;
+                const projectDate = project.endDate || project.startDate || null;
+                const formattedDate = projectDate
+                  ? new Date(projectDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  : null;
+
+                      return (
+                  <View key={project.id} style={[styles.figmaProjectCard, { backgroundColor: colors.cardBackground, borderColor: '#A3A3A3' }]}>
+                    {/* Project Image */}
+                    {firstPhoto && (
+                      <View style={styles.projectImageContainer}>
+                          <Image
+                          source={{ uri: firstPhoto }}
+                          style={styles.projectMainImage}
+                          resizeMode="cover"
+                        />
+                          </View>
+                    )}
+                    
+                    {/* Divider */}
+                    <View style={styles.projectDivider} />
+                    
+                    {/* Project Title */}
+                    <Text style={[styles.figmaProjectTitle, { color: '#383838' }]}>
+                      {project.title}
+                      </Text>
+                    
+                    {/* Project Description */}
+                    {project.description && (
+                      <Text style={[styles.figmaProjectDescription, { color: '#A3A3A3' }]}>
+                        {project.description}
+                      </Text>
+                    )}
+                    
+                    {/* Project Date */}
+                    {formattedDate && (
+                      <Text style={[styles.figmaProjectDate, { color: '#A3A3A3' }]}>
+                        {formattedDate}
+                      </Text>
+                    )}
+                    
+                    {/* Edit and Delete Buttons */}
+                    {isOwnProfile && (
+                      <View style={styles.figmaProjectActions}>
+                        <TouchableOpacity
+                          style={[styles.figmaEditButton, { backgroundColor: '#005DAC' }]}
                           onPress={() => handleEditProject(project)}
                         >
-                          <Ionicons name="create-outline" size={18} color={colors.primary} />
+                          <Ionicons name="download-outline" size={12} color="#EFE6F5" />
+                          <Text style={[styles.figmaButtonText, { color: '#EFE6F5' }]}>
+                            {t('Edit')}
+                          </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[styles.actionButton, { backgroundColor: '#EF4444' + '20' }]}
+                          style={[styles.figmaDeleteButton, { backgroundColor: '#EFE6F5', borderColor: '#5E0BA1' }]}
                           onPress={() => handleDeleteProject(project)}
                         >
-                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                          <Ionicons name="trash-outline" size={12} color="#5E0BA1" />
+                          <Text style={[styles.figmaButtonText, { color: '#5E0BA1' }]}>
+                            {t('Delete')}
+                          </Text>
                         </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                
-                {project.description && (
-                  <Text style={[styles.projectDescription, { color: colors.textSecondary }]}>
-                    {project.description}
-                  </Text>
-                )}
-                
-                {((project.photos && project.photos.length > 0) || (project.files && project.files.length > 0)) && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.projectPhotos}
-                    contentContainerStyle={styles.projectPhotosContent}
-                    scrollEnabled={true}
-                    nestedScrollEnabled={true}
-                  >
-                    {(project.photos || project.files || []).map((photo, index) => {
-                      const photoUrl = normalizeImageUrl(photo);
-                      return (
-                        <TouchableOpacity
-                          key={`photo-${project.id}-${index}`}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            console.log('📸 [PortfolioManagement] Image clicked:', index, 'Project:', project.id);
-                            const allPhotos = (project.photos || project.files || []).map(p => normalizeImageUrl(p));
-                            console.log('📸 [PortfolioManagement] All photos:', allPhotos);
-                            if (allPhotos.length > 0) {
-                              setSlideshowPhotos(allPhotos);
-                              setCurrentPhotoIndex(index);
-                              setShowPhotoSlideshow(true);
-                              console.log('✅ [PortfolioManagement] Opening slideshow with', allPhotos.length, 'photos');
-                            } else {
-                              console.warn('⚠️ [PortfolioManagement] No photos to display');
-                            }
-                          }}
-                          activeOpacity={0.7}
-                          style={styles.projectPhotoContainer}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <Image
-                            source={{ uri: photoUrl }}
-                            style={styles.projectPhoto}
-                            onError={(error) => {
-                              console.error(`❌ [PortfolioManagement] Failed to load image ${index + 1}:`, photoUrl);
-                            }}
-                            onLoad={() => {
-                              console.log(`✅ [PortfolioManagement] Loaded image ${index + 1}:`, photoUrl);
-                            }}
-                          />
-                          <View style={styles.photoOverlay} pointerEvents="none">
-                            <Ionicons name="expand" size={18} color="#fff" />
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-                
-                <View style={styles.projectDetails}>
-                  {project.location && (
-                    <View style={styles.projectDetail}>
-                      <Ionicons name="location" size={16} color={colors.textSecondary} />
-                      <Text style={[styles.projectDetailText, { color: colors.textSecondary }]}>
-                        {project.location}
-                      </Text>
-                    </View>
-                  )}
-                  
-                  {project.projectValue && (
-                    <View style={styles.projectDetail}>
-                      <Image source={riyalLogo} style={styles.riyalLogoSmall} resizeMode="contain" />
-                      <Text style={[styles.projectDetailText, { color: colors.textSecondary }]}>
-                        {project.projectValue.toLocaleString()}
-                      </Text>
                     </View>
                   )}
                 </View>
-              </View>
-            ))}
+                );
+              })}
           </View>
         ) : (
           <View style={[styles.emptyState, { backgroundColor: colors.cardBackground }]}>
@@ -974,14 +984,13 @@ export default function PortfolioManagement({
   function renderAllModals() {
     return (
       <>
-      {/* Add/Edit Project Modal */}
+      {/* Unified Add/Edit Project Modal */}
       <Modal
-        visible={showAddModal || showEditModal}
+        visible={showProjectModal}
         animationType="slide"
         transparent={true}
         onRequestClose={() => {
-          setShowAddModal(false);
-          setShowEditModal(false);
+          setShowProjectModal(false);
           resetForm();
         }}
       >
@@ -993,8 +1002,7 @@ export default function PortfolioManagement({
               </Text>
               <TouchableOpacity
                 onPress={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
+                  setShowProjectModal(false);
                   resetForm();
                 }}
               >
@@ -2631,6 +2639,214 @@ const styles = StyleSheet.create({
   pdfLinkText: {
     fontSize: 12,
     textDecorationLine: 'underline',
+  },
+  // Figma Design Styles
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  figmaBackButton: {
+    padding: 4,
+  },
+  figmaHeaderTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '400',
+    color: '#003867',
+    textAlign: 'center',
+  },
+  userProfileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    gap: 12,
+  },
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  userInfo: {
+    flex: 1,
+    gap: 12,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  userSubtext: {
+    fontSize: 14,
+    fontWeight: '300',
+  },
+  editIconButton: {
+    padding: 4,
+  },
+  figmaSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    marginBottom: 16,
+    gap: 24,
+  },
+  figmaSectionIndicator: {
+    width: 2,
+    height: 20,
+    borderRadius: 1,
+  },
+  figmaSectionTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+  },
+  addProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
+  },
+  addProjectButtonText: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  pdfCard: {
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    gap: 16,
+  },
+  figmaPdfInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  figmaPdfInfoTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  pdfTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pdfTimestamp: {
+    fontSize: 14,
+    fontWeight: '300',
+  },
+  pdfButtonsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  figmaPdfButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 12,
+  },
+  figmaPdfButtonPrimary: {
+    // Styles applied via backgroundColor
+  },
+  figmaPdfButtonSecondary: {
+    // Styles applied via backgroundColor
+  },
+  figmaPdfButtonText: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  regenerateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 12,
+    width: '100%',
+  },
+  regenerateButtonText: {
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  figmaProjectCard: {
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 16,
+  },
+  projectImageContainer: {
+    width: '100%',
+    height: 162,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  projectMainImage: {
+    width: '100%',
+    height: '100%',
+  },
+  projectDivider: {
+    height: 0.5,
+    backgroundColor: '#A3A3A3',
+    width: '100%',
+  },
+  figmaProjectTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  figmaProjectDescription: {
+    fontSize: 14,
+    fontWeight: '300',
+    lineHeight: 20,
+  },
+  figmaProjectDate: {
+    fontSize: 14,
+    fontWeight: '300',
+    textAlign: 'right',
+  },
+  figmaProjectActions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  figmaEditButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 12,
+  },
+  figmaDeleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+  },
+  figmaButtonText: {
+    fontSize: 14,
+    fontWeight: '400',
   },
 });
 

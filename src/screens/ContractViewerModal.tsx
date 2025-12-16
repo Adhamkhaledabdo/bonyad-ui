@@ -6,7 +6,6 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Linking,
   Platform,
@@ -20,6 +19,8 @@ import { storage } from '../utils/storage';
 import { formatMessageTime } from '../utils/chatUtils';
 import { Asset } from 'expo-asset';
 import * as Sharing from 'expo-sharing';
+import { showError } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 interface ContractViewerModalProps {
   visible: boolean;
@@ -64,6 +65,7 @@ export default function ContractViewerModal({
   const [phases, setPhases] = useState<Phase[]>(providedPhases || []);
   const [projectDetails, setProjectDetails] = useState(providedProjectDetails);
   const [isTechnician, setIsTechnician] = useState(providedIsTechnician || false);
+  const { alertState, hideAlert } = useAlertPopup();
 
   useEffect(() => {
     if (visible && projectId) {
@@ -218,7 +220,7 @@ export default function ContractViewerModal({
       const generatedPdfUrl = await getPdfUrl();
       
       if (!generatedPdfUrl) {
-        Alert.alert(t('Error'), t('Could not load PDF'));
+        showError(t('Could not load PDF'), t('Error'));
         return;
       }
 
@@ -236,12 +238,12 @@ export default function ContractViewerModal({
             UTI: 'com.adobe.pdf',
           });
         } else {
-          Alert.alert(t('Error'), t('Sharing is not available on this device'));
+          showError(t('Sharing is not available on this device'), t('Error'));
         }
       }
     } catch (error) {
       console.error('❌ Error opening PDF:', error);
-      Alert.alert(t('Error'), t('Could not open PDF contract'));
+      showError(t('Could not open PDF contract'), t('Error'));
     } finally {
       setIsLoadingPdf(false);
     }
@@ -510,7 +512,16 @@ export default function ContractViewerModal({
           </View>
         </View>
       </Modal>
-
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </Modal>
   );
 }

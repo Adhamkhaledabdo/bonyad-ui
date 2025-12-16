@@ -1,20 +1,14 @@
 import { storage } from '../utils/storage';
-import { buildApiUrlWithParams } from '../config/api';
+import { buildApiUrl, buildApiUrlWithParams, API_ENDPOINTS } from '../config/api';
 
 /**
- * Fetch technician availability
+ * Fetch technician availability (Public endpoint - no auth required)
  * @param {number} technicianId - Technician's user ID
  * @returns {Promise<object>}
  */
 export const getTechnicianAvailability = async (technicianId: number): Promise<any> => {
   try {
-    const token = await storage.getAuthToken();
-    
-    if (!token) {
-      throw new Error('No authentication token');
-    }
-    
-    const url = `https://bonyad-hub.com/api/technicians/${technicianId}/availability`;
+    const url = buildApiUrlWithParams(API_ENDPOINTS.TECHNICIAN_AVAILABILITY, { id: technicianId });
     
     console.log('📤 [BookingService] Fetching technician availability...');
     console.log('   Technician ID:', technicianId);
@@ -23,7 +17,6 @@ export const getTechnicianAvailability = async (technicianId: number): Promise<a
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -71,7 +64,7 @@ export const createAppointment = async (bookingData: {
       throw new Error('No authentication token');
     }
     
-    const url = 'https://bonyad-hub.com/api/time-requests';
+    const url = buildApiUrl(API_ENDPOINTS.APPOINTMENTS.CREATE);
     
     console.log('📤 [BookingService] Creating appointment...');
     console.log('   URL:', url);

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +16,8 @@ import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import ReviewTechnicianModal from '../components/ReviewTechnicianModal';
 import { deleteReview, getProjectReviewStatus, ProjectReviewStatus } from '../services/ReviewService';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 
 interface CompletedProjectViewPageProps {
   project: any;
@@ -65,6 +66,10 @@ export default function CompletedProjectViewPage({
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [isDeletingReview, setIsDeletingReview] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<'create' | 'edit'>('create');
+  
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  const { confirmState, showDeleteConfirmation, hideConfirmation } = useConfirmationPopup();
 
   const loadReviewStatus = useCallback(async () => {
     if (!resolvedProjectId) return;
@@ -346,30 +351,23 @@ export default function CompletedProjectViewPage({
       return;
     }
 
-    Alert.alert(
+    showDeleteConfirmation(
       t('Delete Review'),
       t('Are you sure you want to delete your review?'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Delete Review'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsDeletingReview(true);
-              await deleteReview(reviewId);
-              Alert.alert(t('Success'), t('Review deleted successfully'));
-              setReviewStatus({ hasReview: false });
-              loadReviewStatus();
-            } catch (error: any) {
-              console.error('❌ [CompletedProjectViewPage] Error deleting review:', error);
-              Alert.alert(t('Error'), error?.message || t('Failed to delete review'));
-            } finally {
-              setIsDeletingReview(false);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          setIsDeletingReview(true);
+          await deleteReview(reviewId);
+          showSuccess(t('Review deleted successfully'), t('Success'));
+          setReviewStatus({ hasReview: false });
+          loadReviewStatus();
+        } catch (error: any) {
+          console.error('❌ [CompletedProjectViewPage] Error deleting review:', error);
+          showError(error?.message || t('Failed to delete review'), t('Error'));
+        } finally {
+          setIsDeletingReview(false);
+        }
+      }
     );
   };
 
@@ -737,6 +735,30 @@ export default function CompletedProjectViewPage({
           } : null}
         />
       )}
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </>
   );
 }

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +13,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
+import { showError } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 interface UserPhaseViewPageProps {
   project: any;
@@ -45,6 +46,7 @@ export default function UserPhaseViewPage({
   const insets = useSafeAreaInsets();
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { alertState, hideAlert } = useAlertPopup();
 
   useEffect(() => {
     console.log('═══════════════════════════════════════════════════════════');
@@ -64,7 +66,7 @@ export default function UserPhaseViewPage({
       setIsLoading(true);
       const token = await storage.getAuthToken();
       if (!token) {
-        Alert.alert(t('Error'), t('Please login again'));
+        showError(t('Please login again'), t('Error'));
         return;
       }
 
@@ -85,11 +87,11 @@ export default function UserPhaseViewPage({
         console.log('🔵 [UserPhaseViewPage] Loaded phases:', data.length);
         setPhases(data);
       } else {
-        Alert.alert(t('Error'), t('Failed to load phases'));
+        showError(t('Failed to load phases'), t('Error'));
       }
     } catch (error: any) {
       console.error('❌ [UserPhaseViewPage] Error loading phases:', error);
-      Alert.alert(t('Error'), error.message || t('Failed to load phases'));
+      showError(error.message || t('Failed to load phases'), t('Error'));
     } finally {
       setIsLoading(false);
     }
@@ -188,6 +190,16 @@ export default function UserPhaseViewPage({
           )}
         </ScrollView>
       )}
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </View>
   );
 }

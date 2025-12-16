@@ -234,10 +234,17 @@ export default function ProfileScreen({
 
         {/* Main Profile Card */}
         <View style={[styles.mainCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
-          {/* User Welcome Section */}
+          {/* User Welcome Section - Clickable to open settings */}
           <TouchableOpacity 
             style={[styles.userWelcomeSection, isRTL && styles.rowRTL]} 
-            onPress={() => onNavigateToEditProfile?.()}
+            onPress={() => {
+              // For technicians, navigate to MyDataScreen (settings screen)
+              if (isTechnician) {
+                onNavigateToEditProfile?.();
+              } else {
+                onNavigateToEditProfile?.();
+              }
+            }}
           >
             <View style={[styles.profileImageContainer, { backgroundColor: avatarBgColor }]}>
               {user?.avatar ? (
@@ -332,7 +339,74 @@ export default function ProfileScreen({
                   </View>
 
         {/* Settings Section Card */}
-        <View style={[styles.settingsCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+       
+        {/* Technician Menu Items - Only Portfolio and Subscription */}
+        {isTechnician && (
+          <>
+            {/* My Portfolio Card */}
+            <View style={[styles.technicianCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+              <TouchableOpacity 
+                style={[styles.menuItem, isRTL && styles.rowRTL]}
+                onPress={() => onNavigateToPortfolio?.()}
+              >
+                <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                  <Ionicons name="briefcase-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+                </View>
+                <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                  <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                    {t('My Portfolio')}
+                  </Text>
+                  <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                    {t('Add your works here')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* My Subscriptions Card */}
+            <View style={[styles.technicianCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+              <TouchableOpacity 
+                style={[styles.menuItem, isRTL && styles.rowRTL]}
+                onPress={() => onNavigateToSubscription?.()}
+              >
+                <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                  <Ionicons name="card-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+                </View>
+                <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                  <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                    {t('My Subscriptions')}
+                  </Text>
+                  <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                    {t('Manage your subscriptions')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* User Menu Items */}
+        {!isTechnician && (
+          <View style={[styles.userMenuCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
+            <TouchableOpacity 
+              style={[styles.menuItem, isRTL && styles.rowRTL]}
+              onPress={() => onNavigateToEditProfile?.()}
+            >
+              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+                <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+              </View>
+              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  {t('My Data')}
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  {t('profile.editPersonalInfo')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+         <View style={[styles.settingsCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
           {/* Language */}
           <TouchableOpacity 
             style={[styles.settingItem, isRTL && styles.rowRTL]}
@@ -412,66 +486,6 @@ export default function ProfileScreen({
           </TouchableOpacity>
         </View>
 
-        {/* Technician Menu Items */}
-        {isTechnician && (
-          <View style={[styles.technicianCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
-            <TouchableOpacity 
-              style={[styles.menuItem, isRTL && styles.rowRTL]}
-              onPress={() => onNavigateToEditProfile?.()}
-            >
-              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
-                <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
-              </View>
-              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
-                  {t('My Data')}
-                </Text>
-                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
-                  {t('profile.editPersonalInfo')}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.menuItem, isRTL && styles.rowRTL]}
-              onPress={() => onNavigateToPortfolio?.()}
-            >
-              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
-                <Ionicons name="briefcase-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
-              </View>
-              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
-                  {t('My Portfolio')}
-                </Text>
-                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
-                  {t('profile.managePortfolio')}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* User Menu Items */}
-        {!isTechnician && (
-          <View style={[styles.userMenuCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
-            <TouchableOpacity 
-              style={[styles.menuItem, isRTL && styles.rowRTL]}
-              onPress={() => onNavigateToEditProfile?.()}
-            >
-              <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
-                <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
-              </View>
-              <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
-                  {t('My Data')}
-                </Text>
-                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
-                  {t('profile.editPersonalInfo')}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Logout Card */}
         <View style={[styles.logoutCard, { backgroundColor: cardBgColor, borderColor: dividerColor }]}>
@@ -724,10 +738,10 @@ const styles = StyleSheet.create({
   technicianCard: {
     marginHorizontal: 16,
     marginTop: 24,
-    borderRadius: 6,
-    borderWidth: 0.5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EEF0F3',
     padding: 16,
-    gap: 16,
   },
 
   // User Menu Card
@@ -745,6 +759,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    width: '100%',
   },
 
   // Logout Card

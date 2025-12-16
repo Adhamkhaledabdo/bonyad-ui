@@ -18,7 +18,6 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
-  Alert,
   Dimensions,
   Platform,
 } from 'react-native';
@@ -28,7 +27,10 @@ import { useTheme } from '../context/ThemeContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 import ProjectCreationFlow from '../components/ProjectCreationFlow';
+import BookAppointmentModal from '../components/BookAppointmentModal';
 
 // ===== DESIGN TOKENS FROM FIGMA =====
 const COLORS = {
@@ -430,12 +432,14 @@ const VisitRequestCard = ({
   onAccept,
   onDecline,
   onViewTechnician,
+  onBook,
 }: {
   visitRequest: VisitRequest;
   index: number;
   onAccept: () => void;
   onDecline: () => void;
   onViewTechnician?: () => void;
+  onBook?: () => void;
 }) => {
   const { t } = useTranslation();
   
@@ -511,11 +515,18 @@ const VisitRequestCard = ({
       {/* Action Buttons */}
       {visitRequest.status === 'PENDING' && (
         <View style={visitStyles.actionRow}>
-          <TouchableOpacity style={visitStyles.acceptButton} onPress={onAccept}>
+          <TouchableOpacity 
+            style={[visitStyles.actionButton, visitStyles.bookButton]} 
+            onPress={onBook}
+          >
+            <Ionicons name="calendar-outline" size={14} color={COLORS.textWhite} />
+            <Text style={visitStyles.bookText}>{t('Book')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[visitStyles.actionButton, visitStyles.acceptButton]} onPress={onAccept}>
             <Ionicons name="checkmark-circle" size={12} color={COLORS.textWhite} />
             <Text style={visitStyles.acceptText}>{t('Accept')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={visitStyles.declineButton} onPress={onDecline}>
+          <TouchableOpacity style={[visitStyles.actionButton, visitStyles.declineButton]} onPress={onDecline}>
             <Ionicons name="close-circle" size={12} color={COLORS.purple70} />
             <Text style={visitStyles.declineText}>{t('Decline')}</Text>
           </TouchableOpacity>
@@ -663,17 +674,27 @@ const visitStyles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 8,
   },
-  acceptButton: {
+  actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.green60,
     borderRadius: 8,
     padding: 16,
     gap: 6,
+  },
+  bookButton: {
+    backgroundColor: COLORS.primary60,
+  },
+  bookText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: COLORS.textWhite,
+  },
+  acceptButton: {
+    backgroundColor: COLORS.green60,
   },
   acceptText: {
     fontSize: 12,
@@ -681,16 +702,9 @@ const visitStyles = StyleSheet.create({
     color: COLORS.textWhite,
   },
   declineButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: COLORS.purple10,
     borderWidth: 0.5,
     borderColor: COLORS.purple70,
-    borderRadius: 8,
-    padding: 16,
-    gap: 6,
   },
   declineText: {
     fontSize: 12,
@@ -1016,9 +1030,15 @@ export default function BidReceivedProjectScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [isTechnician, setIsTechnician] = useState(propIsTechnician ?? false);
   const [selectedTab, setSelectedTab] = useState<UserTab>('bids');
+  const [bookingModalVisible, setBookingModalVisible] = useState(false);
+  const [selectedVisitRequest, setSelectedVisitRequest] = useState<VisitRequest | null>(null);
   const screenWidth = Dimensions.get('window').width;
   const IS_WEB = Platform.OS === 'web';
   const IS_LARGE_WEB = IS_WEB && screenWidth >= 1024;
+  
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  const { confirmState, showConfirmation, hideConfirmation } = useConfirmationPopup();
   
   const serviceName = i18n.language === 'ar' ? project?.serviceNameAr : project?.serviceNameEn;
 
@@ -1136,76 +1156,67 @@ export default function BidReceivedProjectScreen({
   };
 
   const handleAcceptVisitRequest = async (visitRequestId: number) => {
-    Alert.alert(
+    showConfirmation(
       t('Accept Visit Request'),
       t('Are you sure you want to accept this visit request?'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Accept'),
-          onPress: async () => {
-            try {
-              const token = await storage.getAuthToken();
-              const url = buildApiUrl(API_ENDPOINTS.VISIT_REQUESTS.UPDATE.replace(':id', visitRequestId.toString()));
-              
-              const response = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ status: 'ACCEPTED' }),
-              });
-              
-              if (response.ok) {
-                Alert.alert(t('Success'), t('Visit request accepted'));
-                loadVisitRequests();
-                onSuccess?.();
-              } else {
-                Alert.alert(t('Error'), t('Failed to accept visit request'));
-              }
-            } catch (error) {
-              console.error('Error accepting visit request:', error);
-              Alert.alert(t('Error'), t('Failed to accept visit request'));
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          const token = await storage.getAuthToken();
+          const url = buildApiUrl(API_ENDPOINTS.VISIT_REQUESTS.UPDATE.replace(':id', visitRequestId.toString()));
+          
+          const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: 'ACCEPTED' }),
+          });
+          
+          if (response.ok) {
+            showSuccess(t('Visit request accepted'), t('Success'));
+            loadVisitRequests();
+            onSuccess?.();
+          } else {
+            showError(t('Failed to accept visit request'), t('Error'));
+          }
+        } catch (error) {
+          console.error('Error accepting visit request:', error);
+          showError(t('Failed to accept visit request'), t('Error'));
+        }
+      }
     );
   };
 
   const handleDeclineVisitRequest = async (visitRequestId: number) => {
-    Alert.alert(
+    showConfirmation(
       t('Decline Visit Request'),
       t('Are you sure you want to decline this visit request?'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Decline'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await storage.getAuthToken();
-              const url = buildApiUrl(API_ENDPOINTS.VISIT_REQUESTS.DELETE.replace(':id', visitRequestId.toString()));
-              
-              const response = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-              });
-              
-              if (response.ok) {
-                Alert.alert(t('Success'), t('Visit request declined'));
-                loadVisitRequests();
-              }
-            } catch (error) {
-              console.error('Error declining visit request:', error);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          const token = await storage.getAuthToken();
+          const url = buildApiUrl(API_ENDPOINTS.VISIT_REQUESTS.DELETE.replace(':id', visitRequestId.toString()));
+          
+          const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (response.ok) {
+            showSuccess(t('Visit request declined'), t('Success'));
+            loadVisitRequests();
+          }
+        } catch (error) {
+          console.error('Error declining visit request:', error);
+        }
+      },
+      {
+        confirmText: t('Decline'),
+        confirmStyle: 'destructive',
+      }
     );
   };
 
@@ -1239,15 +1250,15 @@ export default function BidReceivedProjectScreen({
         });
         
         if (response.ok) {
-          Alert.alert(t('Success'), t('Bid accepted successfully'));
+          showSuccess(t('Bid accepted successfully'), t('Success'));
           loadBids(isTechnician);
           onSuccess?.();
         } else {
-          Alert.alert(t('Error'), t('Failed to accept bid'));
+          showError(t('Failed to accept bid'), t('Error'));
         }
       } catch (error) {
         console.error('Error accepting bid:', error);
-        Alert.alert(t('Error'), t('Failed to accept bid'));
+        showError(t('Failed to accept bid'), t('Error'));
       }
     }
   };
@@ -1256,37 +1267,34 @@ export default function BidReceivedProjectScreen({
     if (onDeclineBid) {
       onDeclineBid(bidId);
     } else {
-      Alert.alert(
+      showConfirmation(
         t('Decline Bid'),
         t('Are you sure you want to decline this bid?'),
-        [
-          { text: t('Cancel'), style: 'cancel' },
-          {
-            text: t('Decline'),
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const token = await storage.getAuthToken();
-                const url = buildApiUrl(API_ENDPOINTS.BIDS.DELETE.replace(':id', bidId.toString()));
-                
-                const response = await fetch(url, {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  },
-                });
-                
-                if (response.ok) {
-                  Alert.alert(t('Success'), t('Bid declined'));
-                  loadBids(isTechnician);
-                }
-              } catch (error) {
-                console.error('Error declining bid:', error);
-              }
-            },
-          },
-        ]
+        async () => {
+          try {
+            const token = await storage.getAuthToken();
+            const url = buildApiUrl(API_ENDPOINTS.BIDS.DELETE.replace(':id', bidId.toString()));
+            
+            const response = await fetch(url, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (response.ok) {
+              showSuccess(t('Bid declined'), t('Success'));
+              loadBids(isTechnician);
+            }
+          } catch (error) {
+            console.error('Error declining bid:', error);
+          }
+        },
+        {
+          confirmText: t('Decline'),
+          confirmStyle: 'destructive',
+        }
       );
     }
   };
@@ -1294,42 +1302,39 @@ export default function BidReceivedProjectScreen({
   const handleWithdrawBid = async () => {
     if (!myBid) return;
 
-    Alert.alert(
+    showConfirmation(
       t('Withdraw Bid'),
       t('Are you sure you want to withdraw your bid? This action cannot be undone.'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Withdraw'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await storage.getAuthToken();
-              const url = buildApiUrl(API_ENDPOINTS.BIDS.DELETE.replace(':id', myBid.id.toString()));
-              
-              const response = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-              });
-              
-              if (response.ok) {
-                Alert.alert(t('Success'), t('Bid withdrawn successfully'));
-                setMyBid(null);
-                loadBids(true);
-                onSuccess?.();
-              } else {
-                Alert.alert(t('Error'), t('Failed to withdraw bid'));
-              }
-            } catch (error) {
-              console.error('Error withdrawing bid:', error);
-              Alert.alert(t('Error'), t('Failed to withdraw bid'));
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          const token = await storage.getAuthToken();
+          const url = buildApiUrl(API_ENDPOINTS.BIDS.DELETE.replace(':id', myBid.id.toString()));
+          
+          const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (response.ok) {
+            showSuccess(t('Bid withdrawn successfully'), t('Success'));
+            setMyBid(null);
+            loadBids(true);
+            onSuccess?.();
+          } else {
+            showError(t('Failed to withdraw bid'), t('Error'));
+          }
+        } catch (error) {
+          console.error('Error withdrawing bid:', error);
+          showError(t('Failed to withdraw bid'), t('Error'));
+        }
+      },
+      {
+        confirmText: t('Withdraw'),
+        confirmStyle: 'destructive',
+      }
     );
   };
 
@@ -1559,6 +1564,10 @@ export default function BidReceivedProjectScreen({
                 onAccept={() => handleAcceptVisitRequest(visitRequest.id)}
                 onDecline={() => handleDeclineVisitRequest(visitRequest.id)}
                 onViewTechnician={() => onViewTechnician?.(visitRequest.technicianId)}
+                onBook={() => {
+                  setSelectedVisitRequest(visitRequest);
+                  setBookingModalVisible(true);
+                }}
               />
             ))
           )}
@@ -1821,6 +1830,48 @@ export default function BidReceivedProjectScreen({
           </View>
         </View>
       </Modal>
+      
+      {/* Book Appointment Modal */}
+      {selectedVisitRequest && (
+        <BookAppointmentModal
+          visible={bookingModalVisible}
+          technicianId={selectedVisitRequest.technicianId}
+          technicianName={selectedVisitRequest.technicianName}
+          projectId={project.id}
+          onClose={() => {
+            setBookingModalVisible(false);
+            setSelectedVisitRequest(null);
+          }}
+          onSuccess={() => {
+            loadVisitRequests();
+            onSuccess?.();
+          }}
+        />
+      )}
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
   );
 }

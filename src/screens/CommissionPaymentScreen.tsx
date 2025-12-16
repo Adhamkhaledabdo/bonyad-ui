@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView,
   Keyboard,
   Platform,
@@ -14,18 +13,25 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 
 interface CommissionPaymentScreenProps {
   onBack?: () => void;
 }
 
-export default function CommissionPaymentScreen({ onBack }: CommissionPaymentScreenProps) {
+export default function CommissionPaymentScreen({ onBack }: 
+  CommissionPaymentScreenProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [projectAmount, setProjectAmount] = useState('');
   const [commission, setCommission] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  const { confirmState, showConfirmation, hideConfirmation } = useConfirmationPopup();
 
   // Calculate commission (1% of project amount)
   const calculateCommission = (amountString: string) => {
@@ -51,36 +57,27 @@ export default function CommissionPaymentScreen({ onBack }: CommissionPaymentScr
   const processPayment = () => {
     if (commissionAmount <= 0) return;
 
-    Alert.alert(
+    showConfirmation(
       t('Payment Confirmation'),
       t('You are about to pay {{amount}} SAR commission', { amount: commissionAmount.toFixed(2) }),
-      [
-        {
-          text: t('Cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('Confirm'),
-          onPress: async () => {
-            setIsProcessingPayment(true);
-            try {
-              // TODO: Implement actual payment logic here
-              console.log(`💳 Processing payment of ${commissionAmount} SAR`);
-              
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              Alert.alert(t('Success'), t('Payment successful'));
-              setProjectAmount('');
-              setCommission('');
-            } catch (error) {
-              Alert.alert(t('Error'), t('Failed to process payment'));
-            } finally {
-              setIsProcessingPayment(false);
-            }
-          },
-        },
-      ]
+      async () => {
+        setIsProcessingPayment(true);
+        try {
+          // TODO: Implement actual payment logic here
+          console.log(`💳 Processing payment of ${commissionAmount} SAR`);
+          
+          // Simulate API call
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          showSuccess(t('Payment successful'), t('Success'));
+          setProjectAmount('');
+          setCommission('');
+        } catch (error) {
+          showError(t('Failed to process payment'), t('Error'));
+        } finally {
+          setIsProcessingPayment(false);
+        }
+      }
     );
   };
 
@@ -194,6 +191,30 @@ export default function CommissionPaymentScreen({ onBack }: CommissionPaymentScr
           )}
         </TouchableOpacity>
       </View>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </View>
   );
 }
@@ -318,6 +339,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 50,
     ...Platform.select({
       android: {
         elevation: 2,

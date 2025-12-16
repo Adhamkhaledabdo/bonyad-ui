@@ -15,7 +15,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
@@ -28,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
 import { showSuccess, showError } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 // ===== DESIGN TOKENS FROM FIGMA =====
 const COLORS = {
@@ -80,6 +80,9 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
   const IS_WEB = Platform.OS === 'web';
   const IS_MOBILE = Platform.OS === 'ios' || Platform.OS === 'android';
   
+  // Custom popup hooks
+  const { alertState, showError: showErrorAlert, hideAlert } = useAlertPopup();
+  
   // Larger modal dimensions - matching VisitRequestModal
   const modalWidth = IS_WEB ? Math.min(520, screenWidth - 32) : screenWidth - 32;
   const modalMaxHeight = IS_MOBILE ? screenHeight - 100 : screenHeight * 0.85;
@@ -103,28 +106,28 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
   const submitBid = async () => {
     // Validation
     if (!bidPrice || parseFloat(bidPrice) <= 0) {
-      Alert.alert(t('Error'), t('Please enter a valid price'));
+      showErrorAlert(t('Please enter a valid price'), t('Error'));
       return;
     }
 
     if (!bidDescription.trim()) {
-      Alert.alert(t('Error'), t('Please enter bid description'));
+      showErrorAlert(t('Please enter bid description'), t('Error'));
       return;
     }
 
     if (!estimatedDays || parseInt(estimatedDays) <= 0) {
-      Alert.alert(t('Error'), t('Please enter valid duration'));
+      showErrorAlert(t('Please enter valid duration'), t('Error'));
       return;
     }
 
     if (!project || !project.id) {
-      Alert.alert(t('Error'), 'Invalid project ID');
+      showErrorAlert('Invalid project ID', t('Error'));
       return;
     }
 
     const token = await storage.getAuthToken();
     if (!token) {
-      Alert.alert(t('Error'), 'No auth token found');
+      showErrorAlert('No auth token found', t('Error'));
       return;
     }
 
@@ -346,6 +349,16 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </Modal>
   );
 }

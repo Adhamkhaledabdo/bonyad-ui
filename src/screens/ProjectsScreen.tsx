@@ -12,7 +12,6 @@ import {
   Image,
   Modal,
   Platform,
-  Alert,
   TextInput,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +21,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
+import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
 import ProjectDetailModal from './ProjectDetailModal';
 import ProjectDetailScreen from './ProjectDetailScreen';
 import PendingProjectScreen from './PendingProjectScreen';
@@ -141,6 +142,10 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
   // New pages for technicians and users
   const [currentPage, setCurrentPage] = useState<'list' | 'contract-signing' | 'progress' | 'user-phase-view' | 'user-contract-signing' | 'user-progress' | 'completed-project' | 'technician-profile' | 'project-detail' | 'owner-edit' | 'project-detail-screen' | 'pending-project' | 'bid-received-project' | 'technician-pending-project' | 'technician-bid-received' | 'approved-project' | 'technician-approved-project' | 'new-project' | 'ai-form' | 'manual-form'>('list');
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<number | null>(null);
+  
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  const { confirmState, showDeleteConfirmation, hideConfirmation } = useConfirmationPopup();
 
   // Update local filter when prop changes
   useEffect(() => {
@@ -173,51 +178,38 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
   };
 
   const handleDeleteProject = async (project: Project) => {
-    Alert.alert(
+    showDeleteConfirmation(
       t('Delete Project'),
       t('Are you sure you want to delete this project? This action cannot be undone.'),
-      [
-        { text: t('Cancel'), style: 'cancel' },
-        {
-          text: t('Delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await storage.getAuthToken();
-              if (!token) {
-                Alert.alert(t('Error'), t('Please login again'));
-                return;
-              }
+      async () => {
+        try {
+          const token = await storage.getAuthToken();
+          if (!token) {
+            showError(t('Please login again'), t('Error'));
+            return;
+          }
 
-              const deleteUrl = buildApiUrl(API_ENDPOINTS.PROJECTS.DELETE.replace(':id', project.id.toString()));
-              const response = await fetch(deleteUrl, {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-              });
+          const deleteUrl = buildApiUrl(API_ENDPOINTS.PROJECTS.DELETE.replace(':id', project.id.toString()));
+          const response = await fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
 
-              if (response.ok || response.status === 204) {
-                Alert.alert(t('Success'), t('Project deleted successfully'), [
-                  {
-                    text: t('OK'),
-                    onPress: () => {
-                      loadProjects();
-                    },
-                  },
-                ]);
-              } else {
-                const errorText = await response.text();
-                throw new Error(errorText || t('Failed to delete project'));
-              }
-            } catch (error: any) {
-              console.error('❌ Failed to delete project:', error);
-              Alert.alert(t('Error'), error.message || t('Failed to delete project'));
-            }
-          },
-        },
-      ]
+          if (response.ok || response.status === 204) {
+            showSuccess(t('Project deleted successfully'), t('Success'));
+            loadProjects();
+          } else {
+            const errorText = await response.text();
+            throw new Error(errorText || t('Failed to delete project'));
+          }
+        } catch (error: any) {
+          console.error('❌ Failed to delete project:', error);
+          showError(error.message || t('Failed to delete project'), t('Error'));
+        }
+      }
     );
   };
 
@@ -1506,6 +1498,30 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
         />
       )}
       <View style={{ height: 40 }} />
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
+      
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        visible={confirmState.visible}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        confirmStyle={confirmState.confirmStyle}
+        icon={confirmState.icon}
+        onConfirm={confirmState.onConfirm}
+        onCancel={hideConfirmation}
+      />
     </>
   );
 }

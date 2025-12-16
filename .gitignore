@@ -24,6 +24,23 @@ ios/DerivedData/
 app.json.backup
 app.config.js.backup
 
+# === API Keys & Secrets ===
+# OpenAI API keys and other sensitive credentials
+*api*key*
+*openai*
+*OPENAI*
+*open_ai*
+*OPEN_AI*
+*secret*
+*credentials*
+*config.local*
+*.key
+*.pem
+# Environment files that might contain API keys
+.env.local
+.env.production
+.env.development
+
 # === IDEs & OS files ===
 .DS_Store
 .idea/

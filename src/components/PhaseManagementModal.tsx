@@ -29,7 +29,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
-import { showError, showSuccess } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from './AlertPopup';
 
 // ===== DESIGN TOKENS =====
 const COLORS = {
@@ -780,6 +780,9 @@ export default function PhaseManagementModal({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   
+  // Custom alert hook
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
+  
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -1195,6 +1198,16 @@ export default function PhaseManagementModal({
           isDestructive={confirmationConfig.isDestructive}
         />
       )}
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </>
   );
 }

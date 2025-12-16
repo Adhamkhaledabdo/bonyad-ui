@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
 import { verifyPhoneChange, resendPhoneChangeOTP } from '../services/ProfileService';
-import { showAlert, showError } from '../utils/alert';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 interface VerifyPhoneChangeScreenProps {
   newPhoneNumber: string;
@@ -28,6 +28,9 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  
+  // Custom alert hook
+  const { alertState, showError, showAlert, hideAlert } = useAlertPopup();
   
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +64,7 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
       
       console.log('✅ [VerifyPhoneChangeScreen] Verification successful:', result);
       
-      showAlert(t('Success'), result.message, [
+      showAlert(t('Success'), result.message, 'success', [
         {
           text: t('OK'),
           onPress: () => {
@@ -119,7 +122,7 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
           
           console.log('✅ [VerifyPhoneChangeScreen] Verification successful:', result);
           
-          showAlert(t('Success'), result.message, [
+          showAlert(t('Success'), result.message, 'success', [
             {
               text: t('OK'),
               onPress: () => {
@@ -286,6 +289,16 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
           </TouchableOpacity>
         </View>
       </ScrollView>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </View>
   );
 }

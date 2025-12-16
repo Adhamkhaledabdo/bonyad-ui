@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Switch,
@@ -22,6 +21,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 interface OwnerProjectEditScreenProps {
   projectId: number;
@@ -41,6 +41,9 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, showAlert, hideAlert } = useAlertPopup();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -166,7 +169,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(t('Permission Required'), t('Please grant camera roll permissions'));
+      showError(t('Please grant camera roll permissions'), t('Permission Required'));
       return;
     }
 
@@ -179,7 +182,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
     if (!result.canceled && result.assets) {
       const totalPhotos = existingPhotos.length + newPhotos.length + result.assets.length;
       if (totalPhotos > 5) {
-        Alert.alert(t('Error'), t('Maximum 5 photos allowed'));
+        showError(t('Maximum 5 photos allowed'), t('Error'));
         return;
       }
       setNewPhotos([...newPhotos, ...result.assets]);
@@ -254,22 +257,22 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
 
   const validateForm = () => {
     if (!description.trim()) {
-      Alert.alert(t('Error'), t('Please enter a project description'));
+      showError(t('Please enter a project description'), t('Error'));
       return false;
     }
     if (!budget.trim()) {
-      Alert.alert(t('Error'), t('Please enter budget'));
+      showError(t('Please enter budget'), t('Error'));
       return false;
     }
     const parsedBudget = Number(budget.replace(/,/g, ''));
     if (Number.isNaN(parsedBudget) || parsedBudget <= 0) {
-      Alert.alert(t('Error'), t('Please enter a valid budget amount'));
+      showError(t('Please enter a valid budget amount'), t('Error'));
       return false;
     }
     for (let i = 0; i < phases.length; i += 1) {
       const phase = phases[i];
       if (!phase.description.trim()) {
-        Alert.alert(t('Error'), t('Phase Description') + ` #${i + 1}`);
+        showError(t('Phase Description') + ` #${i + 1}`, t('Error'));
         return false;
       }
     }
@@ -413,15 +416,22 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
         await response.json();
       }
 
-      Alert.alert(t('Success'), t('Project updated successfully'), [
-        {
-          text: t('OK'),
-          onPress: onSuccess,
-        },
-      ]);
+      showAlert(
+        t('Success'),
+        t('Project updated successfully'),
+        'success',
+        [
+          {
+            text: t('OK'),
+            onPress: () => {
+              onSuccess();
+            },
+          },
+        ]
+      );
     } catch (err: any) {
       console.error('❌ [OwnerProjectEditScreen] Failed to save project:', err);
-      Alert.alert(t('Error'), err.message || t('Failed to save project'));
+      showError(err.message || t('Failed to save project'), t('Error'));
     } finally {
       setIsSaving(false);
     }
@@ -810,6 +820,16 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
       >
         {renderContent()}
       </KeyboardAvoidingView>
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </View>
   );
 }

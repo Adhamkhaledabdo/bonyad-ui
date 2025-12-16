@@ -8,7 +8,6 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +19,7 @@ import PhaseApprovalModal from './PhaseApprovalModal';
 import ContractViewerModal from './ContractViewerModal';
 import LocationPicker from '../components/LocationPicker';
 import { generateRoomId } from '../utils/chatUtils';
+import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
 interface ProjectDetailModalProps {
   visible: boolean;
@@ -84,6 +84,9 @@ export default function ProjectDetailModal({ visible, project, onClose, onOpenCh
   const [isTechnician, setIsTechnician] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
+  
+  // Custom popup hooks
+  const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
 
   useEffect(() => {
     if (visible && project) {
@@ -339,7 +342,7 @@ export default function ProjectDetailModal({ visible, project, onClose, onOpenCh
     try {
       const token = await storage.getAuthToken();
       if (!token) {
-        Alert.alert(t('Error'), t('Please login again'));
+        showError(t('Please login again'), t('Error'));
         setIsUpdatingAddress(false);
         return;
       }
@@ -400,12 +403,12 @@ export default function ProjectDetailModal({ visible, project, onClose, onOpenCh
         longitude: location.longitude,
       });
       
-      Alert.alert(t('Success'), t('Address updated successfully'));
+      showSuccess(t('Address updated successfully'), t('Success'));
       setShowMapPicker(false);
       onSuccess?.(); // Refresh project list
     } catch (error: any) {
       console.error('❌ Failed to update address:', error);
-      Alert.alert(t('Error'), error.message || t('Failed to update address'));
+      showError(error.message || t('Failed to update address'), t('Error'));
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -1123,6 +1126,16 @@ export default function ProjectDetailModal({ visible, project, onClose, onOpenCh
           onClose={() => setShowMapPicker(false)}
         />
       )}
+      
+      {/* Alert Popup */}
+      <AlertPopup
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onClose={hideAlert}
+      />
     </Modal>
   );
 }
