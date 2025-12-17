@@ -16,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrlWithParams, buildApiUrl, API_BASE_URL } from '../config/api';
 import { storage } from '../utils/storage';
 import { ChatMessage } from '../types/chat';
@@ -48,6 +49,7 @@ export default function ChatDetailScreen({
 }: ChatDetailScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -682,14 +684,14 @@ export default function ChatDetailScreen({
           ) : (
             <View style={{ width: 24 }} />
           )}
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {receiverName}
           </Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          <Text style={[styles.loadingText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
             {t('Loading messages...')}
           </Text>
         </View>
@@ -718,7 +720,7 @@ export default function ChatDetailScreen({
         ) : (
           <View style={{ width: 24 }} />
         )}
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
           {receiverName}
         </Text>
         <View style={{ width: 24 }} />

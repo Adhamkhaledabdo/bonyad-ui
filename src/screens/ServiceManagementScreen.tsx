@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
@@ -36,6 +37,7 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   
   const [myServices, setMyServices] = useState<Service[]>([]);
   const [allServices, setAllServices] = useState<Service[]>([]);
@@ -204,7 +206,7 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('Service Management')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Service Management')}</Text>
         {availableServices.length > 0 && (
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.primary }]}
@@ -218,17 +220,17 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         {/* My Services */}
         <View style={styles.content}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(16) }]}>
             {t('My Services')} ({myServices.length})
           </Text>
 
           {myServices.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="construct" size={60} color={colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary, fontSize: scaledSize(18) }]}>
                 {t('No services added yet')}
               </Text>
-              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              <Text style={[styles.emptySubtext, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                 {t('Add services to show what you can do')}
               </Text>
             </View>
@@ -248,11 +250,11 @@ export default function ServiceManagementScreen({ onBack }: ServiceManagementScr
                     />
                   )}
                   <View style={styles.serviceInfo}>
-                    <Text style={[styles.serviceName, { color: colors.text }]}>
+                    <Text style={[styles.serviceName, { color: colors.text, fontSize: scaledSize(16) }]}>
                       {i18n.language === 'ar' ? service.nameAr : service.nameEn}
                     </Text>
                     {service.description && (
-                      <Text style={[styles.serviceDescription, { color: colors.textSecondary }]}>
+                      <Text style={[styles.serviceDescription, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                         {service.description}
                       </Text>
                     )}

@@ -16,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTechnicianProfile, TechnicianProfile } from '../services/TechnicianService';
 import { getPublicPortfolio, getPublicPDFInfo, getQRCodeUrl, PortfolioPDFInfo } from '../services/PortfolioService';
@@ -50,6 +51,7 @@ export default function TechnicianProfileView({
 }: TechnicianProfileViewProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   
   // Responsive dimensions

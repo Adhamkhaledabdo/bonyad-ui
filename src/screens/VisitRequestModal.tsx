@@ -23,6 +23,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
@@ -68,6 +69,7 @@ interface VisitRequestModalProps {
 export default function VisitRequestModal({ visible, project, onClose, onSuccess }: VisitRequestModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

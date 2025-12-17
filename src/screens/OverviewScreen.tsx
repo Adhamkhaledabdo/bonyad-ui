@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, Alert, Animated, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 
 const REMOTE_OVERVIEW_IMAGE_URLS: string[] = [
@@ -68,6 +69,7 @@ interface OverviewScreenProps {
 
 export default function OverviewScreen({ onNavigateToLogin, onNavigateToDesign, onNavigateToVoiceAI, onNavigateToCostExplorer, onNavigateToRoomVisualizer, onNavigateToAskBonyadAI, onNavigateToProjectsMap, onNavigateToContact, onNavigateToAbout, onNavigateToIntroToApp }: OverviewScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
   const [userType, setUserType] = useState<'user' | 'provider'>('user');
   const [isHovering, setIsHovering] = useState(false);
@@ -957,13 +959,13 @@ export default function OverviewScreen({ onNavigateToLogin, onNavigateToDesign, 
 
         {/* Download App Section */}
         <View style={[styles.downloadSection, { backgroundColor: cardBackground }]}>
-          <Text style={[styles.downloadTitle, { color: textColor, fontSize: screenWidth <= 768 ? 28 : 36 }]}>
+          <Text style={[styles.downloadTitle, { color: textColor, fontSize: scaledSize(screenWidth <= 768 ? 28 : 36) }]}>
             Download the Bonyad App
           </Text>
-          <Text style={[styles.downloadSubtitle, { color: config.primaryColor, fontSize: screenWidth <= 768 ? 20 : 24 }]}>
+          <Text style={[styles.downloadSubtitle, { color: config.primaryColor, fontSize: scaledSize(screenWidth <= 768 ? 20 : 24) }]}>
             One App for Both Users and Technicians
           </Text>
-          <Text style={[styles.downloadDescription, { color: textSecondaryColor, fontSize: screenWidth <= 768 ? 16 : 18 }]}>
+          <Text style={[styles.downloadDescription, { color: textSecondaryColor, fontSize: scaledSize(screenWidth <= 768 ? 16 : 18) }]}>
             Whether you're a homeowner looking for skilled professionals or a technician seeking new opportunities, our app has everything you need.
           </Text>
           <View style={styles.downloadButtons}>
@@ -973,8 +975,8 @@ export default function OverviewScreen({ onNavigateToLogin, onNavigateToDesign, 
             >
               <Ionicons name="logo-apple" size={screenWidth <= 768 ? 24 : 28} color="#fff" />
               <View style={styles.downloadButtonText}>
-                <Text style={[styles.downloadButtonLabel, { fontSize: screenWidth <= 768 ? 10 : 12 }]}>Available on</Text>
-                <Text style={[styles.downloadButtonPlatform, { fontSize: screenWidth <= 768 ? 16 : 20 }]}>iOS</Text>
+                <Text style={[styles.downloadButtonLabel, { fontSize: scaledSize(screenWidth <= 768 ? 10 : 12) }]}>Available on</Text>
+                <Text style={[styles.downloadButtonPlatform, { fontSize: scaledSize(screenWidth <= 768 ? 16 : 20) }]}>iOS</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -983,8 +985,8 @@ export default function OverviewScreen({ onNavigateToLogin, onNavigateToDesign, 
             >
               <Ionicons name="logo-google-playstore" size={screenWidth <= 768 ? 24 : 28} color="#fff" />
               <View style={styles.downloadButtonText}>
-                <Text style={[styles.downloadButtonLabel, { fontSize: screenWidth <= 768 ? 10 : 12 }]}>Available on</Text>
-                <Text style={[styles.downloadButtonPlatform, { fontSize: screenWidth <= 768 ? 16 : 20 }]}>Android</Text>
+                <Text style={[styles.downloadButtonLabel, { fontSize: scaledSize(screenWidth <= 768 ? 10 : 12) }]}>Available on</Text>
+                <Text style={[styles.downloadButtonPlatform, { fontSize: scaledSize(screenWidth <= 768 ? 16 : 20) }]}>Android</Text>
               </View>
             </TouchableOpacity>
           </View>

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
 import * as ImagePicker from 'expo-image-picker';
@@ -43,6 +44,7 @@ export default function EditProfileScreen({ userDetails, onBack, onSave }: EditP
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const isRTL = i18n.language === 'ar';
   
@@ -201,7 +203,7 @@ export default function EditProfileScreen({ userDetails, onBack, onSave }: EditP
             color={headerTextColor}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: headerTextColor }]}>
+        <Text style={[styles.headerTitle, { color: headerTextColor, fontSize: scaledSize(18) }]}>
           {t('Edit Profile Information')}
         </Text>
         <View style={styles.placeholder} />
@@ -236,7 +238,7 @@ export default function EditProfileScreen({ userDetails, onBack, onSave }: EditP
                   )}
                 </View>
             </TouchableOpacity>
-          <Text style={[styles.userName, { color: headerTextColor }]}>
+          <Text style={[styles.userName, { color: headerTextColor, fontSize: scaledSize(18) }]}>
             {`${firstName} ${lastName}`.trim() || t('profile.usernamePlaceholder')}
           </Text>
           </View>
@@ -248,7 +250,7 @@ export default function EditProfileScreen({ userDetails, onBack, onSave }: EditP
           <View style={styles.formSection}>
           {/* First Name */}
             <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('First Name')}
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
@@ -265,7 +267,7 @@ export default function EditProfileScreen({ userDetails, onBack, onSave }: EditP
 
           {/* Last Name */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('Last Name')}
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
@@ -282,7 +284,7 @@ export default function EditProfileScreen({ userDetails, onBack, onSave }: EditP
 
           {/* Email */}
             <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('Email')}
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>

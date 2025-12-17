@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, View, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import BookingScreen from '../screens/BookingScreen';
 
 interface BookAppointmentModalProps {

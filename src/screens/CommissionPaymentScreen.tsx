@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
@@ -24,6 +25,7 @@ export default function CommissionPaymentScreen({ onBack }:
   CommissionPaymentScreenProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [projectAmount, setProjectAmount] = useState('');
   const [commission, setCommission] = useState('');
@@ -96,7 +98,7 @@ export default function CommissionPaymentScreen({ onBack }:
             <TouchableOpacity onPress={onBack}>
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(20) }]}>
               {t('Commission Payment')}
             </Text>
             <View style={{ width: 24 }} />
@@ -105,18 +107,18 @@ export default function CommissionPaymentScreen({ onBack }:
 
         <View style={styles.content}>
           {/* Title */}
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[styles.title, { color: colors.text, fontSize: scaledSize(24) }]}>
             {t('Commission Payment')}
           </Text>
 
           {/* Description */}
-          <Text style={[styles.description, { color: colors.textSecondary }]}>
+          <Text style={[styles.description, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
             {t('Enter the project amount to calculate and pay the commission fee (1% of project amount)')}
           </Text>
 
           {/* Project Amount Field */}
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>
+            <Text style={[styles.fieldLabel, { color: colors.text, fontSize: scaledSize(16) }]}>
               {t('Project Amount')}
             </Text>
             <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
@@ -135,13 +137,13 @@ export default function CommissionPaymentScreen({ onBack }:
                   },
                 })}
               />
-              <Text style={[styles.currency, { color: colors.textSecondary }]}>SAR</Text>
+              <Text style={[styles.currency, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>SAR</Text>
             </View>
           </View>
 
           {/* Commission Value Field (Read-only) */}
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>
+            <Text style={[styles.fieldLabel, { color: colors.text, fontSize: scaledSize(16) }]}>
               {t('Commission Amount')}
             </Text>
             <View style={[styles.inputContainer, styles.disabledInput, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
@@ -158,7 +160,7 @@ export default function CommissionPaymentScreen({ onBack }:
           {/* Info Text */}
           <View style={[styles.infoContainer, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
             <Ionicons name="information-circle" size={20} color={colors.primary} />
-            <Text style={[styles.infoText, { color: colors.text }]}>
+            <Text style={[styles.infoText, { color: colors.text, fontSize: scaledSize(14) }]}>
               {t('Commission is calculated as 1% of the project amount')}
             </Text>
           </View>
@@ -180,12 +182,12 @@ export default function CommissionPaymentScreen({ onBack }:
         >
           {isProcessingPayment ? (
             <View style={styles.processingContainer}>
-              <Text style={[styles.payButtonText, { color: colors.cardBackground }]}>
+              <Text style={[styles.payButtonText, { color: colors.cardBackground, fontSize: scaledSize(18) }]}>
                 {t('Processing...')}
               </Text>
             </View>
           ) : (
-            <Text style={[styles.payButtonText, { color: colors.cardBackground }]}>
+            <Text style={[styles.payButtonText, { color: colors.cardBackground, fontSize: scaledSize(18) }]}>
               {t('Pay {{amount}} SAR', { amount: commissionAmount > 0 ? commissionAmount.toFixed(2) : '0.00' })}
             </Text>
           )}

@@ -16,6 +16,7 @@ import { Colors } from '../constants/Colors';
 import { Surface } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 
 interface NewProjectViewProps {
   onNavigateToAI: () => void;
@@ -42,6 +43,7 @@ export default function NewProjectView({
 }: NewProjectViewProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [animatedText, setAnimatedText] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { fetchSubscriptionPlans } from '../services/onboardingApi';
@@ -60,6 +61,7 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   
   const [subscription, setSubscription] = useState<CurrentSubscription | null>(null);
   const [bidQuota, setBidQuota] = useState<BidQuotaInfo | null>(null);
@@ -336,7 +338,7 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="#003867" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('Active Subscription') || 'Active Subscription'}</Text>
+        <Text style={[styles.headerTitle, { fontSize: scaledSize(18) }]}>{t('Active Subscription') || 'Active Subscription'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -348,9 +350,9 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
               <View style={styles.cardContent}>
                 {/* Card Header */}
                 <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>{subscriptionName}</Text>
+                  <Text style={[styles.cardTitle, { fontSize: scaledSize(20) }]}>{subscriptionName}</Text>
                   {subscriptionPrice !== undefined && (
-                    <Text style={styles.cardPrice}>SAR {subscriptionPrice.toFixed(0)}</Text>
+                    <Text style={[styles.cardPrice, { fontSize: scaledSize(18) }]}>SAR {subscriptionPrice.toFixed(0)}</Text>
                   )}
                 </View>
 
@@ -360,22 +362,22 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
                 {/* Details List */}
                 <View style={styles.detailsList}>
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{t('Start Date')}</Text>
-                    <Text style={styles.detailValue}>{formatDateDDMMYYYY(startDate)}</Text>
+                    <Text style={[styles.detailLabel, { fontSize: scaledSize(14) }]}>{t('Start Date')}</Text>
+                    <Text style={[styles.detailValue, { fontSize: scaledSize(14) }]}>{formatDateDDMMYYYY(startDate)}</Text>
                   </View>
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{t('End Date')}</Text>
-                    <Text style={styles.detailValue}>{formatDateDDMMYYYY(endDate)}</Text>
+                    <Text style={[styles.detailLabel, { fontSize: scaledSize(14) }]}>{t('End Date')}</Text>
+                    <Text style={[styles.detailValue, { fontSize: scaledSize(14) }]}>{formatDateDDMMYYYY(endDate)}</Text>
                   </View>
                   {daysRemaining !== undefined && (
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>{t('Days Remaining')}</Text>
-                      <Text style={styles.detailValue}>{daysRemaining}</Text>
+                      <Text style={[styles.detailLabel, { fontSize: scaledSize(14) }]}>{t('Days Remaining')}</Text>
+                      <Text style={[styles.detailValue, { fontSize: scaledSize(14) }]}>{daysRemaining}</Text>
                     </View>
                   )}
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{t('Status')}</Text>
-                    <Text style={styles.detailValue}>{t('Active')}</Text>
+                    <Text style={[styles.detailLabel, { fontSize: scaledSize(14) }]}>{t('Status')}</Text>
+                    <Text style={[styles.detailValue, { fontSize: scaledSize(14) }]}>{t('Active')}</Text>
                   </View>
                 </View>
               </View>
@@ -384,10 +386,10 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
             <View style={[styles.card, { backgroundColor: '#FFFFFF', borderColor: '#D9D9D9' }]}>
               <View style={[styles.cardContent, styles.noSubscriptionContent]}>
                 <Ionicons name="close-circle" size={60} color="#A3A3A3" />
-                <Text style={styles.noSubscriptionText}>
+                <Text style={[styles.noSubscriptionText, { fontSize: scaledSize(18) }]}>
                   {t('No Active Subscription') || 'No Active Subscription'}
                 </Text>
-                <Text style={styles.noSubscriptionSubtext}>
+                <Text style={[styles.noSubscriptionSubtext, { fontSize: scaledSize(14) }]}>
                   {t('Subscribe to a plan to get started') || 'Subscribe to a plan to get started'}
                 </Text>
               </View>

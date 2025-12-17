@@ -22,6 +22,7 @@ import { storage } from '../utils/storage';
 import { Button, Card, Surface } from 'react-native-paper';
 import { useFCMNotifications } from '../utils/useFCMNotifications';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
@@ -47,6 +48,7 @@ export default function LoginScreen({
 }) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const insets = useSafeAreaInsets();
   
@@ -267,7 +269,7 @@ export default function LoginScreen({
                     color={isDarkMode ? colors.primary : figmaMobileColors.buttonBlue} 
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaMobileColors.buttonBlue, fontWeight: '600', fontSize: 18 }]}>
+                  <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaMobileColors.buttonBlue, fontWeight: '600', fontSize: scaledSize(18) }]}>
                     {i18n.language === 'ar' ? 'AR' : 'EN'}
                   </Text>
                 </TouchableOpacity>
@@ -294,10 +296,10 @@ export default function LoginScreen({
 
               {/* Welcome Section - Figma Style */}
               <View style={styles.mobileWelcomeSection}>
-                <Text style={[styles.mobileWelcomeTitle, { color: isDarkMode ? colors.text : figmaMobileColors.titleBlue, fontSize: UIFontSizes.welcomeTitle }]}>
+                <Text style={[styles.mobileWelcomeTitle, { color: isDarkMode ? colors.text : figmaMobileColors.titleBlue, fontSize: scaledSize(UIFontSizes.welcomeTitle) }]}>
                   {t('Welcome back')}
                 </Text>
-                <Text style={[styles.mobileWelcomeSubtitle, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.textDark, fontSize: UIFontSizes.welcomeSubtitle }]}>
+                <Text style={[styles.mobileWelcomeSubtitle, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.textDark, fontSize: scaledSize(UIFontSizes.welcomeSubtitle) }]}>
                   {t('Manage your properties and services.')}
                 </Text>
               </View>
@@ -346,7 +348,7 @@ export default function LoginScreen({
                   {isLoading ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Text style={[styles.mobileLoginButtonText, { fontSize: UIFontSizes.buttonMedium }]}>
+                    <Text style={[styles.mobileLoginButtonText, { fontSize: scaledSize(UIFontSizes.buttonMedium) }]}>
                       {t('Login')}
                     </Text>
                   )}
@@ -357,11 +359,11 @@ export default function LoginScreen({
                   styles.mobileCreateAccountContainer,
                   { flexDirection: i18n.language === 'ar' ? 'row-reverse' : 'row' }
                 ]}>
-                  <Text style={[styles.mobileCreateAccountText, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.linkNavy, fontSize: 14 }]}>
+                  <Text style={[styles.mobileCreateAccountText, { color: isDarkMode ? colors.textSecondary : figmaMobileColors.linkNavy, fontSize: scaledSize(14) }]}>
                     {t("Don't have an account?")}
                   </Text>
                   <TouchableOpacity onPress={onNavigateToSignup}>
-                    <Text style={[styles.mobileCreateAccountLink, { color: isDarkMode ? colors.primary : figmaMobileColors.linkNavy, fontSize: 14 }]}>
+                    <Text style={[styles.mobileCreateAccountLink, { color: isDarkMode ? colors.primary : figmaMobileColors.linkNavy, fontSize: scaledSize(14) }]}>
                       {t('Create an account')}
                     </Text>
                   </TouchableOpacity>
@@ -420,7 +422,7 @@ export default function LoginScreen({
             color={isDarkMode ? colors.primary : figmaColors.primaryBlue} 
             style={{ marginRight: 6 }}
           />
-          <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaColors.primaryBlue, fontWeight: '600', fontSize: 18 }]}>
+          <Text style={[styles.langText, { color: isDarkMode ? colors.primary : figmaColors.primaryBlue, fontWeight: '600', fontSize: scaledSize(18) }]}>
             {i18n.language === 'ar' ? 'AR' : 'EN'}
           </Text>
         </TouchableOpacity>
@@ -556,7 +558,7 @@ export default function LoginScreen({
               <View style={{ alignItems: 'center', marginBottom: 24, gap: 8 }}>
                 <Text style={[styles.desktopFormTitle, { 
                   color: isDarkMode ? colors.text : figmaColors.titleBlue, 
-                  fontSize: 28, 
+                  fontSize: scaledSize(28), 
                   fontWeight: '700',
                   textAlign: 'center',
                   marginBottom: 0,
@@ -566,7 +568,7 @@ export default function LoginScreen({
                 </Text>
                 <Text style={[styles.desktopFormSubtitle, { 
                   color: isDarkMode ? colors.textSecondary : figmaColors.textDark, 
-                  fontSize: 18,
+                  fontSize: scaledSize(18),
                   fontWeight: '400',
                   textAlign: 'center',
                   marginBottom: 0,
@@ -623,7 +625,7 @@ export default function LoginScreen({
                   borderRadius: 8,
                 }]}
                 contentStyle={[styles.desktopLoginButtonContent, { paddingVertical: 12 }]}
-                labelStyle={{ fontSize: UIFontSizes.buttonMedium, fontWeight: '600', color: '#FFFFFF', fontFamily: FontFamily.button }}
+                labelStyle={{ fontSize: scaledSize(UIFontSizes.buttonMedium), fontWeight: '600', color: '#FFFFFF', fontFamily: FontFamily.button }}
                 loading={isLoading}
               >
                 {t('Login')}
@@ -640,7 +642,7 @@ export default function LoginScreen({
               ]}>
                 <Text style={[styles.desktopSignupText, { 
                   color: isDarkMode ? colors.textSecondary : figmaColors.textNavy, 
-                  fontSize: 22,
+                  fontSize: scaledSize(22),
                   fontWeight: '300',
                   fontFamily: FontFamily.body,
                 }]}>
@@ -649,7 +651,7 @@ export default function LoginScreen({
                 <TouchableOpacity onPress={onNavigateToSignup}>
                   <Text style={[styles.desktopSignupLinkText, { 
                     color: isDarkMode ? colors.primary : figmaColors.textNavy,
-                    fontSize: 22,
+                    fontSize: scaledSize(22),
                     fontWeight: '600',
                     textDecorationLine: 'underline',
                     fontFamily: FontFamily.body,

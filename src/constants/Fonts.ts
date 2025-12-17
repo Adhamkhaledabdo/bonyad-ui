@@ -1,8 +1,9 @@
 /**
  * 🔤 FONTS: App-wide font family and size configuration
  * 
- * Primary font: Sakkal Majalla
- * All font sizes are INCREASED for better readability with SakkalMajalla
+ * Language-aware fonts:
+ * - English: System/default fonts
+ * - Arabic: Sakkal Majalla
  * 
  * Font files should be placed in: assets/fonts/
  * Required files:
@@ -13,33 +14,76 @@
 
 import { Platform } from 'react-native';
 
-// Primary font family - used as default throughout the app
-export const PRIMARY_FONT = 'SakkalMajalla';
-export const PRIMARY_FONT_BOLD = 'SakkalMajalla-Bold';
+// Arabic font family - used for Arabic language
+export const ARABIC_FONT = 'SakkalMajalla';
+export const ARABIC_FONT_BOLD = 'SakkalMajalla-Bold';
 
-// Font families for different use cases
+// System/default font - used for English and other languages
+export const SYSTEM_FONT = Platform.select({
+  ios: 'System',
+  android: 'Roboto',
+  web: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  default: undefined,
+});
+
+export const SYSTEM_FONT_BOLD = Platform.select({
+  ios: 'System',
+  android: 'Roboto',
+  web: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  default: undefined,
+});
+
+// Legacy exports for backwards compatibility (these use Arabic font)
+export const PRIMARY_FONT = ARABIC_FONT;
+export const PRIMARY_FONT_BOLD = ARABIC_FONT_BOLD;
+
+/**
+ * Get font family based on language
+ * @param isArabic - Whether the current language is Arabic
+ * @returns The appropriate font family string
+ */
+export const getFontFamily = (isArabic: boolean): string | undefined => {
+  if (isArabic) {
+    return ARABIC_FONT;
+  }
+  return SYSTEM_FONT;
+};
+
+/**
+ * Get bold font family based on language
+ * @param isArabic - Whether the current language is Arabic
+ * @returns The appropriate bold font family string
+ */
+export const getBoldFontFamily = (isArabic: boolean): string | undefined => {
+  if (isArabic) {
+    return ARABIC_FONT_BOLD;
+  }
+  return SYSTEM_FONT_BOLD;
+};
+
+// Font families for different use cases (Arabic - legacy)
 export const Fonts = {
   // Primary/Default font
-  primary: PRIMARY_FONT,
-  primaryBold: PRIMARY_FONT_BOLD,
+  primary: ARABIC_FONT,
+  primaryBold: ARABIC_FONT_BOLD,
   
   // Headings (titles, headers) - use bold
-  heading: PRIMARY_FONT_BOLD,
+  heading: ARABIC_FONT_BOLD,
   
   // Body text (paragraphs, descriptions)
-  body: PRIMARY_FONT,
+  body: ARABIC_FONT,
   
   // Labels (form labels, captions)
-  label: PRIMARY_FONT,
+  label: ARABIC_FONT,
   
   // Input text (text inside input fields)
-  input: PRIMARY_FONT,
+  input: ARABIC_FONT,
   
   // Buttons
-  button: PRIMARY_FONT_BOLD,
+  button: ARABIC_FONT_BOLD,
   
   // Navigation (tabs, menu items)
-  navigation: PRIMARY_FONT,
+  navigation: ARABIC_FONT,
   
   // Monospace (code, technical text)
   mono: Platform.select({
@@ -50,30 +94,30 @@ export const Fonts = {
   
   // Arabic text (for RTL support)
   arabic: Platform.select({
-    ios: PRIMARY_FONT,
-    android: PRIMARY_FONT,
-    web: `'${PRIMARY_FONT}', 'Noto Sans Arabic', 'Arial', sans-serif`,
+    ios: ARABIC_FONT,
+    android: ARABIC_FONT,
+    web: `'${ARABIC_FONT}', 'Noto Sans Arabic', 'Arial', sans-serif`,
   }),
 };
 
-// Platform-specific font family strings
+// Platform-specific font family strings (legacy - uses Arabic font)
 export const FontFamily = {
   primary: Platform.select({
-    ios: PRIMARY_FONT,
-    android: PRIMARY_FONT,
-    web: `'${PRIMARY_FONT}', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+    ios: ARABIC_FONT,
+    android: ARABIC_FONT,
+    web: `'${ARABIC_FONT}', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
   }),
   
   primaryBold: Platform.select({
-    ios: PRIMARY_FONT_BOLD,
-    android: PRIMARY_FONT_BOLD,
-    web: `'${PRIMARY_FONT_BOLD}', '${PRIMARY_FONT}', system-ui, -apple-system, sans-serif`,
+    ios: ARABIC_FONT_BOLD,
+    android: ARABIC_FONT_BOLD,
+    web: `'${ARABIC_FONT_BOLD}', '${ARABIC_FONT}', system-ui, -apple-system, sans-serif`,
   }),
   
   heading: Platform.select({
     ios: Fonts.heading,
     android: Fonts.heading,
-    web: `'${Fonts.heading}', '${PRIMARY_FONT}', system-ui, -apple-system, sans-serif`,
+    web: `'${Fonts.heading}', '${ARABIC_FONT}', system-ui, -apple-system, sans-serif`,
   }),
   
   body: Platform.select({
@@ -97,12 +141,34 @@ export const FontFamily = {
   button: Platform.select({
     ios: Fonts.button,
     android: Fonts.button,
-    web: `'${Fonts.button}', '${PRIMARY_FONT}', system-ui, -apple-system, sans-serif`,
+    web: `'${Fonts.button}', '${ARABIC_FONT}', system-ui, -apple-system, sans-serif`,
   }),
   
   mono: Fonts.mono,
   
   arabic: Fonts.arabic,
+};
+
+/**
+ * Get language-aware FontFamily object
+ * @param isArabic - Whether the current language is Arabic
+ * @returns FontFamily object with appropriate fonts
+ */
+export const getLanguageFontFamily = (isArabic: boolean) => {
+  const font = getFontFamily(isArabic);
+  const boldFont = getBoldFontFamily(isArabic);
+  
+  return {
+    primary: font,
+    primaryBold: boldFont,
+    heading: boldFont,
+    body: font,
+    label: font,
+    input: font,
+    button: boldFont,
+    mono: Fonts.mono,
+    arabic: Fonts.arabic,
+  };
 };
 
 // Font weights
@@ -122,64 +188,99 @@ export const FontWeights = {
 // 📏 FONT SIZES - INCREASED for SakkalMajalla
 // ============================================
 
-// Base font sizes (generic scale)
-export const FontSizes = {
-  xs: 12,    // was 10
-  sm: 14,    // was 12
-  md: 16,    // was 14
-  lg: 18,    // was 16
-  xl: 20,    // was 18
-  '2xl': 24, // was 20
-  '3xl': 28, // was 24
-  '4xl': 32, // was 28
-  '5xl': 38, // was 32
-  '6xl': 46, // was 40
-  '7xl': 54, // was 48
+// Font size scale types
+export type FontSizeScale = 'small' | 'medium' | 'large';
+
+// Font size multipliers for each scale
+export const FONT_SIZE_MULTIPLIERS: Record<FontSizeScale, number> = {
+  small: 0.85,
+  medium: 1.0,
+  large: 1.2,
 };
 
-// UI-specific font sizes (use these in components)
-export const UIFontSizes = {
+// Base font sizes (generic scale) - at medium (1.0x)
+const BASE_FONT_SIZES = {
+  xs: 12,
+  sm: 14,
+  md: 16,
+  lg: 18,
+  xl: 20,
+  '2xl': 24,
+  '3xl': 28,
+  '4xl': 32,
+  '5xl': 38,
+  '6xl': 46,
+  '7xl': 54,
+};
+
+// Default font sizes at medium scale
+export const FontSizes = BASE_FONT_SIZES;
+
+/**
+ * Get scaled font sizes based on the selected scale
+ * @param scale - The font size scale (small, medium, large)
+ * @returns Object with all font sizes scaled appropriately
+ */
+export const getScaledFontSizes = (scale: FontSizeScale = 'medium') => {
+  const multiplier = FONT_SIZE_MULTIPLIERS[scale];
+  return {
+    xs: Math.round(BASE_FONT_SIZES.xs * multiplier),
+    sm: Math.round(BASE_FONT_SIZES.sm * multiplier),
+    md: Math.round(BASE_FONT_SIZES.md * multiplier),
+    lg: Math.round(BASE_FONT_SIZES.lg * multiplier),
+    xl: Math.round(BASE_FONT_SIZES.xl * multiplier),
+    '2xl': Math.round(BASE_FONT_SIZES['2xl'] * multiplier),
+    '3xl': Math.round(BASE_FONT_SIZES['3xl'] * multiplier),
+    '4xl': Math.round(BASE_FONT_SIZES['4xl'] * multiplier),
+    '5xl': Math.round(BASE_FONT_SIZES['5xl'] * multiplier),
+    '6xl': Math.round(BASE_FONT_SIZES['6xl'] * multiplier),
+    '7xl': Math.round(BASE_FONT_SIZES['7xl'] * multiplier),
+  };
+};
+
+// Base UI-specific font sizes (at medium scale)
+const BASE_UI_FONT_SIZES = {
   // Form elements
-  label: 20,           // Form labels
-  input: 18,           // Input text
-  placeholder: 16,     // Placeholder text
-  error: 14,           // Error messages
+  label: 20,
+  input: 18,
+  placeholder: 16,
+  error: 14,
   
   // Buttons
-  buttonLarge: 54,     // Large buttons
-  buttonMedium: 22,    // Medium buttons (default)
-  buttonSmall: 20,     // Small buttons
+  buttonLarge: 54,
+  buttonMedium: 22,
+  buttonSmall: 20,
   
   // Titles & Headers
-  welcomeTitle: 40,         // Welcome/Login screen titles
-  welcomeSubtitle: 24,      // Welcome/Login screen subtitles
-  sectionTitle: 26,         // Section headers
-  cardTitle: 22,            // Card titles
+  welcomeTitle: 40,
+  welcomeSubtitle: 24,
+  sectionTitle: 26,
+  cardTitle: 22,
   
   // Body text
-  bodyLarge: 18,       // Large body text
-  body: 16,            // Default body text
-  bodySmall: 14,       // Small body text
-  caption: 14,         // Captions/hints
+  bodyLarge: 18,
+  body: 16,
+  bodySmall: 14,
+  caption: 14,
   
   // Links
-  link: 24,            // Link text
-  linkSmall: 20,       // Small links
+  link: 24,
+  linkSmall: 20,
   
   // Navigation
-  navItem: 16,         // Navigation items
-  tabLabel: 14,        // Tab labels
+  navItem: 16,
+  tabLabel: 14,
   
   // Mobile Logo
-  logoText: 30,        // "Bonyad" text
-  logoArabic: 24,      // Arabic logo text
+  logoText: 30,
+  logoArabic: 24,
   
   // Language toggle
-  langToggle: 20,      // Language toggle text
+  langToggle: 20,
   
   // OTP
-  otpInput: 36,        // OTP input digits
-  otpLabel: 22,        // OTP labels
+  otpInput: 36,
+  otpLabel: 22,
   
   // Desktop specific
   desktop: {
@@ -192,5 +293,69 @@ export const UIFontSizes = {
   },
 };
 
-export default Fonts;
+// Default UI font sizes at medium scale
+export const UIFontSizes = BASE_UI_FONT_SIZES;
 
+/**
+ * Get scaled UI font sizes based on the selected scale
+ * @param scale - The font size scale (small, medium, large)
+ * @returns Object with all UI font sizes scaled appropriately
+ */
+export const getScaledUIFontSizes = (scale: FontSizeScale = 'medium') => {
+  const multiplier = FONT_SIZE_MULTIPLIERS[scale];
+  return {
+    // Form elements
+    label: Math.round(BASE_UI_FONT_SIZES.label * multiplier),
+    input: Math.round(BASE_UI_FONT_SIZES.input * multiplier),
+    placeholder: Math.round(BASE_UI_FONT_SIZES.placeholder * multiplier),
+    error: Math.round(BASE_UI_FONT_SIZES.error * multiplier),
+    
+    // Buttons
+    buttonLarge: Math.round(BASE_UI_FONT_SIZES.buttonLarge * multiplier),
+    buttonMedium: Math.round(BASE_UI_FONT_SIZES.buttonMedium * multiplier),
+    buttonSmall: Math.round(BASE_UI_FONT_SIZES.buttonSmall * multiplier),
+    
+    // Titles & Headers
+    welcomeTitle: Math.round(BASE_UI_FONT_SIZES.welcomeTitle * multiplier),
+    welcomeSubtitle: Math.round(BASE_UI_FONT_SIZES.welcomeSubtitle * multiplier),
+    sectionTitle: Math.round(BASE_UI_FONT_SIZES.sectionTitle * multiplier),
+    cardTitle: Math.round(BASE_UI_FONT_SIZES.cardTitle * multiplier),
+    
+    // Body text
+    bodyLarge: Math.round(BASE_UI_FONT_SIZES.bodyLarge * multiplier),
+    body: Math.round(BASE_UI_FONT_SIZES.body * multiplier),
+    bodySmall: Math.round(BASE_UI_FONT_SIZES.bodySmall * multiplier),
+    caption: Math.round(BASE_UI_FONT_SIZES.caption * multiplier),
+    
+    // Links
+    link: Math.round(BASE_UI_FONT_SIZES.link * multiplier),
+    linkSmall: Math.round(BASE_UI_FONT_SIZES.linkSmall * multiplier),
+    
+    // Navigation
+    navItem: Math.round(BASE_UI_FONT_SIZES.navItem * multiplier),
+    tabLabel: Math.round(BASE_UI_FONT_SIZES.tabLabel * multiplier),
+    
+    // Mobile Logo
+    logoText: Math.round(BASE_UI_FONT_SIZES.logoText * multiplier),
+    logoArabic: Math.round(BASE_UI_FONT_SIZES.logoArabic * multiplier),
+    
+    // Language toggle
+    langToggle: Math.round(BASE_UI_FONT_SIZES.langToggle * multiplier),
+    
+    // OTP
+    otpInput: Math.round(BASE_UI_FONT_SIZES.otpInput * multiplier),
+    otpLabel: Math.round(BASE_UI_FONT_SIZES.otpLabel * multiplier),
+    
+    // Desktop specific
+    desktop: {
+      welcomeTitle: Math.round(BASE_UI_FONT_SIZES.desktop.welcomeTitle * multiplier),
+      welcomeSubtitle: Math.round(BASE_UI_FONT_SIZES.desktop.welcomeSubtitle * multiplier),
+      buttonLabel: Math.round(BASE_UI_FONT_SIZES.desktop.buttonLabel * multiplier),
+      linkText: Math.round(BASE_UI_FONT_SIZES.desktop.linkText * multiplier),
+      formTitle: Math.round(BASE_UI_FONT_SIZES.desktop.formTitle * multiplier),
+      formSubtitle: Math.round(BASE_UI_FONT_SIZES.desktop.formSubtitle * multiplier),
+    },
+  };
+};
+
+export default Fonts;

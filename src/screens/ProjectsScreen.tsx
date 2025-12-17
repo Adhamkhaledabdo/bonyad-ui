@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 // import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
@@ -124,6 +125,7 @@ const FIGMA_COLORS = {
 export default function ProjectsScreen({ onBack, filter = 'available', onOpenChat, onViewTechnician, onBookAppointment, onRequestVisit, onFilterChange }: ProjectsScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -799,7 +801,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
           ) : (
             <View style={{ width: 24 }} />
           )}
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {localFilter === 'available' ? (isTechnician ? t('Look for Offers') : t('Available Projects')) : 
              localFilter === 'running' ? (isTechnician ? t('My Assigned Projects') : t('Running Projects')) : 
              localFilter === 'bid_received' ? t('My Bids') :
@@ -1170,7 +1172,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
             ) : (
               <View style={{ width: 24 }} />
             )}
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
               {localFilter === 'available' ? (isTechnician ? t('Look for Offers') : t('Available Projects')) : 
                localFilter === 'running' ? (isTechnician ? t('My Assigned Projects') : t('Running Projects')) : 
                localFilter === 'bid_received' ? t('My Bids') :
@@ -1204,7 +1206,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
                 <Text style={[
                   styles.tabButtonText,
                   localFilter === 'available' && styles.tabButtonActive,
-                  { color: localFilter === 'available' ? colors.primary : colors.textSecondary }
+                  { color: localFilter === 'available' ? colors.primary : colors.textSecondary, fontSize: scaledSize(14) }
                 ]}>
                   {t('Available')}
                 </Text>
@@ -1219,7 +1221,7 @@ export default function ProjectsScreen({ onBack, filter = 'available', onOpenCha
                 <Text style={[
                   styles.tabButtonText,
                   localFilter === 'running' && styles.tabButtonActive,
-                  { color: localFilter === 'running' ? colors.primary : colors.textSecondary }
+                  { color: localFilter === 'running' ? colors.primary : colors.textSecondary, fontSize: scaledSize(14) }
                 ]}>
                   {t('Running')}
                 </Text>

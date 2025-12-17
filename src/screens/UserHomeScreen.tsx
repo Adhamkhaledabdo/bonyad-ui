@@ -23,6 +23,7 @@ import { SvgXml } from 'react-native-svg';
 import { Image as ExpoImage } from 'expo-image';
 import BonyadLogo from '../components/BonyadLogo';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import AppointmentsScreen from './AppointmentsScreen';
 import ProjectsScreen from './ProjectsScreen';
 import ChatRoomsListScreen from './ChatRoomsListScreen';
@@ -99,6 +100,7 @@ export default function UserHomeScreen({
 }: UserHomeScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const [showProjectsDropdown, setShowProjectsDropdown] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'projects' | 'chat' | 'profile' | 'notifications' | 'appointments' | 'new' | 'service-technicians' | 'technician-profile' | 'services-list'>('home');
@@ -972,7 +974,7 @@ export default function UserHomeScreen({
               <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="people-outline" size={24} color={colors.primary} />
               </View>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Look for Bonyaders')}</Text>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Look for Bonyaders')}</Text>
             </TouchableOpacity>
 
             {/* Project Request Button */}
@@ -983,7 +985,7 @@ export default function UserHomeScreen({
               <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="calendar-outline" size={24} color={colors.primary} />
               </View>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Project request')}</Text>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Project request')}</Text>
           </TouchableOpacity>
 
             {/* My Projects Button with Sub-navigation */}
@@ -995,8 +997,8 @@ export default function UserHomeScreen({
                 <Ionicons name="folder-outline" size={24} color={colors.primary} />
               </View>
               <View style={styles.iosButtonTextContainer}>
-                <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('My Projects')}</Text>
-                <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary }]}>{t('View all project statuses')}</Text>
+                <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('My Projects')}</Text>
+                <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>{t('View all project statuses')}</Text>
               </View>
               <Ionicons 
                 name={showProjectsDropdown ? "chevron-up" : "chevron-down"} 
@@ -1032,7 +1034,7 @@ export default function UserHomeScreen({
                   <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                     <Ionicons name="list-outline" size={22} color={colors.primary} />
                   </View>
-                  <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('Available Projects')}</Text>
+                  <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Available Projects')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                   style={[styles.iosDropdownItem, { borderBottomColor: colors.border }]}
@@ -1045,7 +1047,7 @@ export default function UserHomeScreen({
                   <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                     <Ionicons name="trending-up-outline" size={22} color={colors.primary} />
                   </View>
-                  <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('My Running Projects')}</Text>
+                  <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('My Running Projects')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                   style={styles.iosDropdownItem}
@@ -1058,7 +1060,7 @@ export default function UserHomeScreen({
                   <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                     <Ionicons name="checkmark-circle-outline" size={22} color={colors.primary} />
             </View>
-                  <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('Completed Projects')}</Text>
+                  <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Completed Projects')}</Text>
           </TouchableOpacity>
                   </Animated.View>
 
@@ -1070,7 +1072,7 @@ export default function UserHomeScreen({
               <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="calendar-outline" size={24} color={colors.primary} />
           </View>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Appointments')}</Text>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Appointments')}</Text>
               </TouchableOpacity>
 
             {/* My Data Button */}
@@ -1085,8 +1087,8 @@ export default function UserHomeScreen({
                 <Ionicons name="person-circle-outline" size={24} color={colors.primary} />
               </View>
               <View style={styles.iosButtonTextContainer}>
-                <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('My Data')}</Text>
-                <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary }]}>{t('Edit profile, phone & password')}</Text>
+                <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('My Data')}</Text>
+                <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>{t('Edit profile, phone & password')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -1099,7 +1101,7 @@ export default function UserHomeScreen({
               <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="chatbubbles-outline" size={24} color={colors.primary} />
               </View>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Messages')}</Text>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Messages')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -1470,7 +1472,7 @@ export default function UserHomeScreen({
             />
             <Text style={[
               styles.figmaTabLabel, 
-              { color: activeTab === 'projects' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+              { color: activeTab === 'projects' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
             ]}>
               {t('Projects')}
             </Text>
@@ -1488,7 +1490,7 @@ export default function UserHomeScreen({
             />
             <Text style={[
               styles.figmaTabLabel, 
-              { color: activeTab === 'appointments' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+              { color: activeTab === 'appointments' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
             ]}>
               {t('Calendar')}
             </Text>
@@ -1506,7 +1508,7 @@ export default function UserHomeScreen({
             />
             <Text style={[
               styles.figmaTabLabel, 
-              { color: activeTab === 'home' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+              { color: activeTab === 'home' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
             ]}>
               {t('Home')}
             </Text>
@@ -1524,7 +1526,7 @@ export default function UserHomeScreen({
             />
             <Text style={[
               styles.figmaTabLabel, 
-              { color: activeTab === 'profile' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+              { color: activeTab === 'profile' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
             ]}>
               {t('Profile')}
             </Text>

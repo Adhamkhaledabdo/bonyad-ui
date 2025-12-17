@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { buildApiUrl, API_ENDPOINTS } from '../config/api';
@@ -22,6 +23,7 @@ interface ProjectsMapScreenProps {
 
 export default function ProjectsMapScreen({ onBack }: ProjectsMapScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { buildApiUrl, API_ENDPOINTS, getServerBaseUrl } from '../config/api';
@@ -19,6 +20,7 @@ interface AskBonyadAIScreenProps {
 
 export default function AskBonyadAIScreen({ onBack }: AskBonyadAIScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   
@@ -167,7 +169,7 @@ export default function AskBonyadAIScreen({ onBack }: AskBonyadAIScreenProps) {
           <View style={[styles.aiAvatar, { backgroundColor: colors.primary + '20' }]}>
             <Ionicons name="sparkles" size={24} color={colors.primary} />
           </View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {i18n.language === 'en' ? 'Ask Bonyad AI' : 'اسأل بونياد الذكي'}
           </Text>
         </View>
@@ -194,7 +196,7 @@ export default function AskBonyadAIScreen({ onBack }: AskBonyadAIScreenProps) {
           >
             <Text style={[
               styles.messageText,
-              { color: message.role === 'user' ? '#fff' : colors.text }
+              { color: message.role === 'user' ? '#fff' : colors.text, fontSize: scaledSize(16) }
             ]}>
               {message.content}
             </Text>
@@ -202,7 +204,7 @@ export default function AskBonyadAIScreen({ onBack }: AskBonyadAIScreenProps) {
             {/* Show recommended technicians */}
             {message.recommendedTechnicians && message.recommendedTechnicians.length > 0 && (
               <View style={styles.techniciansContainer}>
-                <Text style={[styles.techniciansTitle, { color: colors.textSecondary }]}>
+                <Text style={[styles.techniciansTitle, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                   {i18n.language === 'en' ? 'Recommended Technicians:' : 'الفنيون الموصى بهم:'}
                 </Text>
                 {message.recommendedTechnicians.map((tech, techIndex) => (
@@ -214,12 +216,12 @@ export default function AskBonyadAIScreen({ onBack }: AskBonyadAIScreenProps) {
                       />
                     )}
                     <View style={styles.technicianInfo}>
-                      <Text style={[styles.technicianName, { color: colors.text }]}>{tech.name}</Text>
-                      <Text style={[styles.technicianRating, { color: colors.textSecondary }]}>
+                      <Text style={[styles.technicianName, { color: colors.text, fontSize: scaledSize(14) }]}>{tech.name}</Text>
+                      <Text style={[styles.technicianRating, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                         ⭐ {tech.averageRating} ({tech.totalReviews} {i18n.language === 'en' ? 'reviews' : 'تقييمات'})
                       </Text>
                       {tech.yearsOfExperience && (
-                        <Text style={[styles.technicianExp, { color: colors.textSecondary }]}>
+                        <Text style={[styles.technicianExp, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                           {tech.yearsOfExperience} {i18n.language === 'en' ? 'years experience' : 'سنة خبرة'}
                         </Text>
                       )}
@@ -248,7 +250,7 @@ export default function AskBonyadAIScreen({ onBack }: AskBonyadAIScreenProps) {
             onPress={() => handleQuickSuggestion(suggestion)}
             style={[styles.suggestionChip, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
           >
-            <Text style={[styles.suggestionText, { color: colors.primary }]}>{suggestion}</Text>
+            <Text style={[styles.suggestionText, { color: colors.primary, fontSize: scaledSize(14) }]}>{suggestion}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

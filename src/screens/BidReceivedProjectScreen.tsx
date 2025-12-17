@@ -24,6 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1021,6 +1022,7 @@ export default function BidReceivedProjectScreen({
 }: BidReceivedProjectScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [bids, setBids] = useState<Bid[]>([]);
   const [visitRequests, setVisitRequests] = useState<VisitRequest[]>([]);
@@ -1350,8 +1352,8 @@ export default function BidReceivedProjectScreen({
     <>
       {/* Project Overview + Details (User POV) */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeaderTitle}>{t('Project Overview')}</Text>
-        <Text style={styles.sectionDescription}>
+        <Text style={[styles.sectionHeaderTitle, { fontSize: scaledSize(16) }]}>{t('Project Overview')}</Text>
+        <Text style={[styles.sectionDescription, { fontSize: scaledSize(14) }]}>
           {t('Review your project details below. Once submitted, service providers will start sending bids.')}
         </Text>
         
@@ -1581,8 +1583,8 @@ export default function BidReceivedProjectScreen({
     <>
       {/* Project Overview Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeaderTitle}>{t('Project Overview')}</Text>
-        <Text style={styles.sectionDescription}>
+        <Text style={[styles.sectionHeaderTitle, { fontSize: scaledSize(16) }]}>{t('Project Overview')}</Text>
+        <Text style={[styles.sectionDescription, { fontSize: scaledSize(14) }]}>
           {t('Review your project details below. Once submitted, service providers will start sending bids.')}
         </Text>
         
@@ -1691,7 +1693,7 @@ export default function BidReceivedProjectScreen({
       <View style={[styles.container, { backgroundColor: COLORS.bgWhite, paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary60} />
-          <Text style={styles.loadingText}>{t('Loading...')}</Text>
+          <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading...')}</Text>
         </View>
       </View>
     );
@@ -1706,10 +1708,10 @@ export default function BidReceivedProjectScreen({
           <Ionicons name="chevron-back" size={24} color={COLORS.textHeader} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { fontSize: scaledSize(16) }]}>
               {serviceName || t('Project')}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerSubtitle, { fontSize: scaledSize(10) }]}>
               {t('Bid Received')}
             </Text>
         </View>
@@ -1732,10 +1734,10 @@ export default function BidReceivedProjectScreen({
               <Ionicons name="chevron-back" size={24} color={COLORS.textHeader} />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={styles.titleMainText}>
+              <Text style={[styles.titleMainText, { fontSize: scaledSize(42) }]}>
                 {serviceName || t('Project')}
               </Text>
-              <Text style={styles.titleSubtext}>
+              <Text style={[styles.titleSubtext, { fontSize: scaledSize(20) }]}>
                 {t('Bid Received')}
               </Text>
             </View>

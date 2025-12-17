@@ -946,7 +946,9 @@
     "supportCenter": "مركز الدعم",
     "getHelpContactUs": "احصل على المساعدة وتواصل معنا",
     "editPersonalInfo": "تعديل المعلومات الشخصية",
-    "managePortfolio": "إدارة معرض أعمالك"
+    "managePortfolio": "إدارة معرض أعمالك",
+    "fontSize": "حجم الخط",
+    "textSize": "ضبط حجم النص"
   },
   "Welcome": "مرحباً",
   "On": "مفعّل",

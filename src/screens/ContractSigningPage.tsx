@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ContractViewerModal from './ContractViewerModal';
 
@@ -27,6 +28,7 @@ export default function ContractSigningPage({
 }: ContractSigningPageProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [showContractModal, setShowContractModal] = useState(false);
 
@@ -54,7 +56,7 @@ export default function ContractSigningPage({
         <TouchableOpacity onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
           {t('Contract Signing')}
         </Text>
         <View style={{ width: 24 }} />
@@ -74,10 +76,10 @@ export default function ContractSigningPage({
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <Ionicons name="document-text-outline" size={48} color={colors.primary} />
-          <Text style={[styles.infoTitle, { color: colors.text }]}>
+          <Text style={[styles.infoTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {t('Contract Ready for Signing')}
           </Text>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+          <Text style={[styles.infoText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
             {t('The phases have been approved. Please review and sign the contract to proceed.')}
           </Text>
         </View>

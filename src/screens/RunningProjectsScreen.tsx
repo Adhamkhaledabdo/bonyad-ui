@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl, API_BASE_URL } from '../config/api';
 import { storage } from '../utils/storage';
@@ -65,6 +66,7 @@ export default function RunningProjectsScreen({
 }: RunningProjectsScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [projects, setProjects] = useState<RunningProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);

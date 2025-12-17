@@ -5,6 +5,7 @@ const STORAGE_KEYS = {
   USER_ROLE: '@bonyad_user_role',
   DEVICE_TOKEN: '@bonyad_device_token',
   USER_ID: '@bonyad_user_id',
+  FONT_SIZE: '@bonyad_font_size',
 };
 
 export const storage = {
@@ -80,6 +81,30 @@ export const storage = {
       console.log('✅ Auth data cleared');
     } catch (error) {
       console.error('❌ Error clearing auth data:', error);
+    }
+  },
+
+  // Get font size preference
+  async getFontSize(): Promise<'small' | 'medium' | 'large'> {
+    try {
+      const fontSize = await AsyncStorage.getItem(STORAGE_KEYS.FONT_SIZE);
+      if (fontSize === 'small' || fontSize === 'medium' || fontSize === 'large') {
+        return fontSize;
+      }
+      return 'medium'; // Default
+    } catch (error) {
+      console.error('❌ Error getting font size:', error);
+      return 'medium';
+    }
+  },
+
+  // Save font size preference
+  async saveFontSize(fontSize: 'small' | 'medium' | 'large') {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.FONT_SIZE, fontSize);
+      console.log('✅ Font size saved:', fontSize);
+    } catch (error) {
+      console.error('❌ Error saving font size:', error);
     }
   },
 };

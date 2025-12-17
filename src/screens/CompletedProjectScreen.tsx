@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
@@ -83,6 +84,7 @@ export default function CompletedProjectScreen({
   const resolvedProjectId = project?.id ?? project?.project?.id ?? project?.projectId;
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const isRTL = i18n.language === 'ar';
   
@@ -653,10 +655,10 @@ export default function CompletedProjectScreen({
               />
             </TouchableOpacity>
             <View style={[styles.headerTextContainer, isRTL && styles.headerTextContainerRTL]}>
-              <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>
+              <Text style={[styles.headerTitle, isRTL && styles.textRTL, { fontSize: scaledSize(20) }]}>
                 {serviceName || project.description || t('Contracting Services')}
               </Text>
-              <Text style={[styles.headerSubtitle, isRTL && styles.textRTL]}>
+              <Text style={[styles.headerSubtitle, isRTL && styles.textRTL, { fontSize: scaledSize(14) }]}>
                   {t('Completed Project')}
               </Text>
             </View>
@@ -668,7 +670,7 @@ export default function CompletedProjectScreen({
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary60} />
-            <Text style={styles.loadingText}>{t('Loading...')}</Text>
+            <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading...')}</Text>
           </View>
         ) : (
           <ScrollView 
@@ -690,10 +692,10 @@ export default function CompletedProjectScreen({
                   />
                 </TouchableOpacity>
                 <View style={styles.titleContainer}>
-                  <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }]}>
+                  <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(42) }]}>
                     {serviceName || project.description || t('Contracting Services')}
                   </Text>
-                  <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }]}>
+                  <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(20) }]}>
                     {t('Completed Project')}
                   </Text>
                 </View>
@@ -711,8 +713,8 @@ export default function CompletedProjectScreen({
               <View style={styles.successIcon}>
                 <Ionicons name="checkmark-circle" size={32} color={COLORS.green60} />
               </View>
-              <Text style={styles.successTitle}>{t('Project Completed!')}</Text>
-              <Text style={styles.successSubtitle}>
+              <Text style={[styles.successTitle, { fontSize: scaledSize(20) }]}>{t('Project Completed!')}</Text>
+              <Text style={[styles.successSubtitle, { fontSize: scaledSize(16) }]}>
                 {t('Your {{service}} has been successfully completed.', {
                   service: serviceName || t('Contracting Services')
                 })}

@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
@@ -37,6 +38,7 @@ const MAX_COMMENT_LENGTH = 500;
 export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: AcceptBidModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [acceptanceComment, setAcceptanceComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,7 +110,7 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
           <TouchableOpacity onPress={onClose} disabled={isSubmitting}>
             <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(20) }]}>
             {t('Accept Bid')}
           </Text>
           <View style={{ width: 28 }} />
@@ -119,7 +121,7 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="information-circle" size={24} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
                 {t('Bid Summary')}
               </Text>
             </View>
@@ -129,11 +131,11 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
               <View style={styles.summaryRow}>
                 <View style={styles.summaryRowLeft}>
                   <Ionicons name="cash" size={20} color={colors.primary} />
-                  <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                  <Text style={[styles.summaryLabel, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                     {t('Bid Price')}
                   </Text>
                 </View>
-                <Text style={[styles.summaryValue, { color: colors.primary }]}>
+                <Text style={[styles.summaryValue, { color: colors.primary, fontSize: scaledSize(18) }]}>
                   {formatPrice(bid.price)} {t('SAR')}
                 </Text>
               </View>
@@ -143,14 +145,14 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryRowLeft}>
                     <Ionicons name="document-text" size={20} color={colors.textSecondary} />
-                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                       {t('Bid Description')}
                     </Text>
                   </View>
                 </View>
               )}
               {bid.description && (
-                <Text style={[styles.summaryText, { color: colors.text }]}>
+                <Text style={[styles.summaryText, { color: colors.text, fontSize: scaledSize(14) }]}>
                   {bid.description}
                 </Text>
               )}
@@ -160,14 +162,14 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryRowLeft}>
                     <Ionicons name="chatbubble" size={20} color={colors.textSecondary} />
-                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                       {t('Additional Comments')}
                     </Text>
                   </View>
                 </View>
               )}
               {bid.comments && (
-                <Text style={[styles.summaryText, { color: colors.text }]}>
+                <Text style={[styles.summaryText, { color: colors.text, fontSize: scaledSize(14) }]}>
                   {bid.comments}
                 </Text>
               )}
@@ -178,16 +180,16 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="chatbubbles" size={24} color="#FFA500" />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
                 {t('Acceptance Comment')}
               </Text>
-              <Text style={[styles.optionalLabel, { color: colors.textSecondary }]}>
+              <Text style={[styles.optionalLabel, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                 ({t('optional')})
               </Text>
             </View>
 
             <View style={[styles.commentContainer, { backgroundColor: colors.cardBackground }]}>
-              <Text style={[styles.commentHint, { color: colors.textSecondary }]}>
+              <Text style={[styles.commentHint, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                 {t('Add a comment when accepting this bid...')}
               </Text>
               <TextInput
@@ -240,7 +242,7 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
             onPress={onClose}
             disabled={isSubmitting}
           >
-            <Text style={[styles.cancelButtonText, { color: colors.text }]}>
+            <Text style={[styles.cancelButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>
               {t('Cancel')}
             </Text>
           </TouchableOpacity>
@@ -255,7 +257,7 @@ export default function AcceptBidModal({ visible, bid, onClose, onSuccess }: Acc
             ) : (
               <Ionicons name="checkmark-circle" size={20} color="#fff" />
             )}
-            <Text style={styles.acceptButtonText}>
+            <Text style={[styles.acceptButtonText, { fontSize: scaledSize(16) }]}>
               {isSubmitting ? t('Accepting...') : t('Accept Bid')}
             </Text>
           </TouchableOpacity>

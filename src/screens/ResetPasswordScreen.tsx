@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resetPassword } from '../services/AuthService';
 import { showAlert, showError } from '../utils/alert';
@@ -30,6 +31,7 @@ interface ResetPasswordScreenProps {
 export default function ResetPasswordScreen({ phoneNumber, role, otpCode, onBack, onPasswordReset }: ResetPasswordScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -98,8 +100,8 @@ export default function ResetPasswordScreen({ phoneNumber, role, otpCode, onBack
               style={styles.logo}
               contentFit="contain"
             />
-            <Text style={[styles.title, { color: colors.text }]}>{t('Reset Password')}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.title, { color: colors.text, fontSize: scaledSize(24) }]}>{t('Reset Password')}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
               {t('Enter your new password')}
             </Text>
           </View>
@@ -163,8 +165,8 @@ export default function ResetPasswordScreen({ phoneNumber, role, otpCode, onBack
               style={styles.desktopLogo}
               contentFit="contain"
             />
-            <Text style={[styles.desktopTitle, { color: colors.text }]}>{t('Reset Password')}</Text>
-            <Text style={[styles.desktopSubtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.desktopTitle, { color: colors.text, fontSize: scaledSize(28) }]}>{t('Reset Password')}</Text>
+            <Text style={[styles.desktopSubtitle, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>
               {t('Enter your new password')}
             </Text>
           </View>

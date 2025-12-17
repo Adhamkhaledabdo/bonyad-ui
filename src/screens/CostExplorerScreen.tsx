@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
@@ -14,6 +15,7 @@ interface CostExplorerScreenProps {
 
 export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   
@@ -95,7 +97,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name={i18n.language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
           {i18n.language === 'en' ? 'Cost Explorer' : 'استكشاف التكاليف'}
         </Text>
         <View style={styles.backButton} />
@@ -108,7 +110,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
           </View>
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: colors.text, fontSize: scaledSize(24) }]}>
           {i18n.language === 'en' ? 'Estimate Your Project' : 'قدّر مشروعك'}
         </Text>
 
@@ -116,7 +118,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
         <View style={styles.form}>
           {/* Room Type */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
+            <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>
               {i18n.language === 'en' ? 'Room Type' : 'نوع الغرفة'}
             </Text>
             <View style={[styles.pickerContainer, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
@@ -134,7 +136,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
 
           {/* Area */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
+            <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>
               {i18n.language === 'en' ? 'Area (m²)' : 'المساحة (م²)'}
             </Text>
             <TextInput
@@ -149,7 +151,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
 
           {/* Material */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
+            <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>
               {i18n.language === 'en' ? 'Material' : 'المادة'}
             </Text>
             <View style={[styles.pickerContainer, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
@@ -167,7 +169,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
 
           {/* City */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
+            <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>
               {i18n.language === 'en' ? 'City' : 'المدينة'}
             </Text>
             <View style={[styles.pickerContainer, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
@@ -194,7 +196,7 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
             ) : (
               <>
                 <Ionicons name="flash" size={24} color="#fff" />
-                <Text style={styles.estimateButtonText}>
+                <Text style={[styles.estimateButtonText, { fontSize: scaledSize(18) }]}>
                   {i18n.language === 'en' ? 'Estimate Cost' : 'تقدير التكلفة'}
                 </Text>
               </>
@@ -205,17 +207,17 @@ export default function CostExplorerScreen({ onBack }: CostExplorerScreenProps) 
         {/* Estimate Result */}
         {estimate && (
           <View style={[styles.resultContainer, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.resultTitle, { color: colors.text }]}>
+            <Text style={[styles.resultTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
               {i18n.language === 'en' ? 'Estimated Cost' : 'التكلفة المقدرة'}
             </Text>
             <View style={styles.costRange}>
-              <Text style={[styles.costAmount, { color: colors.primary }]}>
+              <Text style={[styles.costAmount, { color: colors.primary, fontSize: scaledSize(32) }]}>
                 {estimate.minCostSAR.toLocaleString()} - {estimate.maxCostSAR.toLocaleString()} SAR
               </Text>
             </View>
             <View style={styles.timeEstimate}>
               <Ionicons name="time" size={20} color={colors.textSecondary} />
-              <Text style={[styles.timeText, { color: colors.textSecondary }]}>
+              <Text style={[styles.timeText, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>
                 {estimate.estimatedTimeDays} {i18n.language === 'en' ? 'days' : 'أيام'}
               </Text>
             </View>

@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import BidFormModal from './BidFormModal';
@@ -50,6 +51,7 @@ interface VisitRequest {
 export default function TechnicianBidsView({ visible, project, onClose, onSuccess }: TechnicianBidsViewProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [myBid, setMyBid] = useState<Bid | null>(null);
   const [myVisitRequest, setMyVisitRequest] = useState<VisitRequest | null>(null);

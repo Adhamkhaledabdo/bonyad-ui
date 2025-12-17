@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
@@ -40,6 +41,7 @@ interface EditablePhase {
 export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }: OwnerProjectEditScreenProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
 
   // Custom popup hooks
@@ -473,7 +475,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>{t('Project Description')}</Text>
+          <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Project Description')}</Text>
           <TextInput
             style={[styles.input, styles.multilineInput, { backgroundColor: colors.cardBackground, color: colors.text, borderColor: colors.border }]}
             value={description}
@@ -486,7 +488,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>{t('Budget (SAR)')}</Text>
+          <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Budget (SAR)')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.cardBackground, color: colors.text, borderColor: colors.border }]}
             value={budget}
@@ -498,7 +500,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>{t('Project Address')}</Text>
+          <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Project Address')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.cardBackground, color: colors.text, borderColor: colors.border }]}
             value={address}
@@ -592,7 +594,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
         <View style={styles.sectionDivider} />
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Project Phases')}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Project Phases')}</Text>
           <TouchableOpacity style={[styles.addPhaseButton, { backgroundColor: colors.primary }]} onPress={handleAddPhase}>
             <Ionicons name="add" size={18} color="#fff" />
             <Text style={styles.addPhaseButtonText}>{t('Add Phase')}</Text>
@@ -611,7 +613,7 @@ export default function OwnerProjectEditScreen({ projectId, onBack, onSuccess }:
             style={[styles.phaseCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
           >
             <View style={styles.phaseHeader}>
-              <Text style={[styles.phaseTitle, { color: colors.text }]}>
+              <Text style={[styles.phaseTitle, { color: colors.text, fontSize: scaledSize(16) }]}>
                 {t('Phase')} {index + 1}
               </Text>
               <TouchableOpacity onPress={() => handleRemovePhase(index)}>

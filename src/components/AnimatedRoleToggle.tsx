@@ -10,6 +10,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, Easing, LayoutChangeEvent, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { FontFamily, UIFontSizes } from '../constants/Fonts';
 
 interface AnimatedRoleToggleProps {

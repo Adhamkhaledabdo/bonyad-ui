@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrlWithParams, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
 import { formatMessageTime } from '../utils/chatUtils';
@@ -58,6 +59,7 @@ export default function ContractViewerModal({
 }: ContractViewerModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const [isLoading, setIsLoading] = useState(false);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -259,7 +261,7 @@ export default function ContractViewerModal({
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
+            <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(20) }]}>
               {t('Project Contract')}
             </Text>
             <TouchableOpacity onPress={onClose}>
@@ -465,7 +467,7 @@ export default function ContractViewerModal({
         <View style={styles.pdfModalOverlay}>
           <View style={[styles.pdfModalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.pdfHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.pdfHeaderTitle, { color: colors.text }]}>
+              <Text style={[styles.pdfHeaderTitle, { color: colors.text, fontSize: scaledSize(20) }]}>
                 {t('Contract')}
               </Text>
               <TouchableOpacity onPress={() => setShowPdfViewer(false)}>

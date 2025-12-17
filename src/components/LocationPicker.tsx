@@ -3,6 +3,7 @@ import { View, StyleSheet, Platform, TouchableOpacity, Text, Modal, TextInput, A
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Static libraries array to prevent LoadScript reload

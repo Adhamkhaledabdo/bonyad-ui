@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Platform, Linking, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,6 +19,7 @@ interface RoomVisualizerScreenProps {
 
 export default function RoomVisualizerScreen({ onBack }: RoomVisualizerScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   

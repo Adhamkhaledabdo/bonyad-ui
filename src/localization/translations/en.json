@@ -972,7 +972,9 @@
     "supportCenter": "Support Center",
     "getHelpContactUs": "Get help and contact us",
     "editPersonalInfo": "Edit personal information",
-    "managePortfolio": "Manage your work portfolio"
+    "managePortfolio": "Manage your work portfolio",
+    "fontSize": "Font Size",
+    "textSize": "Adjust text size"
   },
   "Welcome": "Welcome",
   "On": "On",

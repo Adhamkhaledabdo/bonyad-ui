@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -485,6 +486,7 @@ export default function ProjectDetailScreen({
 }: ProjectDetailScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [bids, setBids] = useState<Bid[]>([]);
   const [phases, setPhases] = useState<Phase[]>([]);

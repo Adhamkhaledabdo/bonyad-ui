@@ -24,6 +24,7 @@ import { storage } from '../utils/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Button, Card, Surface, Portal, List, Divider } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
@@ -48,6 +49,7 @@ export default function SignupScreen({
 }) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const insets = useSafeAreaInsets();
   
@@ -1365,7 +1367,7 @@ export default function SignupScreen({
               <View style={{ alignItems: 'center', marginBottom: 24, gap: 8 }}>
                 <Text style={[styles.desktopFormTitle, { 
                   color: isDarkMode ? colors.text : figmaColors.titleBlue, 
-                  fontSize: 24, 
+                  fontSize: scaledSize(24), 
                   fontWeight: '700',
                   textAlign: 'center',
                   marginBottom: 0,
@@ -1374,7 +1376,7 @@ export default function SignupScreen({
                 </Text>
                 <Text style={[styles.desktopFormSubtitle, { 
                   color: isDarkMode ? colors.textSecondary : figmaColors.textDark, 
-                  fontSize: 16,
+                  fontSize: scaledSize(16),
                   fontWeight: '400',
                   textAlign: 'center',
                   marginBottom: 0,
@@ -1609,7 +1611,7 @@ export default function SignupScreen({
                   borderRadius: 8,
                 }]}
                 contentStyle={[styles.desktopRegisterButtonContent, { paddingVertical: 12 }]}
-                labelStyle={{ fontSize: UIFontSizes.buttonMedium, fontWeight: '600', color: '#FFFFFF', fontFamily: FontFamily.button }}
+                labelStyle={{ fontSize: scaledSize(UIFontSizes.buttonMedium), fontWeight: '600', color: '#FFFFFF', fontFamily: FontFamily.button }}
                 loading={isLoading}
               >
                 {t('Create Account')}
@@ -1626,7 +1628,7 @@ export default function SignupScreen({
               ]}>
                 <Text style={[styles.desktopLoginText, { 
                   color: isDarkMode ? colors.textSecondary : figmaColors.textNavy, 
-                  fontSize: UIFontSizes.link,
+                  fontSize: scaledSize(UIFontSizes.link),
                   fontWeight: '300',
                 }]}>
                   {t('Already have an account?')}
@@ -1634,7 +1636,7 @@ export default function SignupScreen({
                 <TouchableOpacity onPress={onNavigateToLogin}>
                   <Text style={[styles.desktopLoginLinkText, { 
                     color: isDarkMode ? colors.primary : figmaColors.textNavy,
-                    fontSize: UIFontSizes.link,
+                    fontSize: scaledSize(UIFontSizes.link),
                     fontWeight: '600',
                     textDecorationLine: 'underline',
                   }]}>

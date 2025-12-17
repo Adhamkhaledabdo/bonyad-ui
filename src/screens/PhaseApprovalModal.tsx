@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrlWithParams, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
 import { showAlert, showError, showSuccess } from '../utils/alert';
@@ -79,6 +80,7 @@ export default function PhaseApprovalModal({
 }: PhaseApprovalModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
@@ -997,7 +999,7 @@ export default function PhaseApprovalModal({
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { fontSize: scaledSize(16) }]}>
               {t('Review Phases')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -1009,7 +1011,7 @@ export default function PhaseApprovalModal({
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={COLORS.primary60} />
-              <Text style={styles.loadingText}>
+              <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>
                 {t('Loading phases...')}
               </Text>
             </View>
@@ -1041,7 +1043,7 @@ export default function PhaseApprovalModal({
 
               {/* Total Summary */}
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>
+                <Text style={[styles.summaryTitle, { fontSize: scaledSize(16) }]}>
                   {t('Project Total')}
                 </Text>
                 <Text style={styles.summaryAmount}>

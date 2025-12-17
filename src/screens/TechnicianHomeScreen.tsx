@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
 import BonyadLogo from '../components/BonyadLogo';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import ProjectsScreen from './ProjectsScreen';
 import AppointmentsScreen from './AppointmentsScreen';
 import ChatRoomsListScreen from './ChatRoomsListScreen';
@@ -82,6 +83,7 @@ export default function TechnicianHomeScreen({
 }: TechnicianHomeScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const [isAvailable, setIsAvailable] = useState(true);
   const [showProjectsDropdown, setShowProjectsDropdown] = useState(false);
@@ -364,7 +366,7 @@ export default function TechnicianHomeScreen({
               <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? 'rgba(255, 149, 0, 0.2)' : 'rgba(255, 149, 0, 0.1)' }]}>
                 <Ionicons name="folder-open-outline" size={24} color="#FF9500" />
               </View>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>
                 {t('Create Portfolio')}
               </Text>
           </TouchableOpacity>
@@ -379,8 +381,8 @@ export default function TechnicianHomeScreen({
               <Ionicons name="briefcase-outline" size={24} color={colors.primary} />
             </View>
             <View style={styles.iosButtonTextContainer}>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Projects')}</Text>
-              <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary }]}>{t('View all project statuses')}</Text>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Projects')}</Text>
+              <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>{t('View all project statuses')}</Text>
             </View>
             <Ionicons 
               name={showProjectsDropdown ? "chevron-up" : "chevron-down"} 
@@ -416,7 +418,7 @@ export default function TechnicianHomeScreen({
               <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="list-outline" size={22} color={colors.primary} />
               </View>
-              <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('Look for Offers')}</Text>
+              <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Look for Offers')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
               style={[styles.iosDropdownItem, { borderBottomColor: colors.border }]}
@@ -429,7 +431,7 @@ export default function TechnicianHomeScreen({
               <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="mail-outline" size={22} color={colors.primary} />
               </View>
-              <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('Direct Offers')}</Text>
+              <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Direct Offers')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
               style={[styles.iosDropdownItem, { borderBottomColor: colors.border }]}
@@ -442,7 +444,7 @@ export default function TechnicianHomeScreen({
               <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="trending-up-outline" size={22} color={colors.primary} />
               </View>
-              <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('My Assigned Projects')}</Text>
+              <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('My Assigned Projects')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
               style={styles.iosDropdownItem}
@@ -455,7 +457,7 @@ export default function TechnicianHomeScreen({
               <View style={[styles.iosDropdownIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
                 <Ionicons name="checkmark-done-outline" size={22} color={colors.primary} />
             </View>
-              <Text style={[styles.iosDropdownText, { color: colors.text }]}>{t('My Bids')}</Text>
+              <Text style={[styles.iosDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('My Bids')}</Text>
           </TouchableOpacity>
           </Animated.View>
 
@@ -467,7 +469,7 @@ export default function TechnicianHomeScreen({
             <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
               <Ionicons name="calendar-outline" size={24} color={colors.primary} />
           </View>
-            <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Appointments')}</Text>
+            <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Appointments')}</Text>
                   </TouchableOpacity>
 
           {/* My Data Button */}
@@ -482,8 +484,8 @@ export default function TechnicianHomeScreen({
               <Ionicons name="person-circle-outline" size={24} color={colors.primary} />
             </View>
             <View style={styles.iosButtonTextContainer}>
-              <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('My Data')}</Text>
-              <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary }]}>{t('Edit profile, phone & password')}</Text>
+              <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('My Data')}</Text>
+              <Text style={[styles.iosButtonSubtext, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>{t('Edit profile, phone & password')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -496,7 +498,7 @@ export default function TechnicianHomeScreen({
             <View style={[styles.iosButtonIconContainer, { backgroundColor: isDarkMode ? colors.primary + '30' : 'rgba(0, 128, 224, 0.1)' }]}>
               <Ionicons name="chatbubbles-outline" size={24} color={colors.primary} />
             </View>
-            <Text style={[styles.iosButtonText, { color: colors.text }]}>{t('Messages')}</Text>
+            <Text style={[styles.iosButtonText, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Messages')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -702,7 +704,7 @@ export default function TechnicianHomeScreen({
               />
               <Text style={[
                 styles.figmaTabLabel, 
-                { color: activeTab === 'projects' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+                { color: activeTab === 'projects' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
               ]}>
                 {t('Projects')}
               </Text>
@@ -720,7 +722,7 @@ export default function TechnicianHomeScreen({
               />
               <Text style={[
                 styles.figmaTabLabel, 
-                { color: activeTab === 'appointments' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+                { color: activeTab === 'appointments' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
               ]}>
                 {t('Calendar')}
               </Text>
@@ -738,7 +740,7 @@ export default function TechnicianHomeScreen({
               />
               <Text style={[
                 styles.figmaTabLabel, 
-                { color: activeTab === 'home' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+                { color: activeTab === 'home' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
               ]}>
                 {t('Home')}
               </Text>
@@ -756,7 +758,7 @@ export default function TechnicianHomeScreen({
               />
               <Text style={[
                 styles.figmaTabLabel, 
-                { color: activeTab === 'wallet' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+                { color: activeTab === 'wallet' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
               ]}>
                 {t('Payments')}
               </Text>
@@ -774,7 +776,7 @@ export default function TechnicianHomeScreen({
               />
               <Text style={[
                 styles.figmaTabLabel, 
-                { color: activeTab === 'profile' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838") }
+                { color: activeTab === 'profile' ? colors.primary : (isDarkMode ? colors.textSecondary : "#383838"), fontSize: scaledSize(12) }
               ]}>
                 {t('Profile')}
               </Text>
@@ -811,7 +813,7 @@ export default function TechnicianHomeScreen({
             style={[styles.desktopNavTab, activeTab === 'home' && styles.desktopNavTabActive]}
               onPress={() => setActiveTab('home')}
             >
-            <Text style={[styles.desktopNavTabText, activeTab === 'home' && styles.desktopNavTabTextActive]}>
+            <Text style={[styles.desktopNavTabText, activeTab === 'home' && styles.desktopNavTabTextActive, { fontSize: scaledSize(16) }]}>
               {t('Dashboard')}
               </Text>
             </TouchableOpacity>
@@ -819,7 +821,7 @@ export default function TechnicianHomeScreen({
             style={[styles.desktopNavTab, activeTab === 'projects' && styles.desktopNavTabActive]}
             onPress={() => setActiveTab('projects')}
               >
-            <Text style={[styles.desktopNavTabText, activeTab === 'projects' && styles.desktopNavTabTextActive]}>
+            <Text style={[styles.desktopNavTabText, activeTab === 'projects' && styles.desktopNavTabTextActive, { fontSize: scaledSize(16) }]}>
                   {t('Projects')}
                 </Text>
               </TouchableOpacity>
@@ -827,7 +829,7 @@ export default function TechnicianHomeScreen({
             style={[styles.desktopNavTab, activeTab === 'appointments' && styles.desktopNavTabActive]}
             onPress={() => setActiveTab('appointments')}
                   >
-            <Text style={[styles.desktopNavTabText, activeTab === 'appointments' && styles.desktopNavTabTextActive]}>
+            <Text style={[styles.desktopNavTabText, activeTab === 'appointments' && styles.desktopNavTabTextActive, { fontSize: scaledSize(16) }]}>
               {t('Appointments')}
                     </Text>
                   </TouchableOpacity>
@@ -899,7 +901,7 @@ export default function TechnicianHomeScreen({
                 }}
             >
                 <Ionicons name="person-outline" size={20} color={colors.text} />
-                <Text style={[styles.desktopNavProfileDropdownText, { color: colors.text }]}>{t('Profile')}</Text>
+                <Text style={[styles.desktopNavProfileDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Profile')}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
                 style={[styles.desktopNavProfileDropdownItem, { borderBottomColor: colors.border }]}
@@ -909,7 +911,7 @@ export default function TechnicianHomeScreen({
                 }}
             >
                 <Ionicons name="wallet-outline" size={20} color={colors.text} />
-                <Text style={[styles.desktopNavProfileDropdownText, { color: colors.text }]}>{t('Pay')}</Text>
+                <Text style={[styles.desktopNavProfileDropdownText, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Pay')}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
                 style={styles.desktopNavProfileDropdownItem}
@@ -919,7 +921,7 @@ export default function TechnicianHomeScreen({
                 }}
             >
                 <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
-                <Text style={[styles.desktopNavProfileDropdownText, { color: colors.textSecondary }]}>{t('Logout')}</Text>
+                <Text style={[styles.desktopNavProfileDropdownText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>{t('Logout')}</Text>
             </TouchableOpacity>
           </View>
           )}

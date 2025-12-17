@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import * as ImagePicker from 'expo-image-picker';
@@ -39,6 +40,7 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -193,7 +195,7 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('My Portfolio')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('My Portfolio')}</Text>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => setShowAddModal(true)}
@@ -206,10 +208,10 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
         {portfolioItems.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="briefcase" size={80} color={colors.textSecondary} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary, fontSize: scaledSize(18) }]}>
               {t('No portfolio items yet')}
             </Text>
-            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
               {t('Add your work to showcase your skills')}
             </Text>
           </View>
@@ -218,9 +220,9 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
             {Array.isArray(portfolioItems) ? portfolioItems.map((item) => (
               <Card key={item.id} style={[styles.portfolioCard, { backgroundColor: colors.cardBackground }]}>
                 <Card.Content>
-                  <Text style={[styles.portfolioTitle, { color: colors.text }]}>{item.title}</Text>
+                  <Text style={[styles.portfolioTitle, { color: colors.text, fontSize: scaledSize(16) }]}>{item.title}</Text>
                   {item.description && (
-                    <Text style={[styles.portfolioDescription, { color: colors.textSecondary }]}>
+                    <Text style={[styles.portfolioDescription, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                       {item.description}
                     </Text>
                   )}
@@ -237,7 +239,7 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
                     </ScrollView>
                   )}
                   {item.date && (
-                    <Text style={[styles.portfolioDate, { color: colors.textSecondary }]}>
+                    <Text style={[styles.portfolioDate, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                       {new Date(item.date).toLocaleDateString()}
                     </Text>
                   )}
@@ -253,7 +255,7 @@ export default function PortfolioScreen({ userId, onBack }: PortfolioScreenProps
         <View style={styles.modalOverlay}>
           <Card style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Add Portfolio Item')}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Add Portfolio Item')}</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>

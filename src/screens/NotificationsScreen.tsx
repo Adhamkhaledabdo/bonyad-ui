@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import { storage } from '../utils/storage';
 import { getApiUrl, buildApiUrlWithParams, API_ENDPOINTS } from '../config/api';
@@ -53,6 +54,7 @@ export default function NotificationsScreen({
   onUnreadCountChange,
 }: NotificationsScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -380,7 +382,7 @@ export default function NotificationsScreen({
             <Ionicons name="chevron-back" size={24} color="#003867" />
           </TouchableOpacity>
         )}
-        <Text style={[styles.title, { color: '#003867', marginLeft: onBack ? 0 : 16 }]}>
+        <Text style={[styles.title, { color: '#003867', marginLeft: onBack ? 0 : 16, fontSize: scaledSize(18) }]}>
           {t('Notifications')}
         </Text>
       </View>
@@ -398,6 +400,7 @@ export default function NotificationsScreen({
             style={[
               styles.tabText,
               selectedFilter === 'all' ? styles.activeTabText : styles.inactiveTabText,
+              { fontSize: scaledSize(14) },
             ]}
           >
             {t('All')} ({notifications.length})
@@ -415,6 +418,7 @@ export default function NotificationsScreen({
             style={[
               styles.tabText,
               selectedFilter === 'unread' ? styles.activeTabText : styles.inactiveTabText,
+              { fontSize: scaledSize(14) },
             ]}
           >
             {t('Unread')} ({unreadCount})
@@ -432,6 +436,7 @@ export default function NotificationsScreen({
             style={[
               styles.tabText,
               selectedFilter === 'read' ? styles.activeTabText : styles.inactiveTabText,
+              { fontSize: scaledSize(14) },
             ]}
           >
             {t('Read')} ({notifications.length - unreadCount})

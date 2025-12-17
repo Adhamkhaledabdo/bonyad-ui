@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -797,6 +798,7 @@ export default function ApprovedProjectScreen({
 }: ApprovedProjectScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1093,7 +1095,7 @@ export default function ApprovedProjectScreen({
       <View style={[styles.container, { backgroundColor: COLORS.bgWhite, paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary60} />
-          <Text style={styles.loadingText}>{t('Loading...')}</Text>
+          <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading...')}</Text>
         </View>
       </View>
     );
@@ -1112,10 +1114,10 @@ export default function ApprovedProjectScreen({
           />
         </TouchableOpacity>
         <View style={[styles.headerTitleContainer, isRTL && { alignItems: 'flex-end' }]}>
-          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(16) }]}>
             {serviceName || t('Project')}
           </Text>
-          <Text style={[styles.headerSubtitle, isRTL && { textAlign: 'right' }]}>
+          <Text style={[styles.headerSubtitle, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(10) }]}>
               {t('Approved Project')}
           </Text>
         </View>
@@ -1142,10 +1144,10 @@ export default function ApprovedProjectScreen({
               />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(42) }]}>
                 {serviceName || t('Project')}
               </Text>
-              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(20) }]}>
                 {t('Approved Project')}
               </Text>
             </View>
@@ -1162,10 +1164,10 @@ export default function ApprovedProjectScreen({
         
         {/* Project Summary Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeaderTitle, isRTL && { textAlign: 'right' }]}>
+          <Text style={[styles.sectionHeaderTitle, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(16) }]}>
             {t('Project Summary')}
           </Text>
-          <Text style={[styles.sectionDescription, isRTL && { textAlign: 'right' }]}>
+          <Text style={[styles.sectionDescription, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(14) }]}>
             {t('Review and modify project phases before proceeding to contract signing.')}
           </Text>
           

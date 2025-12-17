@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { storage } from '../utils/storage';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import LocationPicker from '../components/LocationPicker';
 import ProjectCreationFlow from '../components/ProjectCreationFlow';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
@@ -63,6 +64,7 @@ export default function ManualProjectForm({
 }: ManualProjectFormProps) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isRTL = i18n.language === 'ar';

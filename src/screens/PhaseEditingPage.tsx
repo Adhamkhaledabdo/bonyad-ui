@@ -16,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PhaseManagementModal from '../components/PhaseManagementModal';
 
@@ -32,6 +33,7 @@ export default function PhaseEditingPage({
 }: PhaseEditingPageProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [showPhaseModal, setShowPhaseModal] = useState(true);
 

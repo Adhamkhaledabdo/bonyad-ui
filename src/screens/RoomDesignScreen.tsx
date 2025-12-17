@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 
 interface RoomDesignScreenProps {
@@ -10,6 +11,7 @@ interface RoomDesignScreenProps {
 
 export default function RoomDesignScreen({ onBack }: RoomDesignScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
 
   // Render only on web
@@ -29,7 +31,7 @@ export default function RoomDesignScreen({ onBack }: RoomDesignScreenProps) {
               color={colors.text} 
             />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(20) }]}>
             {i18n.language === 'en' ? 'Room Design' : 'تصميم الغرفة'}
           </Text>
           <View style={styles.backButton} /> {/* Placeholder for alignment */}
@@ -40,10 +42,10 @@ export default function RoomDesignScreen({ onBack }: RoomDesignScreenProps) {
       <View style={styles.content}>
         <View style={[styles.placeholderContainer, { backgroundColor: colors.cardBackground }]}>
           <Ionicons name="color-palette-outline" size={80} color={colors.textSecondary} />
-          <Text style={[styles.placeholderTitle, { color: colors.text }]}>
+          <Text style={[styles.placeholderTitle, { color: colors.text, fontSize: scaledSize(28) }]}>
             {i18n.language === 'en' ? 'Room Design Studio' : 'استوديو تصميم الغرف'}
           </Text>
-          <Text style={[styles.placeholderDescription, { color: colors.textSecondary }]}>
+          <Text style={[styles.placeholderDescription, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>
             {i18n.language === 'en' 
               ? 'Design your dream room coming soon...' 
               : 'صمم غرفتك المثالية قريباً...'}

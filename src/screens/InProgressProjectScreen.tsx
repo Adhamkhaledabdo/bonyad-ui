@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
@@ -84,6 +85,7 @@ export default function InProgressProjectScreen({
 }: InProgressProjectScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const isRTL = i18n.language === 'ar';
   
@@ -650,10 +652,10 @@ export default function InProgressProjectScreen({
             />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
-            <Text style={styles.titleText}>
+            <Text style={[styles.titleText, { fontSize: scaledSize(20) }]}>
               {getServiceName()}
             </Text>
-            <Text style={styles.subtitleText}>
+            <Text style={[styles.subtitleText, { fontSize: scaledSize(14) }]}>
               {t('In Progress')}
             </Text>
         </View>
@@ -680,10 +682,10 @@ export default function InProgressProjectScreen({
             />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
-              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(42) }]}>
                 {getServiceName()}
               </Text>
-              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(20) }]}>
                 {t('In Progress')}
               </Text>
           </View>
@@ -699,8 +701,8 @@ export default function InProgressProjectScreen({
         
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('Payment & Progress')}</Text>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={[styles.sectionTitle, { fontSize: scaledSize(20) }]}>{t('Payment & Progress')}</Text>
+          <Text style={[styles.sectionSubtitle, { fontSize: scaledSize(14) }]}>
             {t('Track phase completion and make payments for each milestone.')}
           </Text>
         </View>
@@ -739,7 +741,7 @@ export default function InProgressProjectScreen({
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary60} />
-            <Text style={styles.loadingText}>{t('Loading phases...')}</Text>
+            <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading phases...')}</Text>
           </View>
         ) : phases.length === 0 ? (
           <View style={styles.emptyContainer}>

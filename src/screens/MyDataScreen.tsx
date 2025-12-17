@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
 
@@ -57,6 +58,7 @@ export default function MyDataScreen({
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const isRTL = i18n.language === 'ar';
   
@@ -149,7 +151,7 @@ export default function MyDataScreen({
         <Ionicons name={icon} size={24} color={iconColor} />
       </View>
       <View style={[styles.menuTextContainer, isRTL && styles.textContainerRTL]}>
-        <Text style={[styles.menuTitle, { color: textColor }, isRTL && styles.textRTL]}>
+        <Text style={[styles.menuTitle, { color: textColor, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
           {title}
         </Text>
       </View>
@@ -172,7 +174,7 @@ export default function MyDataScreen({
             color={textColor}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>
+        <Text style={[styles.headerTitle, { color: textColor, fontSize: scaledSize(18) }]}>
           {isTechnician ? t('Service Provider Profile') : t('User Profile')}
         </Text>
         <View style={styles.placeholder} />
@@ -195,7 +197,7 @@ export default function MyDataScreen({
               <Ionicons name="person" size={60} color={primaryColor} />
             )}
           </View>
-          <Text style={[styles.userName, { color: textColor }]}>
+          <Text style={[styles.userName, { color: textColor, fontSize: scaledSize(18) }]}>
             {userProfile?.name || t('profile.usernamePlaceholder')}
           </Text>
         </View>

@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, TextInput } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resendForgotPasswordOTP } from '../services/AuthService';
 import { showAlert, showError } from '../utils/alert';
@@ -29,6 +30,7 @@ interface OTPVerificationScreenProps {
 export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTPVerified }: OTPVerificationScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -178,8 +180,8 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
               style={styles.logo}
               contentFit="contain"
             />
-            <Text style={[styles.title, { color: colors.text }]}>{t('Enter OTP')}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.title, { color: colors.text, fontSize: scaledSize(24) }]}>{t('Enter OTP')}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
               {t('We sent a code to')} {phoneNumber}
             </Text>
           </View>
@@ -226,7 +228,7 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
           {/* Verifying Indicator */}
           {isVerifying && (
             <View style={styles.verifyingContainer}>
-              <Text style={[styles.verifyingText, { color: colors.primary }]}>
+              <Text style={[styles.verifyingText, { color: colors.primary, fontSize: scaledSize(16) }]}>
                 {t('Verifying...')}
               </Text>
             </View>
@@ -234,7 +236,7 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
 
           {/* Resend OTP */}
           <View style={styles.resendContainer}>
-            <Text style={[styles.resendText, { color: colors.textSecondary }]}>
+            <Text style={[styles.resendText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
               {t("Didn't receive the code?")}
             </Text>
             <TouchableOpacity
@@ -242,7 +244,7 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
               disabled={!canResend || isLoading}
               style={[styles.resendButton, !canResend && styles.resendButtonDisabled]}
             >
-              <Text style={[styles.resendButtonText, { color: canResend ? colors.primary : colors.textTertiary }]}>
+              <Text style={[styles.resendButtonText, { color: canResend ? colors.primary : colors.textTertiary, fontSize: scaledSize(14) }]}>
                 {canResend ? t('Resend OTP') : t('Resend in')} {canResend ? '' : `${resendTimer}s`}
               </Text>
             </TouchableOpacity>
@@ -279,8 +281,8 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
               style={styles.desktopLogo}
               contentFit="contain"
             />
-            <Text style={[styles.desktopTitle, { color: colors.text }]}>{t('Enter OTP')}</Text>
-            <Text style={[styles.desktopSubtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.desktopTitle, { color: colors.text, fontSize: scaledSize(28) }]}>{t('Enter OTP')}</Text>
+            <Text style={[styles.desktopSubtitle, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>
               {t('We sent a code to')} {phoneNumber}
             </Text>
           </View>
@@ -327,7 +329,7 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
           {/* Verifying Indicator */}
           {isVerifying && (
             <View style={styles.desktopVerifyingContainer}>
-              <Text style={[styles.desktopVerifyingText, { color: colors.primary }]}>
+              <Text style={[styles.desktopVerifyingText, { color: colors.primary, fontSize: scaledSize(18) }]}>
                 {t('Verifying...')}
               </Text>
             </View>
@@ -335,7 +337,7 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
 
           {/* Resend OTP */}
           <View style={styles.desktopResendContainer}>
-            <Text style={[styles.desktopResendText, { color: colors.textSecondary }]}>
+            <Text style={[styles.desktopResendText, { color: colors.textSecondary, fontSize: scaledSize(15) }]}>
               {t("Didn't receive the code?")}
             </Text>
             <TouchableOpacity
@@ -343,7 +345,7 @@ export default function OTPVerificationScreen({ phoneNumber, role, onBack, onOTP
               disabled={!canResend || isLoading}
               style={[styles.desktopResendButton, !canResend && styles.desktopResendButtonDisabled]}
             >
-              <Text style={[styles.desktopResendButtonText, { color: canResend ? colors.primary : colors.textTertiary }]}>
+              <Text style={[styles.desktopResendButtonText, { color: canResend ? colors.primary : colors.textTertiary, fontSize: scaledSize(15) }]}>
                 {canResend ? t('Resend OTP') : t('Resend in')} {canResend ? '' : `${resendTimer}s`}
               </Text>
             </TouchableOpacity>

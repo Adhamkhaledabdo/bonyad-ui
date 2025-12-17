@@ -21,6 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -114,6 +115,7 @@ export default function ContractSigningProjectScreen({
 }: ContractSigningProjectScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -230,7 +232,7 @@ export default function ContractSigningProjectScreen({
       <View style={[styles.container, { backgroundColor: COLORS.bgWhite, paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary60} />
-          <Text style={styles.loadingText}>{t('Loading...')}</Text>
+          <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading...')}</Text>
         </View>
       </View>
     );
@@ -249,10 +251,10 @@ export default function ContractSigningProjectScreen({
           />
         </TouchableOpacity>
         <View style={[styles.headerTitleContainer, isRTL && { alignItems: 'flex-end' }]}>
-          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(20) }]}>
             {serviceName || project?.description?.substring(0, 30) || t('Project')}
           </Text>
-          <Text style={[styles.headerSubtitle, isRTL && { textAlign: 'right' }]}>
+          <Text style={[styles.headerSubtitle, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(14) }]}>
               {t('Contract Signing')}
           </Text>
         </View>
@@ -279,10 +281,10 @@ export default function ContractSigningProjectScreen({
               />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.titleMainText, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(42) }]}>
                 {serviceName || project?.description?.substring(0, 30) || t('Project')}
               </Text>
-              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.titleSubtext, isRTL && { textAlign: 'right' }, { fontSize: scaledSize(20) }]}>
                 {t('Contract Signing')}
               </Text>
             </View>

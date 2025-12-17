@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer from 'react-native-youtube-iframe';
 
@@ -66,6 +67,7 @@ const extractVideoId = (urlOrId: string): string => {
 
 export default function IntroToAppScreen({ onBack }: IntroToAppScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const screenWidth = Dimensions.get('window').width;
   const isWeb = Platform.OS === 'web';
   
@@ -94,9 +96,9 @@ export default function IntroToAppScreen({ onBack }: IntroToAppScreenProps) {
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
-          <Text style={[styles.backText, { color: colors.text }]}>Back</Text>
+          <Text style={[styles.backText, { color: colors.text, fontSize: scaledSize(16) }]}>Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Intro to the App</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(20) }]}>Intro to the App</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -105,8 +107,8 @@ export default function IntroToAppScreen({ onBack }: IntroToAppScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.introCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-          <Text style={[styles.introTitle, { color: colors.text }]}>Learn About Bonyad</Text>
-          <Text style={[styles.introText, { color: colors.textSecondary }]}>
+          <Text style={[styles.introTitle, { color: colors.text, fontSize: scaledSize(24) }]}>Learn About Bonyad</Text>
+          <Text style={[styles.introText, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>
             Watch these videos to learn more about Bonyad and how to use our platform.
           </Text>
         </View>
@@ -126,7 +128,7 @@ export default function IntroToAppScreen({ onBack }: IntroToAppScreenProps) {
                 disabled={isExpanded}
                 style={styles.accordionHeader}
               >
-                <Text style={[styles.videoTitle, { color: colors.text }]}>
+                <Text style={[styles.videoTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
                   {video.title}
                 </Text>
                 {!isExpanded && (

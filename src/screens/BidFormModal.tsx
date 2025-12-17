@@ -23,6 +23,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
@@ -70,6 +71,7 @@ interface BidFormModalProps {
 export default function BidFormModal({ visible, project, onClose, onSuccess }: BidFormModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [bidPrice, setBidPrice] = useState('');
   const [bidDescription, setBidDescription] = useState('');
@@ -206,7 +208,7 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
                   <View style={styles.headerIconContainer}>
                     <Ionicons name="cash" size={28} color={COLORS.green80} />
                   </View>
-                  <Text style={styles.headerTitle}>{t('Place Bid')}</Text>
+                  <Text style={[styles.headerTitle, { fontSize: scaledSize(20) }]}>{t('Place Bid')}</Text>
                   <TouchableOpacity 
                     onPress={handleClose} 
                     style={styles.closeButton}
@@ -324,7 +326,7 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
                     onPress={handleClose}
                     disabled={isSubmitting}
                   >
-                    <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+                    <Text style={[styles.cancelButtonText, { fontSize: scaledSize(16) }]}>{t('Cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -339,7 +341,7 @@ export default function BidFormModal({ visible, project, onClose, onSuccess }: B
                     ) : (
                       <>
                         <Ionicons name="send" size={18} color={COLORS.textWhite} />
-                        <Text style={styles.submitButtonText}>{t('Submit Bid')}</Text>
+                        <Text style={[styles.submitButtonText, { fontSize: scaledSize(16) }]}>{t('Submit Bid')}</Text>
                       </>
                     )}
                   </TouchableOpacity>

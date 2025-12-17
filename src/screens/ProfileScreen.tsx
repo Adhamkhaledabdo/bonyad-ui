@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 import ConfirmationPopup, { useConfirmationPopup } from '../components/ConfirmationPopup';
@@ -89,6 +90,7 @@ export default function ProfileScreen({
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors, theme, toggleTheme } = useTheme();
+  const { fontFamily, fontSizeScale, setFontSizeScale, scaledSize } = useFontFamily();
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState(i18n.language);
@@ -189,6 +191,22 @@ export default function ProfileScreen({
     });
   };
 
+  const cycleFontSize = () => {
+    const sizes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large'];
+    const currentIndex = sizes.indexOf(fontSizeScale);
+    const nextIndex = (currentIndex + 1) % sizes.length;
+    setFontSizeScale(sizes[nextIndex]);
+  };
+
+  const getFontSizeLabel = () => {
+    switch (fontSizeScale) {
+      case 'small': return isRTL ? 'صغير' : 'S';
+      case 'medium': return isRTL ? 'متوسط' : 'M';
+      case 'large': return isRTL ? 'كبير' : 'L';
+      default: return 'M';
+    }
+  };
+
   const handleToggleDarkMode = () => {
     toggleTheme();
   };
@@ -229,7 +247,7 @@ export default function ProfileScreen({
       >
         {/* Page Title */}
         <View style={styles.pageTitleContainer}>
-          <Text style={[styles.pageTitle, { color: headerTextColor }]}>{t('profile.myProfile')}</Text>
+          <Text style={[styles.pageTitle, { color: headerTextColor, fontFamily, fontSize: scaledSize(20) }]}>{t('profile.myProfile')}</Text>
         </View>
 
         {/* Main Profile Card */}
@@ -254,10 +272,10 @@ export default function ProfileScreen({
               )}
             </View>
             <View style={[styles.userWelcomeText, isRTL && styles.textContainerRTL]}>
-              <Text style={[styles.welcomeLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.welcomeLabel, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                 {t('Welcome')}
               </Text>
-              <Text style={[styles.userName, { color: headerTextColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.userName, { color: headerTextColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                 {user?.name || t('profile.usernamePlaceholder')}
               </Text>
             </View>
@@ -275,10 +293,10 @@ export default function ProfileScreen({
           <View style={styles.myInfoSection}>
             <View style={[styles.myInfoHeader, isRTL && styles.rowRTL]}>
               <View style={isRTL && styles.textContainerRTL}>
-                <Text style={[styles.myInfoTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.myInfoTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                   {t('profile.myInfo')}
                 </Text>
-                <Text style={[styles.myInfoSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.myInfoSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {t('profile.userAccount')}
                 </Text>
             </View>
@@ -288,12 +306,12 @@ export default function ProfileScreen({
             <View style={styles.infoRows}>
               {/* Account Status */}
               <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
-                <Text style={[styles.infoLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.infoLabel, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {t('profile.accountStatus')}
                 </Text>
                 <View style={[styles.verifiedBadge, { backgroundColor: successBgColor, borderColor: successColor }]}>
                   <Ionicons name="checkmark-circle" size={10} color={successColor} />
-                  <Text style={[styles.verifiedText, { color: successColor }]}>
+                  <Text style={[styles.verifiedText, { color: successColor, fontFamily, fontSize: scaledSize(14) }]}>
                     {isVerified ? t('profile.verified') : t('profile.pending')}
                   </Text>
                 </View>
@@ -301,20 +319,20 @@ export default function ProfileScreen({
 
               {/* Email */}
               <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
-                <Text style={[styles.infoLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.infoLabel, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {t('profile.email')}
                 </Text>
-                <Text style={[styles.infoValue, { color: textColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.infoValue, { color: textColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {user?.email || '-'}
                 </Text>
               </View>
 
               {/* Phone Number */}
               <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
-                <Text style={[styles.infoLabel, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.infoLabel, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {t('profile.phoneNumber')}
                 </Text>
-                <Text style={[styles.infoValue, { color: textColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.infoValue, { color: textColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {user?.phone || user?.phoneNumber || '-'}
                 </Text>
               </View>
@@ -324,16 +342,16 @@ export default function ProfileScreen({
           {/* Stats Cards */}
           <View style={[styles.statsContainer, isRTL && styles.rowRTL]}>
             <View style={[styles.statCard, { backgroundColor: statBgColor, borderColor: statBorderColor }]}>
-              <Text style={[styles.statNumber, { color: textColor }]}>{user?.propertiesCount || 0}</Text>
-              <Text style={[styles.statLabel, { color: textColor }]}>{t('profile.properties')}</Text>
+              <Text style={[styles.statNumber, { color: textColor, fontFamily, fontSize: scaledSize(14) }]}>{user?.propertiesCount || 0}</Text>
+              <Text style={[styles.statLabel, { color: textColor, fontFamily, fontSize: scaledSize(14) }]}>{t('profile.properties')}</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: statBgColor, borderColor: statBorderColor }]}>
-              <Text style={[styles.statNumber, { color: textColor }]}>{user?.appointmentsCount || 0}</Text>
-              <Text style={[styles.statLabel, { color: textColor }]}>{t('profile.appointments')}</Text>
+              <Text style={[styles.statNumber, { color: textColor, fontFamily, fontSize: scaledSize(14) }]}>{user?.appointmentsCount || 0}</Text>
+              <Text style={[styles.statLabel, { color: textColor, fontFamily, fontSize: scaledSize(14) }]}>{t('profile.appointments')}</Text>
                   </View>
             <View style={[styles.statCard, { backgroundColor: statBgColor, borderColor: statBorderColor }]}>
-              <Text style={[styles.statNumber, { color: textColor }]}>{user?.ticketsCount || 0}</Text>
-              <Text style={[styles.statLabel, { color: textColor }]}>{t('profile.ticket')}</Text>
+              <Text style={[styles.statNumber, { color: textColor, fontFamily, fontSize: scaledSize(14) }]}>{user?.ticketsCount || 0}</Text>
+              <Text style={[styles.statLabel, { color: textColor, fontFamily, fontSize: scaledSize(14) }]}>{t('profile.ticket')}</Text>
                     </View>
                   </View>
                   </View>
@@ -353,10 +371,10 @@ export default function ProfileScreen({
                   <Ionicons name="briefcase-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
                 </View>
                 <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                  <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                     {t('My Portfolio')}
                   </Text>
-                  <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                     {t('Add your works here')}
                   </Text>
                 </View>
@@ -373,10 +391,10 @@ export default function ProfileScreen({
                   <Ionicons name="card-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
                 </View>
                 <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                  <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                  <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                     {t('My Subscriptions')}
                   </Text>
-                  <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                  <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                     {t('Manage your subscriptions')}
                   </Text>
                 </View>
@@ -396,10 +414,10 @@ export default function ProfileScreen({
                 <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
               </View>
               <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                   {t('My Data')}
                 </Text>
-                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {t('profile.editPersonalInfo')}
                 </Text>
               </View>
@@ -416,17 +434,91 @@ export default function ProfileScreen({
               <Ionicons name="globe-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
             </View>
             <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-              <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                 {t('profile.language')}
               </Text>
-              <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                 {t('profile.appLanguage')}
               </Text>
             </View>
             <View style={[styles.languageBadge, { backgroundColor: iconBgColor }]}>
-              <Text style={[styles.languageBadgeText, { color: isDarkMode ? colors.text : '#666666' }]}>
+              <Text style={[styles.languageBadgeText, { color: isDarkMode ? colors.text : '#666666', fontFamily, fontSize: scaledSize(14) }]}>
               {language === 'en' ? 'EN' : 'AR'}
             </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Font Size */}
+          <TouchableOpacity 
+            style={[styles.settingItem, isRTL && styles.rowRTL]}
+            onPress={cycleFontSize}
+          >
+            <View style={[styles.settingIconContainer, { backgroundColor: iconBgColor }]}>
+              <Ionicons name="text-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
+            </View>
+            <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
+                {t('profile.fontSize')}
+              </Text>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
+                {t('profile.textSize')}
+              </Text>
+            </View>
+            <View style={[styles.fontSizeSelector, isRTL && styles.rowRTL]}>
+              <TouchableOpacity 
+                style={[
+                  styles.fontSizeOption, 
+                  { backgroundColor: fontSizeScale === 'small' ? primaryColor : iconBgColor }
+                ]}
+                onPress={() => setFontSizeScale('small')}
+              >
+                <Text style={[
+                  styles.fontSizeOptionText, 
+                  { 
+                    color: fontSizeScale === 'small' ? FIGMA_COLORS.white : (isDarkMode ? colors.text : '#666666'),
+                    fontFamily,
+                    fontSize: 12,
+                  }
+                ]}>
+                  {isRTL ? 'ص' : 'S'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.fontSizeOption, 
+                  { backgroundColor: fontSizeScale === 'medium' ? primaryColor : iconBgColor }
+                ]}
+                onPress={() => setFontSizeScale('medium')}
+              >
+                <Text style={[
+                  styles.fontSizeOptionText, 
+                  { 
+                    color: fontSizeScale === 'medium' ? FIGMA_COLORS.white : (isDarkMode ? colors.text : '#666666'),
+                    fontFamily,
+                    fontSize: 14,
+                  }
+                ]}>
+                  {isRTL ? 'م' : 'M'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.fontSizeOption, 
+                  { backgroundColor: fontSizeScale === 'large' ? primaryColor : iconBgColor }
+                ]}
+                onPress={() => setFontSizeScale('large')}
+              >
+                <Text style={[
+                  styles.fontSizeOptionText, 
+                  { 
+                    color: fontSizeScale === 'large' ? FIGMA_COLORS.white : (isDarkMode ? colors.text : '#666666'),
+                    fontFamily,
+                    fontSize: 16,
+                  }
+                ]}>
+                  {isRTL ? 'ك' : 'L'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
 
@@ -436,10 +528,10 @@ export default function ProfileScreen({
               <Ionicons name="moon-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
             </View>
             <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-              <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                 {t('Dark Mode')}
               </Text>
-              <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                 {isDarkMode ? t('On') : t('Off')}
               </Text>
             </View>
@@ -457,10 +549,10 @@ export default function ProfileScreen({
                 <Ionicons name="person-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
               </View>
               <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-                <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                   {t('User Mode')}
                 </Text>
-                <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+                <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                   {t('Advanced')}
                 </Text>
               </View>
@@ -476,10 +568,10 @@ export default function ProfileScreen({
               <Ionicons name="help-circle-outline" size={24} color={isDarkMode ? colors.textSecondary : '#666666'} />
             </View>
             <View style={[styles.settingTextContainer, isRTL && styles.textContainerRTL]}>
-              <Text style={[styles.settingTitle, { color: textColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.settingTitle, { color: textColor, fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>
                 {t('profile.supportCenter')}
               </Text>
-              <Text style={[styles.settingSubtitle, { color: secondaryTextColor }, isRTL && styles.textRTL]}>
+              <Text style={[styles.settingSubtitle, { color: secondaryTextColor, fontFamily, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
                 {t('profile.getHelpContactUs')}
               </Text>
             </View>
@@ -496,7 +588,7 @@ export default function ProfileScreen({
           <View style={styles.logoutIconContainer}>
               <Ionicons name="log-out-outline" size={24} color={FIGMA_COLORS.purple} />
           </View>
-            <Text style={[styles.logoutText, isRTL && styles.textRTL]}>{t('Logout')}</Text>
+            <Text style={[styles.logoutText, { fontFamily, fontSize: scaledSize(16) }, isRTL && styles.textRTL]}>{t('Logout')}</Text>
         </TouchableOpacity>
         </View>
       </ScrollView>
@@ -712,6 +804,23 @@ const styles = StyleSheet.create({
   },
   languageBadgeText: {
     fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Font Size Selector
+  fontSizeSelector: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  fontSizeOption: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fontSizeOptionText: {
     fontWeight: '600',
     textAlign: 'center',
   },

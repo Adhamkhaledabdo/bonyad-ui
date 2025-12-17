@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { FontFamily, UIFontSizes } from '../constants/Fonts';
+import { useFontFamily } from '../context/FontContext';
 
 // Figma Design Colors for inputs (from node 8:208)
 const figmaInputColors = {
@@ -73,6 +74,7 @@ export const CustomTextInput: React.FC<CustomInputProps> = ({
 }) => {
   const { colors, theme } = useTheme();
   const { i18n } = useTranslation();
+  const { fontFamily } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const [isFocused, setIsFocused] = useState(false);
   

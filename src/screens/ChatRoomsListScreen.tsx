@@ -16,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ENDPOINTS, buildApiUrl, API_BASE_URL } from '../config/api';
 import { storage } from '../utils/storage';
@@ -30,6 +31,7 @@ interface ChatRoomsListScreenProps {
 export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsListScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -207,7 +209,7 @@ export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsLis
               />
             ) : (
               <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary + '20' }]}>
-                <Text style={[styles.avatarText, { color: colors.primary }]}>
+                <Text style={[styles.avatarText, { color: colors.primary, fontSize: scaledSize(18) }]}>
                   {item.otherUserName.charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -217,10 +219,10 @@ export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsLis
           {/* Chat Info */}
           <View style={styles.chatInfo}>
             <View style={styles.headerRow}>
-              <Text style={[styles.userName, { color: colors.text }]}>
+              <Text style={[styles.userName, { color: colors.text, fontSize: scaledSize(16) }]}>
                 {item.otherUserName}
               </Text>
-              <Text style={[styles.timestamp, { color: colors.textSecondary }]}>
+              <Text style={[styles.timestamp, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                 {formatRelativeTime(item.lastMessageAt)}
               </Text>
             </View>
@@ -270,14 +272,14 @@ export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsLis
           ) : (
             <View style={{ width: 24 }} />
           )}
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {t('Chat')}
           </Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          <Text style={[styles.loadingText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
             {t('Loading chats...')}
           </Text>
         </View>
@@ -304,17 +306,17 @@ export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsLis
           ) : (
             <View style={{ width: 24 }} />
           )}
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {t('Chat')}
           </Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={80} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+          <Text style={[styles.emptyTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
             {t('No chats yet')}
           </Text>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
             {t('Start a conversation to begin chatting')}
           </Text>
         </View>
@@ -341,7 +343,7 @@ export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsLis
         ) : (
           <View style={{ width: 24 }} />
         )}
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
           {t('Chat')}
         </Text>
         <View style={{ width: 24 }} />

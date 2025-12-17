@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { buildApiUrl, API_ENDPOINTS, buildApiUrlWithParams } from '../config/api';
 import { getTechnicianAvailability, createAppointment } from '../services/BookingService';
@@ -52,6 +53,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
@@ -271,7 +273,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
     
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Select Date')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Select Date')}</Text>
         
         {/* Month/Year Header */}
         <View style={styles.calendarHeader}>
@@ -286,7 +288,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
             <Ionicons name="chevron-back" size={18} color={colors.primary} />
           </TouchableOpacity>
           
-          <Text style={[styles.monthYearText, { color: colors.text }]}>
+          <Text style={[styles.monthYearText, { color: colors.text, fontSize: scaledSize(18) }]}>
             {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </Text>
           
@@ -306,7 +308,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
         <View style={styles.dayNamesRow}>
           {dayNames.map((dayName, index) => (
             <View key={index} style={styles.dayNameCell}>
-              <Text style={[styles.dayNameText, { color: colors.textSecondary }]}>
+              <Text style={[styles.dayNameText, { color: colors.textSecondary, fontSize: scaledSize(12) }]}>
                 {dayName}
               </Text>
             </View>
@@ -366,7 +368,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
         {/* Selected date info */}
         <View style={[styles.selectedDateInfo, { backgroundColor: colors.cardBackground }]}>
           <Ionicons name="calendar" size={20} color={colors.primary} />
-          <Text style={[styles.selectedDateText, { color: colors.text }]}>
+          <Text style={[styles.selectedDateText, { color: colors.text, fontSize: scaledSize(14) }]}>
             {selectedDate.toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -383,7 +385,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+        <Text style={[styles.loadingText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
           {t('Loading availability')}...
         </Text>
       </View>
@@ -397,7 +399,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.screenTitle, { color: colors.text }]}>{t('Booking')}</Text>
+        <Text style={[styles.screenTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Booking')}</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -406,7 +408,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
         <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
           <Ionicons name="person" size={24} color={colors.primary} />
         </View>
-        <Text style={[styles.technicianName, { color: colors.text }]}>{technicianName}</Text>
+        <Text style={[styles.technicianName, { color: colors.text, fontSize: scaledSize(16) }]}>{technicianName}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
@@ -415,7 +417,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
         {/* Time Slots or Custom Time Picker */}
         {availabilityStatus === 'FIXED_TIMES' ? (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Available Times')}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Available Times')}</Text>
             {availableSlots.length > 0 ? (
               <View style={styles.slotsContainer}>
                 {availableSlots.map((slot) => (
@@ -441,23 +443,23 @@ const BookingScreen: React.FC<BookingScreenProps> = ({
                 ))}
               </View>
             ) : (
-              <Text style={[styles.noSlotsText, { color: colors.textSecondary }]}>
+              <Text style={[styles.noSlotsText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                 {t('No slots available for this date')}
               </Text>
             )}
           </View>
         ) : (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Select Time')}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(16) }]}>{t('Select Time')}</Text>
 
             <View style={styles.timePickerRow}>
               <View style={styles.timePicker}>
-                <Text style={[styles.timeLabel, { color: colors.text }]}>{t('Start Time')}</Text>
+                <Text style={[styles.timeLabel, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Start Time')}</Text>
                 <TouchableOpacity
                   style={[styles.timeButton, { backgroundColor: colors.cardBackground }]}
                   onPress={() => setShowCustomStartTime(true)}
                 >
-                  <Text style={[styles.timeText, { color: colors.text }]}>
+                  <Text style={[styles.timeText, { color: colors.text, fontSize: scaledSize(16) }]}>
                     {customStartTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                   <Ionicons name="time-outline" size={20} color={colors.primary} />

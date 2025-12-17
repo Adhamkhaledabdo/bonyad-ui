@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { changePassword } from '../services/ProfileService';
@@ -46,6 +47,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const isRTL = i18n.language === 'ar';
   
@@ -185,7 +187,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
             color={headerTextColor}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: headerTextColor }]}>
+        <Text style={[styles.headerTitle, { color: headerTextColor, fontSize: scaledSize(18) }]}>
           {t('Change Password')}
         </Text>
         <View style={styles.placeholder} />
@@ -209,7 +211,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
               <Ionicons name="person" size={50} color={primaryColor} />
             )}
           </View>
-          <Text style={[styles.userName, { color: headerTextColor }]}>
+          <Text style={[styles.userName, { color: headerTextColor, fontSize: scaledSize(18) }]}>
             {userProfile?.name || t('profile.usernamePlaceholder')}
           </Text>
         </View>
@@ -221,7 +223,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
         <View style={styles.formSection}>
           {/* Enter Current Password */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('Enter Current Password')}
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
@@ -245,7 +247,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
 
           {/* Enter New Password */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('Enter New Password')}
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
@@ -269,7 +271,7 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
 
           {/* Re-Enter New Password */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('Re-Enter New Password')}
               </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>

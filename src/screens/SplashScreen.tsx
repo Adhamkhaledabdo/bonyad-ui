@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, ImageBackground, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import * as SplashScreenNative from 'expo-splash-screen';
 import BonyadLogo from '../components/BonyadLogo';
 
@@ -11,6 +12,7 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onComplete, onNavigateToOverview }: SplashScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 

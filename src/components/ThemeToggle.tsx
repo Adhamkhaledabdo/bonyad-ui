@@ -9,6 +9,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { FontFamily, UIFontSizes } from '../constants/Fonts';
 
 export default function ThemeToggle() {

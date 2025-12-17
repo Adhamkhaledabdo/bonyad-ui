@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import onboardingStorage from '../services/onboardingStorage';
@@ -54,6 +55,7 @@ const DEFAULT_SLOTS: AvailabilitySlot[] = [
 
 const TechnicianOnboardingScreen: React.FC<TechnicianOnboardingScreenProps> = ({ token, userId, onFinished }) => {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t, i18n } = useTranslation();
 
   const [step, setStep] = useState<Step>(1);

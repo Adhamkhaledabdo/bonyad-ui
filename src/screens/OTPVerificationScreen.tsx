@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { FontFamily, UIFontSizes } from '../constants/Fonts';
 import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
@@ -58,6 +59,7 @@ export default function OTPVerificationPopup({
 }: OTPVerificationPopupProps) {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
@@ -554,16 +556,16 @@ export default function OTPVerificationPopup({
 
               {/* Title */}
               <View style={styles.titleContainer}>
-                <Text style={[styles.title, IS_LARGE_WEB && styles.titleDesktop, { color: isDarkMode ? colors.primary : figmaColors.titleBlue }]}>
+                <Text style={[styles.title, IS_LARGE_WEB && styles.titleDesktop, { color: isDarkMode ? colors.primary : figmaColors.titleBlue, fontSize: scaledSize(22) }]}>
                   {t('Verify Your Identity')}
                 </Text>
-                <Text style={[styles.subtitle, IS_LARGE_WEB && styles.subtitleDesktop, { color: isDarkMode ? colors.textSecondary : figmaColors.textDark }]}>
+                <Text style={[styles.subtitle, IS_LARGE_WEB && styles.subtitleDesktop, { color: isDarkMode ? colors.textSecondary : figmaColors.textDark, fontSize: scaledSize(16) }]}>
                   {t("We've sent a 4-digit code to")} {getMaskedPhone()}
                 </Text>
               </View>
 
               {/* OTP Label */}
-              <Text style={[styles.otpLabel, IS_LARGE_WEB && styles.otpLabelDesktop, { color: isDarkMode ? colors.text : figmaColors.textDark }]}>
+              <Text style={[styles.otpLabel, IS_LARGE_WEB && styles.otpLabelDesktop, { color: isDarkMode ? colors.text : figmaColors.textDark, fontSize: scaledSize(18) }]}>
                 {t('Enter your OTP code')}
               </Text>
 

@@ -21,6 +21,7 @@ import { Button, Card, Switch } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AIService, { ProjectRequest, analyzeDescription, ServiceCategory } from '../services/AIService';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -84,6 +85,7 @@ export default function ConversationalAIForm({
 }: ConversationalAIFormProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const router = useRouter('aiForm', () => {});
   const { alertState, showError, showWarning, showAlert, hideAlert } = useAlertPopup();

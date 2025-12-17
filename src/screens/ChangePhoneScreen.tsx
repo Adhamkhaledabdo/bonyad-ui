@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { requestPhoneChange } from '../services/ProfileService';
@@ -49,6 +50,7 @@ export default function ChangePhoneScreen({ onBack, onOTPSent }: ChangePhoneScre
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors, theme } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const isDarkMode = theme === 'dark';
   const isRTL = i18n.language === 'ar';
   
@@ -187,7 +189,7 @@ export default function ChangePhoneScreen({ onBack, onOTPSent }: ChangePhoneScre
             color={headerTextColor}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: headerTextColor }]}>
+        <Text style={[styles.headerTitle, { color: headerTextColor, fontSize: scaledSize(18) }]}>
           {t('Change Phone Number')}
         </Text>
         <View style={styles.placeholder} />
@@ -211,7 +213,7 @@ export default function ChangePhoneScreen({ onBack, onOTPSent }: ChangePhoneScre
               <Ionicons name="person" size={50} color={primaryColor} />
             )}
           </View>
-          <Text style={[styles.userName, { color: headerTextColor }]}>
+          <Text style={[styles.userName, { color: headerTextColor, fontSize: scaledSize(18) }]}>
             {userProfile?.name || t('profile.usernamePlaceholder')}
                 </Text>
               </View>
@@ -223,7 +225,7 @@ export default function ChangePhoneScreen({ onBack, onOTPSent }: ChangePhoneScre
         <View style={styles.formSection}>
           {/* Confirm Old Number */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('Confirm old number')}:
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>
@@ -238,7 +240,7 @@ export default function ChangePhoneScreen({ onBack, onOTPSent }: ChangePhoneScre
 
           {/* New Number */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: textColor }, isRTL && styles.textRTL]}>
+            <Text style={[styles.label, { color: textColor, fontSize: scaledSize(14) }, isRTL && styles.textRTL]}>
               {t('New Number')}:
             </Text>
             <View style={[styles.inputWrapper, { backgroundColor: inputBgColor, borderColor: inputBorderColor }]}>

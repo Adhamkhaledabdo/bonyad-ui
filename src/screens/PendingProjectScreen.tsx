@@ -23,6 +23,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -221,6 +222,7 @@ export default function PendingProjectScreen({
 }: PendingProjectScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -425,7 +427,7 @@ export default function PendingProjectScreen({
       <View style={[styles.container, { backgroundColor: COLORS.bgWhite, paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary60} />
-          <Text style={styles.loadingText}>{t('Loading project...')}</Text>
+          <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading project...')}</Text>
         </View>
       </View>
     );
@@ -440,10 +442,10 @@ export default function PendingProjectScreen({
           <Ionicons name="chevron-back" size={24} color={COLORS.textBody} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { fontSize: scaledSize(16) }]}>
               {serviceName || t('Project')}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerSubtitle, { fontSize: scaledSize(10) }]}>
               {t('Pending Project')}
             </Text>
         </View>
@@ -466,10 +468,10 @@ export default function PendingProjectScreen({
               <Ionicons name="chevron-back" size={24} color={COLORS.textHeader} />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={styles.titleMainText}>
+              <Text style={[styles.titleMainText, { fontSize: scaledSize(42) }]}>
                 {serviceName || t('Project')}
               </Text>
-              <Text style={styles.titleSubtext}>
+              <Text style={[styles.titleSubtext, { fontSize: scaledSize(20) }]}>
                 {t('Pending Project')}
               </Text>
             </View>
@@ -485,8 +487,8 @@ export default function PendingProjectScreen({
         <View style={[styles.divider, IS_LARGE_WEB && styles.dividerLargeWeb]} />
         {/* Project Overview Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeaderTitle}>{t('Project Overview')}</Text>
-          <Text style={styles.sectionDescription}>
+          <Text style={[styles.sectionHeaderTitle, { fontSize: scaledSize(16) }]}>{t('Project Overview')}</Text>
+          <Text style={[styles.sectionDescription, { fontSize: scaledSize(14) }]}>
             {isTechnician 
               ? t('Review the project details below. You can request a visit or submit a bid.')
               : t('Review your project details below. Once submitted, service providers will start sending bids.')

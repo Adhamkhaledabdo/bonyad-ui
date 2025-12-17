@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import { storage } from '../utils/storage';
 import AcceptBidModal from './AcceptBidModal';
@@ -68,6 +69,7 @@ interface Phase {
 export default function ProjectDetailModal({ visible, project, onClose, onOpenChat, onViewTechnician, onBookAppointment, onSuccess }: ProjectDetailModalProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [bids, setBids] = useState<Bid[]>([]);
   const [visitRequests, setVisitRequests] = useState<VisitRequest[]>([]);
@@ -591,7 +593,7 @@ export default function ProjectDetailModal({ visible, project, onClose, onOpenCh
                 return null;
               })()}
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(16) }]}>
                   {t('Work Phases')}
                 </Text>
                 {/* Phase Planning Button - Technician only (when status is APPROVED or PHASE_PLANNING) */}
@@ -704,7 +706,7 @@ export default function ProjectDetailModal({ visible, project, onClose, onOpenCh
               {isLoadingPhases ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  <Text style={[styles.loadingText, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                     {t('Loading phases...')}
                   </Text>
                 </View>

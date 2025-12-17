@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, RefreshControl, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '../utils/storage';
@@ -71,6 +72,7 @@ const COLORS = {
 
 export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) {
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   
@@ -553,7 +555,8 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
       >
         <Text style={[
           styles.filterTabText,
-          isActive ? styles.filterTabTextActive : styles.filterTabTextInactive
+          isActive ? styles.filterTabTextActive : styles.filterTabTextInactive,
+          { fontSize: scaledSize(14) }
         ]}>
           {label}
         </Text>
@@ -624,7 +627,7 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionIndicator, { backgroundColor: getFilterColor() }]} />
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { fontSize: scaledSize(18) }]}>
             {getSectionTitle()}
           </Text>
         </View>
@@ -633,12 +636,12 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
         {isLoading && appointments.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primaryBlue} />
-            <Text style={styles.loadingText}>{t('Loading...')}</Text>
+            <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading...')}</Text>
           </View>
         ) : appointments.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
-            <Text style={styles.emptyText}>{t('No appointments found')}</Text>
+            <Text style={[styles.emptyText, { fontSize: scaledSize(14) }]}>{t('No appointments found')}</Text>
           </View>
         ) : (
           <View style={styles.appointmentsList}>

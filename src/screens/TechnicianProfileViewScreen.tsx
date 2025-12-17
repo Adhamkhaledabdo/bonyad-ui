@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { buildApiUrl, buildApiUrlWithParams, API_ENDPOINTS } from '../config/api';
 import { storage } from '../utils/storage';
 
@@ -72,6 +73,7 @@ export default function TechnicianProfileViewScreen({
 }: TechnicianProfileViewScreenProps) {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   const insets = useSafeAreaInsets();
 
   const [profile, setProfile] = useState<TechnicianProfile | null>(null);

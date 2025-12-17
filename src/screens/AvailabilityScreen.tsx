@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { storage } from '../utils/storage';
 import { API_ENDPOINTS, buildApiUrl, buildApiUrlWithParams } from '../config/api';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
@@ -58,6 +59,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   
   const [availability, setAvailability] = useState<AvailabilityData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -487,7 +489,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('Availability')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Availability')}</Text>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => setShowAddModal(true)}
@@ -501,7 +503,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
           {/* Availability Mode Selection */}
           <Card style={[styles.card, { backgroundColor: colors.cardBackground }]}>
             <Card.Content>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('Availability Mode')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Availability Mode')}</Text>
               
               <View style={styles.modeButtons}>
                 <TouchableOpacity
@@ -520,7 +522,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                   <Text
                     style={[
                       styles.modeButtonText,
-                      { color: availabilityMode === 'AVAILABLE_ANYTIME' ? '#fff' : colors.textSecondary },
+                      { color: availabilityMode === 'AVAILABLE_ANYTIME' ? '#fff' : colors.textSecondary, fontSize: scaledSize(16) },
                     ]}
                   >
                     {t('Anytime')}
@@ -543,7 +545,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                   <Text
                     style={[
                       styles.modeButtonText,
-                      { color: availabilityMode === 'FIXED_TIMES' ? '#fff' : colors.textSecondary },
+                      { color: availabilityMode === 'FIXED_TIMES' ? '#fff' : colors.textSecondary, fontSize: scaledSize(16) },
                     ]}
                   >
                     {t('Fixed Times')}
@@ -557,7 +559,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
           {availabilityMode === 'FIXED_TIMES' && (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text, fontSize: scaledSize(18) }]}>
                   {t('Time Slots')} ({availability?.slots?.length || 0})
                 </Text>
                 {availability?.slots && availability.slots.length > 0 && (
@@ -571,7 +573,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                     ) : (
                       <>
                         <Ionicons name="save" size={16} color="#fff" />
-                        <Text style={styles.saveAllButtonText}>{t('Save All')}</Text>
+                        <Text style={[styles.saveAllButtonText, { fontSize: scaledSize(14) }]}>{t('Save All')}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -582,10 +584,10 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 <Card style={[styles.card, { backgroundColor: colors.cardBackground }]}>
                   <Card.Content style={styles.emptyState}>
                     <Ionicons name="time-outline" size={60} color={colors.textSecondary} />
-                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    <Text style={[styles.emptyText, { color: colors.textSecondary, fontSize: scaledSize(16) }]}>
                       {t('No time slots added')}
                     </Text>
-                    <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+                    <Text style={[styles.emptySubtext, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                       {t('Add your working hours or save without slots')}
                     </Text>
                     <TouchableOpacity
@@ -596,7 +598,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                       {isSaving ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={styles.saveButtonText}>{t('Save FIXED_TIMES Status')}</Text>
+                        <Text style={[styles.saveButtonText, { fontSize: scaledSize(16) }]}>{t('Save FIXED_TIMES Status')}</Text>
                       )}
                     </TouchableOpacity>
                   </Card.Content>
@@ -606,10 +608,10 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                   <Card key={slot.id} style={[styles.card, { backgroundColor: colors.cardBackground }]}>
                     <Card.Content style={styles.slotContent}>
                       <View>
-                        <Text style={[styles.slotDay, { color: colors.text }]}>
+                        <Text style={[styles.slotDay, { color: colors.text, fontSize: scaledSize(16) }]}>
                           {DAYS_OF_WEEK.find(d => d.value === slot.dayOfWeek)?.label || slot.dayOfWeek}
                         </Text>
-                        <Text style={[styles.slotTime, { color: colors.textSecondary }]}>
+                        <Text style={[styles.slotTime, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
                           {slot.startTime} - {slot.endTime}
                         </Text>
                       </View>
@@ -648,7 +650,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         <View style={styles.modalOverlay}>
           <Card style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Add Time Slot')}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Add Time Slot')}</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -656,7 +658,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
 
             <ScrollView style={styles.modalScrollView}>
               {/* Day Selection */}
-              <Text style={[styles.label, { color: colors.text }]}>{t('Day of Week')}</Text>
+              <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Day of Week')}</Text>
               <View style={styles.dayGrid}>
                 {DAYS_OF_WEEK.map((day) => (
                   <TouchableOpacity
@@ -670,7 +672,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                     <Text
                       style={[
                         styles.dayButtonText,
-                        { color: selectedDay === day.value ? '#fff' : colors.text },
+                        { color: selectedDay === day.value ? '#fff' : colors.text, fontSize: scaledSize(14) },
                       ]}
                     >
                       {day.label.slice(0, 3)}
@@ -682,12 +684,12 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
               {/* Time Selection */}
               <View style={styles.timeRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.text }]}>{t('Start Time')}</Text>
+                  <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Start Time')}</Text>
                   <TouchableOpacity
                     style={[styles.timePickerButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
                     onPress={() => setShowStartTimePicker(true)}
                   >
-                    <Text style={[styles.timePickerText, { color: colors.text }]}>
+                    <Text style={[styles.timePickerText, { color: colors.text, fontSize: scaledSize(16) }]}>
                       {startTime}
                     </Text>
                     <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -710,12 +712,12 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.text }]}>{t('End Time')}</Text>
+                  <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('End Time')}</Text>
                   <TouchableOpacity
                     style={[styles.timePickerButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
                     onPress={() => setShowEndTimePicker(true)}
                   >
-                    <Text style={[styles.timePickerText, { color: colors.text }]}>
+                    <Text style={[styles.timePickerText, { color: colors.text, fontSize: scaledSize(16) }]}>
                       {endTime}
                     </Text>
                     <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -775,7 +777,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 <View style={styles.webTimePickers}>
                   {showStartTimePicker && (
                     <View style={styles.webTimePickerContainer}>
-                      <Text style={[styles.label, { color: colors.text }]}>{t('Select Start Time')}</Text>
+                      <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Select Start Time')}</Text>
                       <input
                         type="time"
                         value={startTime}
@@ -797,13 +799,13 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                         style={[styles.timePickerDoneButton, { backgroundColor: colors.primary }]}
                         onPress={() => setShowStartTimePicker(false)}
                       >
-                        <Text style={styles.timePickerDoneText}>{t('Done')}</Text>
+                        <Text style={[styles.timePickerDoneText, { fontSize: scaledSize(16) }]}>{t('Done')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                   {showEndTimePicker && (
                     <View style={styles.webTimePickerContainer}>
-                      <Text style={[styles.label, { color: colors.text }]}>{t('Select End Time')}</Text>
+                      <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Select End Time')}</Text>
                       <input
                         type="time"
                         value={endTime}
@@ -825,7 +827,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                         style={[styles.timePickerDoneButton, { backgroundColor: colors.primary }]}
                         onPress={() => setShowEndTimePicker(false)}
                       >
-                        <Text style={styles.timePickerDoneText}>{t('Done')}</Text>
+                        <Text style={[styles.timePickerDoneText, { fontSize: scaledSize(16) }]}>{t('Done')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -840,7 +842,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 {isSaving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>{t('Add Slot')}</Text>
+                  <Text style={[styles.saveButtonText, { fontSize: scaledSize(16) }]}>{t('Add Slot')}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -853,7 +855,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
         <View style={styles.modalOverlay}>
           <Card style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Edit Time Slot')}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Edit Time Slot')}</Text>
               <TouchableOpacity onPress={() => {
                 setShowEditModal(false);
                 setEditingSlot(null);
@@ -865,8 +867,8 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
             <ScrollView style={styles.modalScrollView}>
               {/* Day Display (read-only) */}
               <View style={styles.editDayDisplay}>
-                <Text style={[styles.label, { color: colors.text }]}>{t('Day of Week')}</Text>
-                <Text style={[styles.editDayText, { color: colors.text }]}>
+                <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Day of Week')}</Text>
+                <Text style={[styles.editDayText, { color: colors.text, fontSize: scaledSize(16) }]}>
                   {DAYS_OF_WEEK.find(d => d.value === editingSlot?.dayOfWeek)?.label || editingSlot?.dayOfWeek}
                 </Text>
               </View>
@@ -874,7 +876,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
               {/* Time Selection */}
               <View style={styles.timeRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.text }]}>{t('Start Time')}</Text>
+                  <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Start Time')}</Text>
                   <TouchableOpacity
                     style={[styles.timePickerButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
                     onPress={() => {
@@ -882,7 +884,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                       setShowEditStartTimePicker(true);
                     }}
                   >
-                    <Text style={[styles.timePickerText, { color: colors.text }]}>
+                    <Text style={[styles.timePickerText, { color: colors.text, fontSize: scaledSize(16) }]}>
                       {editStartTime}
                     </Text>
                     <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -905,7 +907,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.text }]}>{t('End Time')}</Text>
+                  <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('End Time')}</Text>
                   <TouchableOpacity
                     style={[styles.timePickerButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
                     onPress={() => {
@@ -913,7 +915,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                       setShowEditEndTimePicker(true);
                     }}
                   >
-                    <Text style={[styles.timePickerText, { color: colors.text }]}>
+                    <Text style={[styles.timePickerText, { color: colors.text, fontSize: scaledSize(16) }]}>
                       {editEndTime}
                     </Text>
                     <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -973,7 +975,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 <View style={styles.webTimePickers}>
                   {showEditStartTimePicker && (
                     <View style={styles.webTimePickerContainer}>
-                      <Text style={[styles.label, { color: colors.text }]}>{t('Select Start Time')}</Text>
+                      <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Select Start Time')}</Text>
                       <input
                         type="time"
                         value={editStartTime}
@@ -995,13 +997,13 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                         style={[styles.timePickerDoneButton, { backgroundColor: colors.primary }]}
                         onPress={() => setShowEditStartTimePicker(false)}
                       >
-                        <Text style={styles.timePickerDoneText}>{t('Done')}</Text>
+                        <Text style={[styles.timePickerDoneText, { fontSize: scaledSize(16) }]}>{t('Done')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                   {showEditEndTimePicker && (
                     <View style={styles.webTimePickerContainer}>
-                      <Text style={[styles.label, { color: colors.text }]}>{t('Select End Time')}</Text>
+                      <Text style={[styles.label, { color: colors.text, fontSize: scaledSize(14) }]}>{t('Select End Time')}</Text>
                       <input
                         type="time"
                         value={editEndTime}
@@ -1023,7 +1025,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                         style={[styles.timePickerDoneButton, { backgroundColor: colors.primary }]}
                         onPress={() => setShowEditEndTimePicker(false)}
                       >
-                        <Text style={styles.timePickerDoneText}>{t('Done')}</Text>
+                        <Text style={[styles.timePickerDoneText, { fontSize: scaledSize(16) }]}>{t('Done')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -1038,7 +1040,7 @@ export default function AvailabilityScreen({ onBack }: AvailabilityScreenProps) 
                 {isSaving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>{t('Update Slot')}</Text>
+                  <Text style={[styles.saveButtonText, { fontSize: scaledSize(16) }]}>{t('Update Slot')}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>

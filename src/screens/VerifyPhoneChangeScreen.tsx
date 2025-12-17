@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { useFontFamily } from '../context/FontContext';
 import { verifyPhoneChange, resendPhoneChangeOTP } from '../services/ProfileService';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
@@ -28,6 +29,7 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { fontFamily, scaledSize } = useFontFamily();
   
   // Custom alert hook
   const { alertState, showError, showAlert, hideAlert } = useAlertPopup();
@@ -213,7 +215,7 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('Verify Phone Number')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text, fontSize: scaledSize(18) }]}>{t('Verify Phone Number')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -224,11 +226,11 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="shield-checkmark" size={60} color={colors.primary} />
             </View>
-            <Text style={[styles.title, { color: colors.text }]}>{t('Verify Phone Number')}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.title, { color: colors.text, fontSize: scaledSize(24) }]}>{t('Verify Phone Number')}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: scaledSize(14) }]}>
               {t('Enter the verification code sent to')}
             </Text>
-            <Text style={[styles.phoneHighlight, { color: colors.primary }]}>
+            <Text style={[styles.phoneHighlight, { color: colors.primary, fontSize: scaledSize(16) }]}>
               +966 {newPhoneNumber}
             </Text>
           </View>
@@ -275,7 +277,7 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
           {/* Verifying Indicator */}
           {isVerifying && (
             <View style={styles.verifyingContainer}>
-              <Text style={[styles.verifyingText, { color: colors.primary }]}>
+              <Text style={[styles.verifyingText, { color: colors.primary, fontSize: scaledSize(16) }]}>
                 {t('Verifying...')}
               </Text>
             </View>
@@ -283,7 +285,7 @@ export default function VerifyPhoneChangeScreen({ newPhoneNumber, onBack, onVeri
 
           {/* Resend OTP */}
           <TouchableOpacity style={styles.resendButton} onPress={handleResendOTP}>
-            <Text style={[styles.resendButtonText, { color: colors.primary }]}>
+            <Text style={[styles.resendButtonText, { color: colors.primary, fontSize: scaledSize(14) }]}>
               {t('Resend Code')}
             </Text>
           </TouchableOpacity>
