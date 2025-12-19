@@ -122,7 +122,7 @@ export default function Footer({ style }: FooterProps) {
   );
 
   return (
-    <View style={[styles.footer, style]}>
+    <View style={[styles.footer, { backgroundColor: colors.primary }, style]}>
       {/* Main Footer Content */}
       <View style={[styles.footerContent, isMobile && styles.footerContentMobile]}>
         {/* Left Column - Company Info & Contact */}
@@ -235,7 +235,6 @@ export default function Footer({ style }: FooterProps) {
 
 const styles = StyleSheet.create({
   footer: {
-    backgroundColor: '#00549B',
     width: '100%',
     ...Platform.select({
       web: {

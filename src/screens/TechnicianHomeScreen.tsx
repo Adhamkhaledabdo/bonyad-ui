@@ -791,7 +791,7 @@ export default function TechnicianHomeScreen({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* New Horizontal Navigation Bar - Figma Design */}
-      <View style={[styles.desktopNavBar, { backgroundColor: '#00549B' }]}>
+      <View style={[styles.desktopNavBar, { backgroundColor: colors.primary }]}>
         {/* Logo Section */}
         <View style={styles.desktopNavLogoSection}>
           <View style={styles.desktopNavLogoIcon}>

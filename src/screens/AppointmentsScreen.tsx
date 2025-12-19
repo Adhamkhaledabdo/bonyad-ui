@@ -71,10 +71,11 @@ const COLORS = {
 };
 
 export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { fontFamily, scaledSize } = useFontFamily();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const isDarkMode = theme === 'dark';
   
   // Custom popup hooks
   const { alertState, showError, showSuccess, hideAlert } = useAlertPopup();
@@ -423,11 +424,11 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
   const getFilterColor = (filter?: AppointmentFilter): string => {
     const f = filter || selectedFilter;
     switch (f) {
-      case 'today': return COLORS.todayBlue;
-      case 'pending': return COLORS.pendingAmber;
-      case 'upcoming': return COLORS.upcomingPurple;
-      case 'completed': return COLORS.completedGreen;
-      default: return COLORS.primaryBlue;
+      case 'today': return colors.primary;
+      case 'pending': return colors.warning;
+      case 'upcoming': return colors.info;
+      case 'completed': return colors.success;
+      default: return colors.primary;
     }
   };
 
@@ -495,7 +496,7 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
       days.push(
         <TouchableOpacity
           key={day}
-          style={styles.calendarCell}
+          style={[styles.calendarCell, { borderColor: colors.border }]}
           onPress={() => {
             const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
             setSelectedDate(newDate);
@@ -512,7 +513,8 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
           ]}>
             <Text style={[
               styles.calendarDay,
-              isSelectedDate && styles.selectedDayText,
+              { color: colors.text },
+              isSelectedDate && [styles.selectedDayText, { color: colors.white }],
             ]}>
               {day}
             </Text>
@@ -550,13 +552,13 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
         onPress={() => setSelectedFilter(filter)}
         style={[
           styles.filterTab,
-          isActive ? { backgroundColor: getFilterColor(filter) } : styles.filterTabInactive,
+          isActive ? { backgroundColor: getFilterColor(filter) } : { backgroundColor: colors.cardBackground || colors.gray200 },
         ]}
       >
         <Text style={[
           styles.filterTabText,
-          isActive ? styles.filterTabTextActive : styles.filterTabTextInactive,
-          { fontSize: scaledSize(14) }
+          { fontSize: scaledSize(14) },
+          isActive ? [styles.filterTabTextActive, { color: colors.white }] : { color: colors.textSecondary },
         ]}>
           {label}
         </Text>
@@ -566,7 +568,7 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
 
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -574,43 +576,43 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primaryBlue}
+            tintColor={colors.primary}
           />
         }
       >
         {/* Calendar Section */}
-        <View style={styles.calendarSection}>
+        <View style={[styles.calendarSection, { backgroundColor: colors.cardBackground }]}>
           {/* Month Navigation */}
           <View style={styles.monthNavigation}>
             <TouchableOpacity onPress={() => navigateMonth('prev')} style={styles.navArrow}>
-              <Ionicons name="chevron-back" size={24} color={COLORS.headerBlue} />
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.monthTitleContainer}>
-              <Text style={styles.monthTitle}>
+              <Text style={[styles.monthTitle, { color: colors.text }]}>
                 {MONTHS[currentMonth.getMonth()]}
               </Text>
-              <Text style={styles.yearTitle}>
+              <Text style={[styles.yearTitle, { color: colors.text }]}>
                 {currentMonth.getFullYear()}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigateMonth('next')} style={styles.navArrow}>
-              <Ionicons name="chevron-forward" size={24} color={COLORS.headerBlue} />
+              <Ionicons name="chevron-forward" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           {/* Calendar Container */}
-          <View style={styles.calendarContainer}>
+          <View style={[styles.calendarContainer, { borderColor: colors.border, backgroundColor: colors.cardBackground }]}>
             {/* Week Days Header */}
-            <View style={styles.weekDaysRow}>
+            <View style={[styles.weekDaysRow, { backgroundColor: colors.primary + '20' }]}>
               {DAYS_OF_WEEK.map((day) => (
                 <View key={day} style={styles.weekDayCell}>
-                  <Text style={styles.weekDayText}>{day}</Text>
+                  <Text style={[styles.weekDayText, { color: colors.primary }]}>{day}</Text>
                 </View>
               ))}
             </View>
 
             {/* Calendar Grid */}
-            <View style={styles.calendarGrid}>
+            <View style={[styles.calendarGrid, { backgroundColor: colors.cardBackground }]}>
               {renderCalendar()}
             </View>
           </View>
@@ -627,7 +629,7 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionIndicator, { backgroundColor: getFilterColor() }]} />
-          <Text style={[styles.sectionTitle, { fontSize: scaledSize(18) }]}>
+          <Text style={[styles.sectionTitle, { fontSize: scaledSize(18), color: colors.text }]}>
             {getSectionTitle()}
           </Text>
         </View>
@@ -635,13 +637,13 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
         {/* Appointments List */}
         {isLoading && appointments.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primaryBlue} />
-            <Text style={[styles.loadingText, { fontSize: scaledSize(14) }]}>{t('Loading...')}</Text>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { fontSize: scaledSize(14), color: colors.textSecondary }]}>{t('Loading...')}</Text>
           </View>
         ) : appointments.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
-            <Text style={[styles.emptyText, { fontSize: scaledSize(14) }]}>{t('No appointments found')}</Text>
+            <Ionicons name="calendar-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { fontSize: scaledSize(14), color: colors.textSecondary }]}>{t('No appointments found')}</Text>
           </View>
         ) : (
           <View style={styles.appointmentsList}>
@@ -698,13 +700,11 @@ export default function AppointmentsScreen({ onBack }: AppointmentsScreenProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
   },
   scrollView: {
     flex: 1,
   },
   calendarSection: {
-    backgroundColor: COLORS.white,
     paddingHorizontal: 16,
     paddingTop: 8,
   },
@@ -723,22 +723,18 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 18,
     fontWeight: '400',
-    color: COLORS.headerBlue,
   },
   yearTitle: {
     fontSize: 18,
     fontWeight: '400',
-    color: COLORS.headerBlue,
   },
   calendarContainer: {
     borderRadius: 14,
     borderWidth: 0.7,
-    borderColor: COLORS.lightBlue,
     overflow: 'hidden',
   },
   weekDaysRow: {
     flexDirection: 'row',
-    backgroundColor: COLORS.lightBlue,
     paddingVertical: 12,
   },
   weekDayCell: {
@@ -747,20 +743,17 @@ const styles = StyleSheet.create({
   },
   weekDayText: {
     fontSize: 14,
-    color: '#004A8A',
     fontWeight: '400',
   },
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: COLORS.white,
   },
   calendarCell: {
     width: `${100 / 7}%`,
     aspectRatio: 1,
     borderTopWidth: 0.7,
     borderLeftWidth: 0.7,
-    borderColor: COLORS.lightBlue,
   },
   calendarCellContent: {
     flex: 1,
@@ -774,10 +767,8 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     fontSize: 14,
-    color: COLORS.headerBlue,
   },
   selectedDayText: {
-    color: COLORS.white,
     fontWeight: '500',
   },
   appointmentDotsContainer: {
@@ -807,17 +798,14 @@ const styles = StyleSheet.create({
     // Color is set dynamically in renderFilterTab
   },
   filterTabInactive: {
-    backgroundColor: COLORS.gray,
+    // Background color set dynamically in renderFilterTab
   },
   filterTabText: {
     fontSize: 12,
     fontWeight: '600',
   },
   filterTabTextActive: {
-    color: COLORS.white,
-  },
-  filterTabTextInactive: {
-    color: COLORS.textSecondary,
+    // Color is set dynamically in renderFilterTab
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -834,7 +822,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '500',
-    color: COLORS.headerBlue,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -843,7 +830,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: COLORS.textSecondary,
   },
   emptyState: {
     alignItems: 'center',
@@ -853,7 +839,6 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: COLORS.textSecondary,
   },
   appointmentsList: {
     paddingHorizontal: 16,

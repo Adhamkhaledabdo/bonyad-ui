@@ -237,8 +237,8 @@ export default function ChatRoomsListScreen({ onBack, onOpenChat }: ChatRoomsLis
 
               {/* Unread Badge */}
               {item.unreadCount > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: '#FF4444' }]}>
-                  <Text style={styles.unreadText}>
+                <View style={[styles.unreadBadge, { backgroundColor: colors.error }]}>
+                  <Text style={[styles.unreadText, { color: colors.white }]}>
                     {item.unreadCount > 99 ? '99+' : item.unreadCount}
                   </Text>
                 </View>

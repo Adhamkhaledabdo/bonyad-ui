@@ -754,7 +754,7 @@ export default function ChatDetailScreen({
           ]}
         >
           <View style={styles.recordingInfo}>
-            <View style={[styles.recordingDot, { backgroundColor: colors.error || '#FF3B30' }]} />
+            <View style={[styles.recordingDot, { backgroundColor: colors.error }]} />
             <Text style={[styles.recordingText, { color: colors.text }]}>
               {t('Recording')}... {formatDuration(recordingDuration)}
             </Text>
@@ -762,15 +762,15 @@ export default function ChatDetailScreen({
           <View style={styles.recordingActions}>
             <TouchableOpacity
               onPress={handleCancelRecording}
-              style={[styles.cancelButton, { backgroundColor: colors.error || '#FF3B30' }]}
+              style={[styles.cancelButton, { backgroundColor: colors.error }]}
             >
-              <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.white }]}>{t('Cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleStopRecording}
               style={[styles.stopButton, { backgroundColor: colors.primary }]}
             >
-              <Ionicons name="stop" size={20} color="#FFFFFF" />
+              <Ionicons name="stop" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
         </View>

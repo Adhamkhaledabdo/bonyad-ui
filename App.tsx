@@ -242,33 +242,23 @@ export default function App() {
       try {
         console.log('🔍 Checking for stored session...');
         
-        const token = await storage.getAuthToken();
+        // Use checkAuthentication to validate token
+        const { checkAuthentication } = await import('./src/utils/authGuard');
+        const authResult = await checkAuthentication();
         
-        if (token) {
-          console.log('✅ Found stored token, validating...');
+        if (authResult) {
+          console.log('✅ Valid session found - loading user data');
+          console.log('   User ID:', authResult.userId);
+          console.log('   Role:', authResult.role);
           
-          // Import auth guard utilities
-          const { checkAuthentication } = await import('./src/utils/authGuard');
+          // Set app state from validated token
+          setAuthToken(authResult.token);
+          setUserId(authResult.userId);
+          setUserRole(authResult.role.toLowerCase() as 'user' | 'technician');
           
-          // Validate token with API
-          const authResult = await checkAuthentication();
-          
-          if (authResult && authResult.token) {
-            console.log('✅ Token validated successfully');
-            console.log('   User ID:', authResult.userId);
-            console.log('   Role:', authResult.role);
-            
-            // Set app state from validated token
-            setAuthToken(authResult.token);
-            setUserId(authResult.userId);
-            setUserRole(authResult.role.toLowerCase() as 'user' | 'technician');
-            
-            // Navigate to home using router
-            console.log('✅ Session restored, navigating to home');
-            router.navigate('home');
-            
-            // Connect WebSocket
-            console.log('🔌 Connecting to WebSocket...');
+          // Connect to WebSocket services if authenticated
+          if (authResult.token) {
+            console.log('🔌 Connecting to WebSocket services...');
             const connectionResult = await OnlineStatusService.connect(authResult.token);
             if (connectionResult.connected) {
               console.log('✅ WebSocket connected - User is now online');
@@ -305,19 +295,22 @@ export default function App() {
                 );
               }
             } else {
-              console.log('⚠️ WebSocket connection failed:', connectionResult.error);
+              console.error('❌ Failed to connect WebSocket:', connectionResult.error);
             }
-          } else {
-            console.log('❌ Token validation failed - clearing session');
-            await storage.clearAuthData();
           }
         } else {
-          console.log('❌ No token found in storage');
+          console.log('❌ No valid session found - user needs to login');
+          // Clear any invalid auth state
+          setAuthToken('');
+          setUserId(0);
+          setUserRole('user');
         }
       } catch (error) {
         console.error('❌ Error checking stored session:', error);
-        // Clear potentially invalid session on error
-        await storage.clearAuthData();
+        // Clear session on error
+        setAuthToken('');
+        setUserId(0);
+        setUserRole('user');
       }
     };
     

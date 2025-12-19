@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
 import { Appointment } from '../screens/AppointmentsScreen';
 
 // Color constants from Figma
@@ -99,6 +100,7 @@ export default function AppointmentCard({
   onChangeDate,
 }: AppointmentCardProps) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const filterColor = getFilterColor(filter);
   const filterLightColor = getFilterLightColor(filter);
 
@@ -116,8 +118,8 @@ export default function AppointmentCard({
             style={[styles.actionButton, { backgroundColor: filterColor }]}
             onPress={() => onAccept?.(appointment.id)}
           >
-            <Ionicons name="checkmark-circle" size={12} color={COLORS.white} />
-            <Text style={[styles.actionButtonText, { color: COLORS.white }]}>{t('Accept')}</Text>
+            <Ionicons name="checkmark-circle" size={12} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>{t('Accept')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
@@ -139,7 +141,7 @@ export default function AppointmentCard({
             style={[styles.actionButton, { backgroundColor: filterColor }]}
             onPress={() => onChangeDate?.(appointment.id)}
           >
-            <Text style={[styles.actionButtonText, { color: COLORS.white }]}>{t('Change Date')}</Text>
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>{t('Change Date')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
@@ -160,14 +162,14 @@ export default function AppointmentCard({
             style={[styles.actionButton, { backgroundColor: filterColor }]}
             onPress={() => onChangeDate?.(appointment.id)}
           >
-            <Text style={[styles.actionButtonText, { color: COLORS.white }]}>{t('Change Date')}</Text>
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>{t('Change Date')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: filterLightColor, borderWidth: 0.5, borderColor: COLORS.green }]}
+            style={[styles.actionButton, { backgroundColor: filterLightColor, borderWidth: 0.5, borderColor: colors.success }]}
             onPress={() => onComplete?.(appointment.id)}
           >
-            <Text style={[styles.actionButtonText, { color: COLORS.green }]}>{t('Mark Complete')}</Text>
+            <Text style={[styles.actionButtonText, { color: colors.success }]}>{t('Mark Complete')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -180,9 +182,9 @@ export default function AppointmentCard({
   const timeStr = appointment.startTime || appointment.requestedStartTime || '';
 
   return (
-    <View style={[styles.appointmentCard, { borderTopColor: filterColor }]}>
+    <View style={[styles.appointmentCard, { borderTopColor: filterColor, backgroundColor: colors.cardBackground, borderLeftColor: colors.border, borderRightColor: colors.border, borderBottomColor: colors.border }]}>
       {/* Project Title */}
-      <Text style={styles.projectTitle}>
+      <Text style={[styles.projectTitle, { color: colors.text }]}>
         {appointment.projectDescription || appointment.phaseName || t('Initial Consultation')}
       </Text>
       
@@ -195,8 +197,8 @@ export default function AppointmentCard({
       
       {/* Date & Time */}
       <View style={styles.infoRow}>
-        <Ionicons name="time-outline" size={12} color={COLORS.headerBlue} />
-        <Text style={styles.infoText}>
+        <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+        <Text style={[styles.infoText, { color: colors.text }]}>
           {formatDate(dateStr)}  • {formatTime(timeStr)}
         </Text>
       </View>
@@ -204,17 +206,17 @@ export default function AppointmentCard({
       {/* Location */}
       {appointment.address && (
         <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={12} color={COLORS.headerBlue} />
-          <Text style={styles.infoText}>{appointment.address}</Text>
+          <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
+          <Text style={[styles.infoText, { color: colors.text }]}>{appointment.address}</Text>
         </View>
       )}
       
       {/* Divider */}
-      <View style={styles.cardDivider} />
+      <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
       
       {/* Total */}
       <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>{t('Total')}</Text>
+        <Text style={[styles.totalLabel, { color: colors.text }]}>{t('Total')}</Text>
         <Text style={[styles.totalAmount, { color: filterColor }]}>
           ${appointment.phaseTotal?.toLocaleString() || '60,000'}
         </Text>
@@ -228,23 +230,17 @@ export default function AppointmentCard({
 
 const styles = StyleSheet.create({
   appointmentCard: {
-    backgroundColor: COLORS.white,
     borderRadius: 8,
     padding: 16,
     borderTopWidth: 2,
     borderLeftWidth: 0.5,
     borderRightWidth: 0.5,
     borderBottomWidth: 0.5,
-    borderTopColor: COLORS.darkBlue, // Will be overridden by inline style
-    borderLeftColor: COLORS.darkBlue,
-    borderRightColor: COLORS.darkBlue,
-    borderBottomColor: COLORS.darkBlue,
     marginBottom: 12,
   },
   projectTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.textBody,
     marginBottom: 8,
   },
   statusBadge: {
@@ -266,12 +262,10 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: COLORS.textBody,
     flex: 1,
   },
   cardDivider: {
     height: 1,
-    backgroundColor: COLORS.textSecondary,
     marginVertical: 12,
     opacity: 0.3,
   },
@@ -284,7 +278,6 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 14,
     fontWeight: '400',
-    color: COLORS.textBody,
   },
   totalAmount: {
     fontSize: 14,

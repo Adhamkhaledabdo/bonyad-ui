@@ -29,35 +29,8 @@ import { API_ENDPOINTS, buildApiUrl } from '../config/api';
 import { storage } from '../utils/storage';
 import AlertPopup, { useAlertPopup } from '../components/AlertPopup';
 
-// ===== DESIGN TOKENS FROM FIGMA =====
-const COLORS = {
-  // Primary Blues
-  primary100: '#003867',
-  primary80: '#004A8A',
-  primary70: '#00549B',
-  primary60: '#005DAC',
-  primary50: '#1A6DB4',
-  primary10: '#E6EFF7',
-  // Greens
-  green90: '#007B36',
-  green80: '#008B3E',
-  green60: '#00AC4F',
-  green10: '#E6F5EC',
-  // Purple
-  purple100: '#3C076D',
-  purple10: '#EFE6F5',
-  // Amber
-  amber60: '#FFB703',
-  // Text
-  textHeader: '#003867',
-  textBody: '#383838',
-  textSecondary: '#A3A3A3',
-  textDividers: '#D9D9D9',
-  textWhite: '#FFFFFF',
-  // Backgrounds
-  bgWhite: '#FFFFFF',
-  bgOverlay: 'rgba(0, 56, 103, 0.5)',
-};
+// Design tokens - now using theme colors
+// Removed hardcoded COLORS constant - using theme colors from useTheme hook
 
 interface VisitRequestModalProps {
   visible: boolean;
@@ -168,25 +141,25 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
       onRequestClose={handleClose}
     >
       <TouchableWithoutFeedback onPress={handleClose}>
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.keyboardView}
             >
-              <View style={[styles.modalContainer, { width: modalWidth, maxHeight: modalMaxHeight }]}>
+              <View style={[styles.modalContainer, { width: modalWidth, maxHeight: modalMaxHeight, backgroundColor: colors.cardBackground }]}>
                 {/* Header */}
-                <View style={styles.header}>
-                  <View style={styles.headerIconContainer}>
-                    <Ionicons name="home" size={28} color={COLORS.green80} />
+                <View style={[styles.header, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.headerIconContainer, { backgroundColor: colors.success + '20' }]}>
+                    <Ionicons name="home" size={28} color={colors.success} />
                   </View>
-                  <Text style={styles.headerTitle}>{t('Request Visit')}</Text>
+                  <Text style={[styles.headerTitle, { color: colors.text }]}>{t('Request Visit')}</Text>
                   <TouchableOpacity 
                     onPress={handleClose} 
-                    style={styles.closeButton}
+                    style={[styles.closeButton, { backgroundColor: colors.primary + '20' }]}
                     disabled={isSubmitting}
                   >
-                    <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+                    <Ionicons name="close" size={24} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
 
@@ -196,23 +169,23 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={styles.scrollContentContainer}
                 >
-                  <Text style={styles.subtitle}>
+                  <Text style={[styles.subtitle, { color: colors.text }]}>
                     {t('Request a site visit to better understand the project requirements')}
                   </Text>
 
                   {/* Project Info Card */}
-                  <View style={styles.projectCard}>
+                  <View style={[styles.projectCard, { backgroundColor: colors.primary + '10' }]}>
                     <View style={styles.projectCardHeader}>
-                      <Ionicons name="briefcase-outline" size={16} color={COLORS.primary80} />
-                      <Text style={styles.projectCardLabel}>{t('Project')}</Text>
+                      <Ionicons name="briefcase-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.projectCardLabel, { color: colors.primary }]}>{t('Project')}</Text>
                     </View>
-                    <Text style={styles.projectDescription} numberOfLines={3}>
+                    <Text style={[styles.projectDescription, { color: colors.text }]} numberOfLines={3}>
                       {project?.description || t('No description')}
                     </Text>
                     {project?.budget && (
                       <View style={styles.budgetRow}>
-                        <Ionicons name="cash-outline" size={16} color={COLORS.green80} />
-                        <Text style={styles.budgetText}>{formatBudget(project.budget)}</Text>
+                        <Ionicons name="cash-outline" size={16} color={colors.success} />
+                        <Text style={[styles.budgetText, { color: colors.success }]}>{formatBudget(project.budget)}</Text>
                       </View>
                     )}
                   </View>
@@ -220,14 +193,14 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
                   {/* Notes Input */}
                   <View style={styles.inputSection}>
                     <View style={styles.inputHeader}>
-                      <Ionicons name="document-text-outline" size={16} color={COLORS.primary80} />
-                      <Text style={styles.inputLabel}>{t('Additional Notes')}</Text>
-                      <Text style={styles.optionalText}>({t('Optional')})</Text>
+                      <Ionicons name="document-text-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.inputLabel, { color: colors.primary }]}>{t('Additional Notes')}</Text>
+                      <Text style={[styles.optionalText, { color: colors.textSecondary }]}>({t('Optional')})</Text>
                     </View>
                     <TextInput
-                      style={styles.textArea}
+                      style={[styles.textArea, { borderColor: colors.border, backgroundColor: (colors as any).textFieldBackground || colors.cardBackground, color: colors.text }]}
                       placeholder={t('Add any notes about the visit request...')}
-                      placeholderTextColor={COLORS.textSecondary}
+                      placeholderTextColor={colors.textSecondary}
                       value={notes}
                       onChangeText={setNotes}
                       multiline
@@ -235,32 +208,32 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
                       maxLength={200}
                       editable={!isSubmitting}
                     />
-                    <Text style={styles.charCount}>
+                    <Text style={[styles.charCount, { color: colors.textSecondary }]}>
                       {notes.length}/200
                     </Text>
                   </View>
                 </ScrollView>
 
                 {/* Action Buttons - Fixed at bottom */}
-                <View style={styles.actionButtons}>
+                <View style={[styles.actionButtons, { borderTopColor: colors.border, backgroundColor: colors.cardBackground }]}>
                   <TouchableOpacity
-                    style={styles.cancelButton}
+                    style={[styles.cancelButton, { backgroundColor: colors.cardBackground, borderColor: colors.border, borderWidth: 1.5 }]}
                     onPress={handleClose}
                     disabled={isSubmitting}
                   >
-                    <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+                    <Text style={[styles.cancelButtonText, { color: colors.text }]}>{t('Cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                    style={[styles.submitButton, { backgroundColor: colors.success }, isSubmitting && styles.submitButtonDisabled]}
                     onPress={handleSubmit}
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
-                      <ActivityIndicator size="small" color={COLORS.textWhite} />
+                      <ActivityIndicator size="small" color={colors.white} />
                     ) : (
                       <>
-                        <Ionicons name="send" size={18} color={COLORS.textWhite} />
-                        <Text style={styles.submitButtonText}>{t('Send Request')}</Text>
+                        <Ionicons name="send" size={18} color={colors.white} />
+                        <Text style={[styles.submitButtonText, { color: colors.white }]}>{t('Send Request')}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -287,7 +260,6 @@ export default function VisitRequestModal({ visible, project, onClose, onSuccess
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: COLORS.bgOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
@@ -298,7 +270,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalContainer: {
-    backgroundColor: COLORS.bgWhite,
     borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
@@ -323,13 +294,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 14,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.textDividers,
   },
   headerIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.green10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -337,13 +306,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textHeader,
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.primary10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -357,11 +324,9 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     fontWeight: '400',
-    color: COLORS.textBody,
     lineHeight: 22,
   },
   projectCard: {
-    backgroundColor: COLORS.primary10,
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -374,12 +339,10 @@ const styles = StyleSheet.create({
   projectCardLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary80,
   },
   projectDescription: {
     fontSize: 14,
     fontWeight: '400',
-    color: COLORS.textBody,
     lineHeight: 20,
   },
   budgetRow: {
@@ -391,7 +354,6 @@ const styles = StyleSheet.create({
   budgetText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.green80,
   },
   inputSection: {
     gap: 10,
@@ -404,27 +366,21 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary80,
   },
   optionalText: {
     fontSize: 12,
     fontWeight: '400',
-    color: COLORS.textSecondary,
   },
   textArea: {
     fontSize: 15,
     padding: 14,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.textDividers,
-    backgroundColor: COLORS.bgWhite,
     textAlignVertical: 'top',
     minHeight: 120,
-    color: COLORS.textBody,
   },
   charCount: {
     fontSize: 12,
-    color: COLORS.textSecondary,
     textAlign: 'right',
   },
   actionButtons: {
@@ -433,14 +389,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.textDividers,
-    backgroundColor: COLORS.bgWhite,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: COLORS.purple10,
-    borderWidth: 1.5,
-    borderColor: COLORS.purple100,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
@@ -449,12 +400,10 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.purple100,
   },
   submitButton: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: COLORS.green80,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
@@ -467,6 +416,5 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.textWhite,
   },
 });

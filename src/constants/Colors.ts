@@ -15,7 +15,6 @@ export const LightColors = {
   text: '#1A1A1A',
   textSecondary: '#666666',
   textTertiary: '#999999',
-  textLight: '#FFFFFF',
   
   // Status
   success: '#4CAF50',
@@ -29,6 +28,9 @@ export const LightColors = {
   gray300: '#E0E0E0',
   gray400: '#BDBDBD',
   gray500: '#9E9E9E',
+  
+  // TextField Background
+  textFieldBackground: '#FFFFFF',
   
   // Social
   google: '#DB4437',
@@ -58,34 +60,37 @@ export const LightColors = {
 };
 
 export const DarkColors = {
-  // Primary
-  primary: '#33A3FF',
-  primaryDark: '#0080E0',
-  primaryLight: '#66B9FF',
+  // Primary - Brand Blue (consistent across light and dark mode)
+  primary: '#00A5F4',
+  primaryDark: '#0088CC',
+  primaryLight: '#33B8FF',
   
-  // Background
-  background: '#121212',
-  cardBackground: '#1E1E1E',
-  surface: '#2C2C2C',
+  // Background - Pure Black as specified
+  background: '#000000',
+  cardBackground: '#1C1C1E', // iOS secondarySystemBackground equivalent (dark gray)
+  surface: '#1C1C1E', // Same as cardBackground for consistency
+  secondaryBackground: 'rgba(0, 0, 0, 0.9)', // 90% opacity black
   
-  // Text
+  // Text - White for optimal contrast
   text: '#FFFFFF',
   textSecondary: '#B0B0B0',
   textTertiary: '#888888',
-  textLight: '#FFFFFF',
   
   // Status
   success: '#66BB6A',
-  error: '#EF5350',
+  error: '#FF0000', // Red as specified for destructive actions
   warning: '#FFB74D',
-  info: '#42A5F5',
+  info: '#00A5F4', // Use brand blue for info
   
-  // Grays
-  gray100: '#2C2C2C',
-  gray200: '#3A3A3A',
-  gray300: '#4A4A4A',
-  gray400: '#606060',
-  gray500: '#808080',
+  // Grays - Adjusted for dark mode
+  gray100: '#1C1C1E',
+  gray200: '#2C2C2E',
+  gray300: '#3A3A3C',
+  gray400: '#48484A',
+  gray500: '#636366',
+  
+  // TextField Background - iOS darkGray equivalent
+  textFieldBackground: '#2C2C2E', // Dark gray for text fields
   
   // Social
   google: '#DB4437',
@@ -95,14 +100,17 @@ export const DarkColors = {
   // Project Status
   pending: '#FFB74D',
   accepted: '#66BB6A',
-  rejected: '#EF5350',
-  inProgress: '#42A5F5',
+  rejected: '#FF0000', // Red for rejected
+  inProgress: '#00A5F4', // Brand blue
   completed: '#66BB6A',
   
   // UI Elements
-  border: '#3A3A3A',
+  border: '#2C2C2E',
   shadow: '#000000',
   overlay: 'rgba(0, 0, 0, 0.7)',
+  
+  // Tab Bar Background - iOS secondarySystemBackground
+  tabBarBackground: '#1C1C1E',
   
   // White & Black
   white: '#FFFFFF',
